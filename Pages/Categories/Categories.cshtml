@@ -64,12 +64,26 @@
                                     <span class="badge bg-warning text-dark">
                                         @category.ProductCount
                                     </span>
+                                    <a asp-page="/Products/Products" 
+                                       asp-route-categoryFilter="@category.Code"
+                                       class="btn btn-sm btn-link p-0 ms-1" 
+                                       title="Ver productos de esta categoría">
+                                        <i class="bi bi-eye-fill"></i>
+                                        ver productos
+                                    </a>
                                 }
                                 else
                                 {
                                     <span class="badge bg-success">
                                         @category.ProductCount
                                     </span>
+                                    <a asp-page="/Products/Products" 
+                                       asp-route-categoryFilter="@category.Id"
+                                       class="btn btn-sm btn-link p-0 ms-1" 
+                                       title="Ver productos de esta categoría">
+                                        <i class="bi bi-eye-fill"></i>
+                                        ver productos
+                                    </a>
                                 }
                             </td>
 

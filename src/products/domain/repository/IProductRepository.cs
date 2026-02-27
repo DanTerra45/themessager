@@ -10,6 +10,7 @@ namespace Mercadito
         Task<IEnumerable<Product>> GetAllProductsAsync();
         Task<IEnumerable<ProductWithCategoriesModel>> GetAllProductsWithCategoriesAsync();
         Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page);
+        Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, Guid categoryId);
         Task<IEnumerable<Product>> GetProductsByPages(int page);
         Task<Product?> GetProductByIdAsync(Guid id);
         Task<Guid> AddProductAsync(CreateProductDto product);

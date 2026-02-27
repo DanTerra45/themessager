@@ -165,6 +165,49 @@ namespace Mercadito
                 throw;
             }
         }
+        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, Guid categoryId)
+        {
+            try
+            {
+                int pageSize = 10;
+                int offset = (page - 1) * pageSize;
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $@"SELECT p.id AS Id, p.nombre AS Name, p.descripcion AS Description, p.stock AS Stock, p.lote AS Lote, p.fechaCaducidad AS FechaDeCaducidad, p.precio AS Price, c.nombre AS Category
+                               FROM {tableName} p
+                               INNER JOIN {relationTableName} pc ON p.id = pc.productId
+                               INNER JOIN categorias c ON pc.categoriaId = c.id
+                               WHERE c.id = @CategoryId
+                               ORDER BY p.id OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+                var productDictionary = new Dictionary<Guid, ProductWithCategoriesModel>();
+
+                var products = await connection.QueryAsync<ProductWithCategoriesModel, string, ProductWithCategoriesModel>(
+                    query,
+                    (product, category) =>
+                    {
+                        if (!productDictionary.TryGetValue(product.Id, out var productEntry))
+                        {
+                            productEntry = product;
+                            productEntry.Categories = new List<string>();
+                            productDictionary.Add(productEntry.Id, productEntry);
+                        }
+                        if (!string.IsNullOrEmpty(category) && !productEntry.Categories.Contains(category))
+                        {
+                            productEntry.Categories.Add(category);
+                        }
+                        return productEntry;
+                    },
+                    new { CategoryId = categoryId, Offset = offset, PageSize = pageSize },
+                    splitOn: "Category"
+                );
+
+                return products.Distinct().ToList();
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, $"Error al obtener productos con categorías filtrados por categoría por página: {page}");
+                throw;
+            }
+        }
         public async Task UpdateProductAsync(Product product)
         {
             try

@@ -21,7 +21,11 @@ namespace Mercadito.Pages.Products
         private readonly AsignCategoryToProductUseCase _asignCategoryToProductUseCase;
 
         public List<ProductWithCategoriesModel> Products { get; set; } = new List<ProductWithCategoriesModel>();
+
         public List<CategoryModel> Categories { get; set; } = new List<CategoryModel>();
+
+        [BindProperty]
+        public Guid CategoryFilter { get; set; } = Guid.Empty;
 
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
@@ -32,6 +36,8 @@ namespace Mercadito.Pages.Products
         [BindProperty]
         public UpdateProductDto EditProduct { get; set; } = new UpdateProductDto();
 
+        [TempData]
+        public bool ShowModal { get; set; }
         public ProductsModel(
             ILogger<ProductsModel> logger,
             IProductRepository productRepository,
@@ -50,10 +56,45 @@ namespace Mercadito.Pages.Products
             _asignCategoryToProductUseCase = asignCategoryToProductUseCase;
         }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(string? categoryFilter, int page = 1)
         {
-            await LoadProductsAsync();
             await LoadCategoriesAsync();
+            if(!string.IsNullOrEmpty(categoryFilter)){
+                CategoryFilter = Categories.Find(c => c.Code == categoryFilter)?.Id ?? Guid.Empty;
+                await OnPostFilterAsync();
+            }else{
+                CurrentPage = page;
+                await LoadProductsAsync();
+            }
+        }
+        public async Task<IActionResult> OnPostFilterAsync()
+        {
+            _logger.LogInformation("Filtrando productos por categoría: {CategoryFilter}", CategoryFilter);
+            if (CategoryFilter == Guid.Empty)
+            {
+                return RedirectToPage();
+            }
+            try
+            {
+                var resultado = await _productRepository.GetProductsWithCategoriesFilterByCategoryByPages(CurrentPage, CategoryFilter);
+                TotalPages = (int)Math.Ceiling(resultado.Count() / 10.0);
+                Products = resultado?.ToList() ?? new List<ProductWithCategoriesModel>();
+                if(Categories.Count == 0)
+                {
+                    await LoadCategoriesAsync();
+                }
+                if (Products.Count == 0)
+                {
+                    _logger.LogWarning("No se encontraron productos para la categoría seleccionada.");
+                }
+                return Page();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al filtrar productos por categoría");
+                Products = new List<ProductWithCategoriesModel>();
+                return Page();
+            }
         }
 
         // new handler: return product details + current category relation as JSON
@@ -97,6 +138,7 @@ namespace Mercadito.Pages.Products
         {
             if (!ModelState.IsValid)
             {
+                ShowModal = true;
                 await LoadProductsAsync();
                 await LoadCategoriesAsync();
                 return Page();
