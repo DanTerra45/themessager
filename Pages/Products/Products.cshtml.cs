@@ -15,8 +15,11 @@ namespace Mercadito.Pages.Products
         private readonly ILogger<ProductsModel> _logger;
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly IProductCategoryRepository _productCategoryRepository;
         private readonly RegisterNewProductUseCase _registerNewProductUseCase;
         private readonly RegisterNewProductWithCategoryUseCase _registerNewProductWithCategoryUseCase;
+        private readonly AsignCategoryToProductUseCase _asignCategoryToProductUseCase;
+
         public List<ProductWithCategoriesModel> Products { get; set; } = new List<ProductWithCategoriesModel>();
         public List<CategoryModel> Categories { get; set; } = new List<CategoryModel>();
 
@@ -29,19 +32,65 @@ namespace Mercadito.Pages.Products
         [BindProperty]
         public UpdateProductDto EditProduct { get; set; } = new UpdateProductDto();
 
-        public ProductsModel(ILogger<ProductsModel> logger, IProductRepository productRepository, ICategoryRepository categoryRepository, RegisterNewProductUseCase registerNewProductUseCase, RegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase)
+        public ProductsModel(
+            ILogger<ProductsModel> logger,
+            IProductRepository productRepository,
+            ICategoryRepository categoryRepository,
+            IProductCategoryRepository productCategoryRepository,
+            RegisterNewProductUseCase registerNewProductUseCase,
+            RegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase,
+            AsignCategoryToProductUseCase asignCategoryToProductUseCase)
         {
             _logger = logger;
             _productRepository = productRepository;
             _categoryRepository = categoryRepository;
+            _productCategoryRepository = productCategoryRepository;
             _registerNewProductUseCase = registerNewProductUseCase;
             _registerNewProductWithCategoryUseCase = registerNewProductWithCategoryUseCase;
+            _asignCategoryToProductUseCase = asignCategoryToProductUseCase;
         }
 
         public async Task OnGetAsync()
         {
             await LoadProductsAsync();
             await LoadCategoriesAsync();
+        }
+
+        // new handler: return product details + current category relation as JSON
+        public async Task<JsonResult> OnGetDetailsAsync(Guid id)
+        {
+            try
+            {
+                var product = await _productRepository.GetProductByIdAsync(id);
+                if (product == null)
+                {
+                    return new JsonResult(new { error = "Not found" }) { StatusCode = 404 };
+                }
+
+                var relation = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(id);
+                var categoryId = relation?.CategoryId ?? Guid.Empty;
+
+                // format dates as yyyy-MM-dd so they populate <input type="date">
+                string lote = product.Lote.ToString("yyyy-MM-dd");
+                string fecha = product.FechaDeCaducidad.ToString("yyyy-MM-dd");
+
+                return new JsonResult(new
+                {
+                    id = product.Id,
+                    name = product.Name,
+                    description = product.Description,
+                    stock = product.Stock,
+                    lote = lote,
+                    fechaDeCaducidad = fecha,
+                    price = product.Price,
+                    categoryId = categoryId
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener detalles del producto");
+                return new JsonResult(new { error = "Error" }) { StatusCode = 500 };
+            }
         }
 
         public async Task<IActionResult> OnPostCreateAsync()
@@ -145,7 +194,29 @@ namespace Mercadito.Pages.Products
                     Price = EditProduct.Price
                 };
 
+                // persist product changes
                 await _productRepository.UpdateProductAsync(updated);
+
+                // handle product-category relation:
+                // 1) remove existing relation if different
+                var existingRelation = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(updated.Id);
+                if (existingRelation != null && existingRelation.CategoryId != EditProduct.CategoryId)
+                {
+                    await _productCategoryRepository.DeleteProductCategoryAsync(existingRelation);
+                }
+
+                // 2) assign new relation if selected
+                if (EditProduct.CategoryId != Guid.Empty)
+                {
+                    // If there is not already a relation with same category, add it
+                    var relationNow = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(updated.Id);
+                    if (relationNow == null || relationNow.CategoryId != EditProduct.CategoryId)
+                    {
+                        var newRel = new ProductCategory(updated.Id, EditProduct.CategoryId);
+                        await _productCategoryRepository.AddProductCategoryAsync(newRel);
+                    }
+                }
+
                 _logger.LogInformation("Producto actualizado: {Id}", EditProduct.Id);
                 TempData["SuccessMessage"] = "Producto actualizado correctamente.";
                 return RedirectToPage();
