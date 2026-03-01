@@ -1,0 +1,231 @@
+﻿@page
+@model Mercadito.CategoriesModel
+@{
+    ViewData["Title"] = "Categorías";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="bi bi-plus-circle"></i> Agregar Nueva Categoría
+    </button>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th>ID</th>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Productos Asociados</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                @if (Model.Categories != null && Model.Categories.Count > 0)
+                {
+                    @foreach (var category in Model.Categories)
+                    {
+                        <tr>
+                            <!-- ID reducido -->
+                            <td class="small text-muted">
+                                @category.Id.ToString().Substring(0,8)
+                            </td>
+
+                            <!-- Código como badge -->
+                            <td>
+                                <span class="badge bg-secondary">
+                                    @category.Code
+                                </span>
+                            </td>
+
+                            <!-- Nombre destacado -->
+                            <td class="fw-semibold">
+                                @category.Name
+                            </td>
+
+                            <!-- Descripción truncada -->
+                            <td class="text-truncate" style="max-width: 250px;">
+                                @category.Description
+                            </td>
+
+                            <!-- Cantidad con colores -->
+                            <td class="text-center">
+                                @if(category.ProductCount == 0)
+                                {
+                                    <span class="badge bg-danger">0</span>
+                                }
+                                else if(category.ProductCount <= 5)
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        @category.ProductCount
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">
+                                        @category.ProductCount
+                                    </span>
+                                }
+                            </td>
+
+                            <!-- Acciones -->
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No se encontraron categorías.
+                        </td>
+                    </tr>
+                }
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación Mejorada -->
+        <div class="d-flex justify-content-center mt-3">
+            <nav>
+                <ul class="pagination pagination-sm">
+
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-page-handler="Index"
+                           asp-route-page="@(Model.CurrentPage - 1)">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link"
+                               asp-page-handler="Index"
+                               asp-route-page="@i">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-page-handler="Index"
+                           asp-route-page="@(Model.CurrentPage + 1)">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="addCategoryModal" tabindex="-1"
+     aria-labelledby="addCategoryModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+
+            <form method="post" asp-page-handler="Create" class="needs-validation">
+
+                <!-- Header -->
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-semibold" id="addCategoryModalLabel">
+                        <i class="bi bi-tags me-2"></i>
+                        Nueva Categoría
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal">
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body">
+
+                    <!-- Código -->
+                    <div class="form-floating mb-3">
+                        <input asp-for="NewCategory.Code"
+                               class="form-control"
+                               placeholder="Código"
+                               required />
+                        <label asp-for="NewCategory.Code">Código</label>
+                        <span asp-validation-for="NewCategory.Code"
+                              class="text-danger small"></span>
+                    </div>
+
+                    <!-- Nombre -->
+                    <div class="form-floating mb-3">
+                        <input asp-for="NewCategory.Name"
+                               class="form-control"
+                               placeholder="Nombre"
+                               required />
+                        <label asp-for="NewCategory.Name">Nombre</label>
+                        <span asp-validation-for="NewCategory.Name"
+                              class="text-danger small"></span>
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="form-floating">
+                        <textarea asp-for="NewCategory.Description"
+                                  class="form-control"
+                                  placeholder="Descripción"
+                                  rows="5"
+                                  style="height: 100px;
+                                    resize: none;"></textarea>
+                        <label asp-for="NewCategory.Description">Descripción</label>
+                        <span asp-validation-for="NewCategory.Description"
+                              class="text-danger small"></span>
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit @if(!ModelState.IsValid) { <text>disabled</text> }"
+                            class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Guardar
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

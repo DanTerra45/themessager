@@ -1,0 +1,277 @@
+@page
+@model Mercadito.Pages.Products.ProductsModel
+@{
+    ViewData["Title"] = "Productos";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addProductModal">
+        <i class="bi bi-plus-circle"></i> Agregar Nuevo Producto
+    </button>
+</div>
+
+<div>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Categorías</th>
+                            <th>Stock</th>
+                            <th>Lote</th>
+                            <th>Vencimiento</th>
+                            <th class="text-end">Precio</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.Products != null && Model.Products.Count > 0)
+                    {
+                        @foreach (var product in Model.Products)
+                        {
+                            <tr>
+                                <td class="small text-muted">
+                                    @product.Id.ToString().Substring(0,8)
+                                </td>
+
+                                <td class="fw-semibold">@product.Name</td>
+
+                                <td class="text-truncate" style="max-width: 200px;">
+                                    @product.Description
+                                </td>
+
+                                <td>
+                                    @if (product.Categories != null && product.Categories.Count > 0)
+                                    {
+                                        @foreach (var category in product.Categories)
+                                        {
+                                            <span class="badge bg-secondary me-1">@category</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Sin categoría</span>
+                                    }
+                                </td>
+
+                                <td class="text-center">
+                                    @if(product.Stock <= 5)
+                                    {
+                                        <span class="badge bg-danger">@product.Stock</span>
+                                    }
+                                    else if(product.Stock <= 20)
+                                    {
+                                        <span class="badge bg-warning text-dark">@product.Stock</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">@product.Stock</span>
+                                    }
+                                </td>
+
+                                <td class="text-center">
+                                    @product.Lote.ToShortDateString()
+                                </td>
+
+                                <td class="text-center">
+                                    @product.FechaDeCaducidad.ToShortDateString()
+                                </td>
+
+                                <td class="text-end fw-bold">
+                                    @($"{product.Price:N2} Bs.")
+                                </td>
+
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil">Editar</i>
+                                        </button>
+                                        <button class="btn btn-outline-danger">
+                                            <i class="bi bi-trash">Eliminar</i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                No se encontraron productos.
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex justify-content-center">
+        <nav>
+            <ul class="pagination">
+                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                    <a class="page-link" asp-page-handler="Index" asp-route-page="@(Model.CurrentPage - 1)">Anterior</a>
+                </li>
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                        <a class="page-link" asp-page-handler="Index" asp-route-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-page-handler="Index" asp-route-page="@(Model.CurrentPage + 1)">Siguiente</a>
+                </li>
+    </div>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+<div class="modal fade" id="addProductModal" tabindex="-1"
+     aria-labelledby="addProductModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow">
+
+            <form method="post" asp-page-handler="Create" class="needs-validation">
+
+                <!-- HEADER -->
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-semibold" id="addProductModalLabel">
+                        <i class="bi bi-box-seam me-2"></i>
+                        Nuevo Producto
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal">
+                    </button>
+                </div>
+
+                <!-- BODY -->
+                <div class="modal-body">
+
+                    <!-- Información básica -->
+                    <h6 class="text-muted mb-3">Información General</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="NewProduct.Name" class="form-label">Nombre</label>
+                            <input asp-for="NewProduct.Name" class="form-control" required />
+                            <span asp-validation-for="NewProduct.Name" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="NewProduct.CategoryId" class="form-label">Categoría</label>
+                            <select asp-for="NewProduct.CategoryId" class="form-select" required>
+                                <option value="@Guid.Empty">Seleccionar categoría</option>
+                                @foreach (var category in Model.Categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="NewProduct.CategoryId" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="mb-4">
+                        <label asp-for="NewProduct.Description" class="form-label">Descripción</label>
+                        <textarea asp-for="NewProduct.Description"
+                                  class="form-control"
+                                  style="min-height:120px;
+                                  resize: none;"
+                                  ></textarea>
+                        <span asp-validation-for="NewProduct.Description" class="text-danger small"></span>
+                    </div>
+
+                    <hr>
+
+                    <!-- Inventario -->
+                    <h6 class="text-muted mb-3">Inventario y Fechas</h6>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="NewProduct.Stock" class="form-label">Stock</label>
+                            <input asp-for="NewProduct.Stock"
+                                   type="number"
+                                   class="form-control"
+                                   min="0"
+                                   required />
+                            <span asp-validation-for="NewProduct.Stock" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="NewProduct.Lote" class="form-label">Lote</label>
+                            <input asp-for="NewProduct.Lote"
+                                   type="date"
+                                   class="form-control"
+                                   required />
+                            <span asp-validation-for="NewProduct.Lote" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="NewProduct.FechaDeCaducidad" class="form-label">
+                                Fecha de Vencimiento
+                            </label>
+                            <input asp-for="NewProduct.FechaDeCaducidad"
+                                   type="date"
+                                   class="form-control"
+                                   required />
+                            <span asp-validation-for="NewProduct.FechaDeCaducidad" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Precio -->
+                    <h6 class="text-muted mb-3">Precio</h6>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="NewProduct.Price" class="form-label">Precio</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Bs.</span>
+                                <input asp-for="NewProduct.Price"
+                                       type="number"
+                                       step="0.01"
+                                       class="form-control"
+                                       min="0"
+                                       required />
+                            </div>
+                            <span asp-validation-for="NewProduct.Price" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- FOOTER -->
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            class="btn btn-success ">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Guardar Producto
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
