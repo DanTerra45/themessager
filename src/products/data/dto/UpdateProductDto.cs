@@ -1,4 +1,4 @@
-src\products\data\dto\UpdateProductDto.cs
+
 using System;
 using System.ComponentModel.DataAnnotations;
 
