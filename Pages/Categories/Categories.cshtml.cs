@@ -15,26 +15,9 @@ namespace Mercadito
         [BindProperty]
         public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto();
 
-        // small edit viewmodel to avoid touching domain DTOs
-        public class EditCategoryViewModel
-        {
-            [Required]
-            public Guid Id { get; set; }
-
-            [Required(ErrorMessage = "El código es obligatorio")]
-            [StringLength(50, ErrorMessage = "El código no puede exceder 50 caracteres")]
-            public string Code { get; set; } = string.Empty;
-
-            [Required(ErrorMessage = "El nombre es obligatorio")]
-            [StringLength(100, ErrorMessage = "El nombre no puede exceder 100 caracteres")]
-            public string Name { get; set; } = string.Empty;
-
-            [StringLength(1000, ErrorMessage = "La descripción no puede exceder 1000 caracteres")]
-            public string? Description { get; set; }
-        }
-
+        // Use the dedicated UpdateCategoryDto (contains DataAnnotations for validation)
         [BindProperty]
-        public EditCategoryViewModel EditCategory { get; set; } = new EditCategoryViewModel();
+        public UpdateCategoryDto EditCategory { get; set; } = new UpdateCategoryDto();
 
         public CategoriesModel(ILogger<CategoriesModel> logger, ICategoryRepository categoryRepository)
         {
@@ -97,7 +80,7 @@ namespace Mercadito
 
             try
             {
-                // Map EditCategoryViewModel to domain entity expected by repository
+                // Verify existence
                 var existing = await _categoryRepository.GetCategoryByIdAsync(EditCategory.Id);
                 if (existing == null)
                 {
@@ -106,6 +89,7 @@ namespace Mercadito
                     return Page();
                 }
 
+                // Map UpdateCategoryDto to domain entity
                 var updatedCategory = new Category
                 {
                     Id = EditCategory.Id,
@@ -137,7 +121,7 @@ namespace Mercadito
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al eliminar categoría");
+                _logger.LogError(ex, "Error al eliminar la categoría");
                 TempData["ErrorMessage"] = "No se pudo eliminar la categoría.";
             }
             return RedirectToPage();
