@@ -167,11 +167,40 @@ namespace Mercadito
         }
         public async Task UpdateProductAsync(Product product)
         {
-            
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $"UPDATE {tableName} SET nombre = @Name, descripcion = @Description, stock = @Stock, lote = @Lote, fechaCaducidad = @FechaDeCaducidad, precio = @Price WHERE id = @Id";
+                await connection.ExecuteAsync(query, new
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    Description = product.Description,
+                    Stock = product.Stock,
+                    Lote = product.Lote,
+                    FechaDeCaducidad = product.FechaDeCaducidad,
+                    Price = product.Price
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar el producto");
+                throw;
+            }
         }
         public async Task DeleteProductAsync(Guid id)
         {
-            
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $"DELETE FROM {tableName} WHERE id = @Id";
+                await connection.ExecuteAsync(query, new { Id = id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al eliminar el producto");
+                throw;
+            }
         }
     }
 }

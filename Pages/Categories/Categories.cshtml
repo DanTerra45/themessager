@@ -36,29 +36,24 @@
                     @foreach (var category in Model.Categories)
                     {
                         <tr>
-                            <!-- ID reducido -->
                             <td class="small text-muted">
                                 @category.Id.ToString().Substring(0,8)
                             </td>
 
-                            <!-- Código como badge -->
                             <td>
                                 <span class="badge bg-secondary">
                                     @category.Code
                                 </span>
                             </td>
 
-                            <!-- Nombre destacado -->
                             <td class="fw-semibold">
                                 @category.Name
                             </td>
 
-                            <!-- Descripción truncada -->
                             <td class="text-truncate" style="max-width: 250px;">
                                 @category.Description
                             </td>
 
-                            <!-- Cantidad con colores -->
                             <td class="text-center">
                                 @if(category.ProductCount == 0)
                                 {
@@ -78,15 +73,25 @@
                                 }
                             </td>
 
-                            <!-- Acciones -->
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary">
-                                        <i class="bi bi-pencil"></i>
+                                    <!-- Edit button: supply data attributes for modal population -->
+                                    <button class="btn btn-outline-primary edit-category-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editCategoryModal"
+                                            data-id="@category.Id"
+                                            data-code="@category.Code"
+                                            data-name="@category.Name"
+                                            data-description="@category.Description">
+                                        <i class="bi bi-pencil"></i> Editar
                                     </button>
-                                    <button class="btn btn-outline-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+
+                                    <form method="post" asp-page-handler="Delete" class="d-inline">
+                                        <input type="hidden" name="id" value="@category.Id" />
+                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Eliminar categoría?')">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -105,7 +110,6 @@
             </table>
         </div>
 
-        <!-- Paginación Mejorada -->
         <div class="d-flex justify-content-center mt-3">
             <nav>
                 <ul class="pagination pagination-sm">
@@ -144,6 +148,7 @@
     </div>
 </div>
 
+<!-- Add Category Modal (unchanged) -->
 <div class="modal fade" id="addCategoryModal" tabindex="-1"
      aria-labelledby="addCategoryModalLabel"
      aria-hidden="true">
@@ -151,9 +156,8 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow">
 
-            <form method="post" asp-page-handler="Create" class="needs-validation">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
 
-                <!-- Header -->
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="addCategoryModalLabel">
                         <i class="bi bi-tags me-2"></i>
@@ -166,10 +170,8 @@
                     </button>
                 </div>
 
-                <!-- Body -->
                 <div class="modal-body">
 
-                    <!-- Código -->
                     <div class="form-floating mb-3">
                         <input asp-for="NewCategory.Code"
                                class="form-control"
@@ -180,7 +182,6 @@
                               class="text-danger small"></span>
                     </div>
 
-                    <!-- Nombre -->
                     <div class="form-floating mb-3">
                         <input asp-for="NewCategory.Name"
                                class="form-control"
@@ -191,7 +192,6 @@
                               class="text-danger small"></span>
                     </div>
 
-                    <!-- Descripción -->
                     <div class="form-floating">
                         <textarea asp-for="NewCategory.Description"
                                   class="form-control"
@@ -206,7 +206,6 @@
 
                 </div>
 
-                <!-- Footer -->
                 <div class="modal-footer border-0 pt-0">
                     <button type="button"
                             class="btn btn-outline-secondary"
@@ -226,6 +225,76 @@
     </div>
 </div>
 
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1"
+     aria-labelledby="editCategoryModalLabel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-semibold" id="editCategoryModalLabel">
+                        <i class="bi bi-pencil me-2"></i>
+                        Editar Categoría
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input asp-for="EditCategory.Id" type="hidden" />
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="EditCategory.Code" class="form-control" placeholder="Código" required />
+                        <label asp-for="EditCategory.Code">Código</label>
+                        <span asp-validation-for="EditCategory.Code" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="EditCategory.Name" class="form-control" placeholder="Nombre" required />
+                        <label asp-for="EditCategory.Name">Nombre</label>
+                        <span asp-validation-for="EditCategory.Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-floating">
+                        <textarea asp-for="EditCategory.Description" class="form-control" placeholder="Descripción" rows="5" style="height: 100px; resize: none;"></textarea>
+                        <label asp-for="EditCategory.Description">Descripción</label>
+                        <span asp-validation-for="EditCategory.Description" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Populate edit modal with values from button data attributes
+        document.addEventListener('DOMContentLoaded', function () {
+            var editBtns = document.querySelectorAll('.edit-category-btn');
+            editBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var id = btn.getAttribute('data-id');
+                    var code = btn.getAttribute('data-code') ?? '';
+                    var name = btn.getAttribute('data-name') ?? '';
+                    var description = btn.getAttribute('data-description') ?? '';
+
+                    var modal = document.getElementById('editCategoryModal');
+                    if (!modal) return;
+
+                    modal.querySelector('[name="EditCategory.Id"]').value = id;
+                    modal.querySelector('[name="EditCategory.Code"]').value = code;
+                    modal.querySelector('[name="EditCategory.Name"]').value = name;
+                    modal.querySelector('[name="EditCategory.Description"]').value = description;
+                });
+            });
+        });
+    </script>
 }

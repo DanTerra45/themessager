@@ -89,12 +89,19 @@
 
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary">
-                                            <i class="bi bi-pencil">Editar</i>
+                                        <!-- Keep product id and open an edit modal that will be populated by fetching product details -->
+                                        <button class="btn btn-outline-primary edit-product-btn"
+                                                data-product-id="@product.Id"
+                                                type="button">
+                                            <i class="bi bi-pencil"></i> Editar
                                         </button>
-                                        <button class="btn btn-outline-danger">
-                                            <i class="bi bi-trash">Eliminar</i>
-                                        </button>
+
+                                        <form method="post" asp-page-handler="Delete" class="d-inline">
+                                            <input type="hidden" name="id" value="@product.Id" />
+                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Eliminar producto?')">
+                                                <i class="bi bi-trash"></i> Eliminar
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -133,6 +140,7 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
+<!-- Add Product Modal (unchanged) -->
 <div class="modal fade" id="addProductModal" tabindex="-1"
      aria-labelledby="addProductModalLabel"
      aria-hidden="true">
@@ -140,9 +148,8 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow">
 
-            <form method="post" asp-page-handler="Create" class="needs-validation">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
 
-                <!-- HEADER -->
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="addProductModalLabel">
                         <i class="bi bi-box-seam me-2"></i>
@@ -155,10 +162,7 @@
                     </button>
                 </div>
 
-                <!-- BODY -->
                 <div class="modal-body">
-
-                    <!-- Información básica -->
                     <h6 class="text-muted mb-3">Información General</h6>
 
                     <div class="row">
@@ -181,7 +185,6 @@
                         </div>
                     </div>
 
-                    <!-- Descripción -->
                     <div class="mb-4">
                         <label asp-for="NewProduct.Description" class="form-label">Descripción</label>
                         <textarea asp-for="NewProduct.Description"
@@ -194,7 +197,6 @@
 
                     <hr>
 
-                    <!-- Inventario -->
                     <h6 class="text-muted mb-3">Inventario y Fechas</h6>
 
                     <div class="row">
@@ -231,7 +233,6 @@
 
                     <hr>
 
-                    <!-- Precio -->
                     <h6 class="text-muted mb-3">Precio</h6>
 
                     <div class="row">
@@ -252,7 +253,6 @@
 
                 </div>
 
-                <!-- FOOTER -->
                 <div class="modal-footer border-0 pt-0">
                     <button type="button"
                             class="btn btn-outline-secondary"
@@ -272,6 +272,148 @@
     </div>
 </div>
 
+<!-- Edit Product Modal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-semibold" id="editProductModalLabel">
+                        <i class="bi bi-pencil me-2"></i> Editar Producto
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input asp-for="EditProduct.Id" type="hidden" />
+
+                    <h6 class="text-muted mb-3">Información General</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="EditProduct.Name" class="form-label">Nombre</label>
+                            <input asp-for="EditProduct.Name" class="form-control" required />
+                            <span asp-validation-for="EditProduct.Name" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="EditProduct.CategoryId" class="form-label">Categoría</label>
+                            <select asp-for="EditProduct.CategoryId" class="form-select" id="editProductCategorySelect">
+                                <option value="@Guid.Empty">No asignada</option>
+                                @foreach (var category in Model.Categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="EditProduct.CategoryId" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="EditProduct.Description" class="form-label">Descripción</label>
+                        <textarea asp-for="EditProduct.Description" class="form-control" style="min-height:120px; resize: none;"></textarea>
+                        <span asp-validation-for="EditProduct.Description" class="text-danger small"></span>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="text-muted mb-3">Inventario y Fechas</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="EditProduct.Stock" class="form-label">Stock</label>
+                            <input asp-for="EditProduct.Stock" type="number" class="form-control" min="0" required />
+                            <span asp-validation-for="EditProduct.Stock" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="EditProduct.Lote" class="form-label">Lote</label>
+                            <input asp-for="EditProduct.Lote" type="date" class="form-control" required />
+                            <span asp-validation-for="EditProduct.Lote" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="EditProduct.FechaDeCaducidad" class="form-label">Fecha de Vencimiento</label>
+                            <input asp-for="EditProduct.FechaDeCaducidad" type="date" class="form-control" required />
+                            <span asp-validation-for="EditProduct.FechaDeCaducidad" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6 class="text-muted mb-3">Precio</h6>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label asp-for="EditProduct.Price" class="form-label">Precio</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Bs.</span>
+                                <input asp-for="EditProduct.Price" type="number" step="0.01" class="form-control" min="0" required />
+                            </div>
+                            <span asp-validation-for="EditProduct.Price" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // use fetch to get full product details (including current category id)
+            var editBtns = document.querySelectorAll('.edit-product-btn');
+            editBtns.forEach(function (btn) {
+                btn.addEventListener('click', async function () {
+                    var productId = btn.getAttribute('data-product-id');
+                    if (!productId) return;
+
+                    try {
+                        var resp = await fetch(`/Products?handler=Details&id=${productId}`);
+                        if (!resp.ok) throw new Error('Error fetching product details');
+                        var data = await resp.json();
+
+                        var modal = document.getElementById('editProductModal');
+                        if (!modal) return;
+
+                        modal.querySelector('[name="EditProduct.Id"]').value = data.id ?? '';
+                        modal.querySelector('[name="EditProduct.Name"]').value = data.name ?? '';
+                        modal.querySelector('[name="EditProduct.Description"]').value = data.description ?? '';
+                        modal.querySelector('[name="EditProduct.Stock"]').value = data.stock ?? '';
+                        modal.querySelector('[name="EditProduct.Lote"]').value = data.lote ?? '';
+                        modal.querySelector('[name="EditProduct.FechaDeCaducidad"]').value = data.fechaDeCaducidad ?? '';
+                        modal.querySelector('[name="EditProduct.Price"]').value = data.price ?? '';
+
+                        // preselect category
+                        var select = document.getElementById('editProductCategorySelect');
+                        if (select) {
+                            var catId = data.categoryId ?? '';
+                            select.value = catId || "@Guid.Empty";
+                        }
+
+                        // show modal (in case it didn't open automatically)
+                        var bsModal = new bootstrap.Modal(modal);
+                        bsModal.show();
+                    } catch (err) {
+                        console.error(err);
+                        alert('No se pudo cargar la información del producto.');
+                    }
+                });
+            });
+
+            // If server requested modal reopen due to validation errors:
+            @if (TempData["ShowEditProductModal"] != null && TempData["ShowEditProductModal"].ToString() == "true")
+            {
+                <text>
+                var m = new bootstrap.Modal(document.getElementById('editProductModal'));
+                m.show();
+                </text>
+            }
+        });
+    </script>
 }
