@@ -98,7 +98,12 @@
 
                                         <form method="post" asp-page-handler="Delete" class="d-inline">
                                             <input type="hidden" name="id" value="@product.Id" />
-                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Eliminar producto?')">
+                                            @{
+                                                var deleteConfirmMessage = (product.Categories != null && product.Categories.Count > 0)
+                                                    ? "Este producto tiene relación con una categoría. Se eliminará la relación y luego el producto. ¿Deseas continuar?"
+                                                    : "¿Eliminar producto?";
+                                            }
+                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('@deleteConfirmMessage')">
                                                 <i class="bi bi-trash"></i> Eliminar
                                             </button>
                                         </form>

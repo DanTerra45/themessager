@@ -51,7 +51,32 @@ namespace Mercadito
         }
         public async Task DeleteProductCategoryAsync(ProductCategory productCategory)
         {
-            throw new NotImplementedException();
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $"DELETE FROM {tableName} WHERE productId = @ProductId AND categoriaId = @CategoryId";
+                await connection.ExecuteAsync(query, new { ProductId = productCategory.ProductId, CategoryId = productCategory.CategoryId });
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting product category relation");
+                throw;
+            }
+        }
+
+        public async Task DeleteProductCategoriesByProductIdAsync(Guid productId)
+        {
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $"DELETE FROM {tableName} WHERE productId = @ProductId";
+                await connection.ExecuteAsync(query, new { ProductId = productId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting product category relations by product ID");
+                throw;
+            }
         }
     }
 }
