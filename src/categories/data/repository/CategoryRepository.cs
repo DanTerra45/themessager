@@ -52,7 +52,7 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT c.id AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.id) AS ProductCount FROM {tableName} c LEFT JOIN {relationTableName} p ON c.id = p.categoria_id WHERE c.id = @Id GROUP BY c.id, c.codigo, c.nombre, c.descripcion";
+                var query = $"SELECT c.id AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount FROM {tableName} c LEFT JOIN {relationTableName} p ON c.id = p.categoriaId WHERE c.id = @Id GROUP BY c.id, c.codigo, c.nombre, c.descripcion";
                 return await connection.QueryFirstOrDefaultAsync<CategoryModel>(query, new { Id = id });
             }
             catch(Exception ex)

@@ -10,5 +10,6 @@ namespace Mercadito
         Task<ProductCategory?> GetProductsCategoriesByCategoryIdAsync(Guid categoryId);
         Task AddProductCategoryAsync(ProductCategory productCategory);
         Task DeleteProductCategoryAsync(ProductCategory productCategory);
+        Task DeleteProductCategoriesByProductIdAsync(Guid productId);
     }
 }

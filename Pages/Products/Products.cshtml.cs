@@ -235,8 +235,16 @@ namespace Mercadito.Pages.Products
         {
             try
             {
+                var hasRelation = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(id) != null;
+                if (hasRelation)
+                {
+                    await _productCategoryRepository.DeleteProductCategoriesByProductIdAsync(id);
+                }
+
                 await _productRepository.DeleteProductAsync(id);
-                TempData["SuccessMessage"] = "Producto eliminado.";
+                TempData["SuccessMessage"] = hasRelation
+                    ? "Producto eliminado. También se eliminó su relación con categoría."
+                    : "Producto eliminado.";
             }
             catch (Exception ex)
             {
