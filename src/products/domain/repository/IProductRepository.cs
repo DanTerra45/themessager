@@ -16,5 +16,7 @@ namespace Mercadito
         Task<Guid> AddProductAsync(CreateProductDto product);
         Task UpdateProductAsync(Product product);
         Task DeleteProductAsync(Guid id);
+        Task<int> GetTotalProductsCountAsync();
+        Task<int> GetTotalProductsCountByCategoryAsync(Guid categoryId);
     }
 }

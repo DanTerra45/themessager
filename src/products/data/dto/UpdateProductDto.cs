@@ -15,7 +15,7 @@ namespace Mercadito.src.products.data.dto
 
         public Guid CategoryId { get; set; } = Guid.Empty;
 
-        [StringLength(2000, ErrorMessage = "La descripción no puede exceder 2000 caracteres")]
+        [StringLength(2000, ErrorMessage = "La descripciï¿½n no puede exceder 2000 caracteres")]
         public string? Description { get; set; }
 
         [Required(ErrorMessage = "Stock es obligatorio")]
@@ -31,7 +31,7 @@ namespace Mercadito.src.products.data.dto
         public DateTime FechaDeCaducidad { get; set; }
 
         [Required(ErrorMessage = "Precio es obligatorio")]
-        [Range(0, double.MaxValue, ErrorMessage = "Precio inválido")]
+        [Range(0, double.MaxValue, ErrorMessage = "Precio invï¿½lido")]
         public decimal Price { get; set; }
     }
 }
