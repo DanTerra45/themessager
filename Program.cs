@@ -27,11 +27,14 @@ switch (dbProvider)
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
 // Use Cases
 builder.Services.AddScoped<AsignCategoryToProductUseCase>();
 builder.Services.AddScoped<RegisterNewProductUseCase>();
 builder.Services.AddScoped<RegisterNewProductWithCategoryUseCase>();
+builder.Services.AddScoped<RegisterEmployeeUseCase>();
+builder.Services.AddScoped<UpdateEmployeeUseCase>();
 
 var app = builder.Build();
 
@@ -52,4 +55,4 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-app.Run();
+await app.RunAsync();
