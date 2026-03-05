@@ -9,9 +9,9 @@ namespace Mercadito
     {
         Task<IEnumerable<CategoryModel>> GetAllCategoriesAsync();
         Task<IEnumerable<CategoryModel>> GetCategoryByPages(int page);
-        Task<CategoryModel?> GetCategoryByIdAsync(Guid id);
+        Task<CategoryModel?> GetCategoryByIdAsync(long id);
         Task AddCategoryAsync(CreateCategoryDto category);
         Task UpdateCategoryAsync(Category category);
-        Task DeleteCategoryAsync(Guid id);
+        Task DeleteCategoryAsync(long id);
     }
 }

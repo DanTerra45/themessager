@@ -7,7 +7,7 @@ namespace Mercadito
 {
     public class Product
     {
-        public Guid Id { get; set; }
+        public long Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public int Stock { get; set; }
@@ -15,7 +15,7 @@ namespace Mercadito
         public DateTime FechaDeCaducidad { get; set; }
         public decimal Price { get; set; }
         public Product() { }
-        public Product(Guid id, string name, string description, int stock, DateTime lote, DateTime fechaDeCaducidad, decimal price)
+        public Product(long id, string name, string description, int stock, DateTime lote, DateTime fechaDeCaducidad, decimal price)
         {
             Id = id;
             Name = name;

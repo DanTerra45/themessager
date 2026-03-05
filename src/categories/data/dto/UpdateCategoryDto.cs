@@ -7,7 +7,7 @@ namespace Mercadito
     public class UpdateCategoryDto
     {
         [Required]
-        public Guid Id { get; set; }
+        public long Id { get; set; }
 
         [Required(ErrorMessage = "El código es obligatorio")]
         [StringLength(50, ErrorMessage = "El código no puede exceder 50 caracteres")]
@@ -22,7 +22,7 @@ namespace Mercadito
 
         public UpdateCategoryDto() { }
 
-        public UpdateCategoryDto(Guid id, string code, string name, string description)
+        public UpdateCategoryDto(long id, string code, string name, string description)
         {
             Id = id;
             Code = code;

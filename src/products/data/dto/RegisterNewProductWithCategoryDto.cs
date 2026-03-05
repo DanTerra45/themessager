@@ -4,6 +4,6 @@ namespace Mercadito
 { 
     public class RegisterNewProductWithCategoryDto : CreateProductDto 
     {
-        public Guid CategoryId{get; set;}
+        public long CategoryId{get; set;}
     }
 }

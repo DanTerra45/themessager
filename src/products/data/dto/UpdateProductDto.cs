@@ -7,13 +7,13 @@ namespace Mercadito.src.products.data.dto
     public class UpdateProductDto
     {
         [Required]
-        public Guid Id { get; set; }
+        public long Id { get; set; }
 
         [Required(ErrorMessage = "El nombre es obligatorio")]
         [StringLength(200, ErrorMessage = "El nombre no puede exceder 200 caracteres")]
         public string Name { get; set; } = string.Empty;
 
-        public Guid CategoryId { get; set; } = Guid.Empty;
+        public long CategoryId { get; set; } = 0;
 
         [StringLength(2000, ErrorMessage = "La descripci�n no puede exceder 2000 caracteres")]
         public string? Description { get; set; }

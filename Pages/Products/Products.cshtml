@@ -16,7 +16,7 @@
     <form method="post" class="row g-2" asp-page-handler="Filter">
         <div class="col-md-3">
             <select name="categoryFilter" class="form-select">
-                <option value="@Guid.Empty" selected="@(Model.CategoryFilter == null || Model.CategoryFilter == Guid.Empty)">Todas las categorías</option>
+                <option value="0" selected="@(Model.CategoryFilter == null || Model.CategoryFilter == 0)">Todas las categorías</option>
                 @foreach (var category in Model.Categories)
                 {
                     <option value="@category.Id" selected="@(Model.CategoryFilter == category.Id)">@category.Name</option>
@@ -55,7 +55,7 @@
                         {
                             <tr>
                                 <td class="small text-muted">
-                                    @product.Id.ToString().Substring(0,8)
+                                    @product.Id
                                 </td>
 
                                 <td class="fw-semibold">@product.Name</td>
@@ -146,7 +146,7 @@
                 <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                     @{
                         var prevPage = Model.CurrentPage - 1;
-                        var prevUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != Guid.Empty 
+                        var prevUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != 0 
                             ? $"/Products/Products?page={prevPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
                             : $"/Products/Products?page={prevPage}&t={DateTime.Now.Ticks}";
                     }
@@ -157,7 +157,7 @@
                 
                 @for (int i = 1; i <= Model.TotalPages; i++)
                 {
-                    var pageUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != Guid.Empty 
+                    var pageUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != 0 
                         ? $"/Products/Products?page={i}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
                         : $"/Products/Products?page={i}&t={DateTime.Now.Ticks}";
                     
@@ -171,7 +171,7 @@
                 <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                     @{
                         var nextPage = Model.CurrentPage + 1;
-                        var nextUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != Guid.Empty 
+                        var nextUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != 0 
                             ? $"/Products/Products?page={nextPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
                             : $"/Products/Products?page={nextPage}&t={DateTime.Now.Ticks}";
                     }
@@ -221,7 +221,7 @@
                         <div class="col-md-6 mb-3">
                             <label asp-for="NewProduct.CategoryId" class="form-label">Categoría</label>
                             <select asp-for="NewProduct.CategoryId" class="form-select" required>
-                                <option value="@Guid.Empty">Seleccionar categoría</option>
+                                <option value="0">Seleccionar categoría</option>
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
@@ -319,12 +319,12 @@
 
 
 <!-- Edit Product Modal -->
-<div class="modal fade @(Model.EditProduct != null && Model.EditProduct.Id != Guid.Empty ? "show" : "")" 
+<div class="modal fade @(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "show" : "")" 
      id="editProductModal" 
      tabindex="-1"
-     style="@(Model.EditProduct != null && Model.EditProduct.Id != Guid.Empty ? "display:block;" : "")"
+     style="@(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "display:block;" : "")"
      aria-labelledby="editProductModalLabel"
-     aria-hidden="@(Model.EditProduct != null && Model.EditProduct.Id != Guid.Empty ? "false" : "true")">
+     aria-hidden="@(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "false" : "true")">
 
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow">
@@ -356,7 +356,7 @@
                         <div class="col-md-6 mb-3">
                             <label asp-for="EditProduct.CategoryId" class="form-label">Categoría</label>
                             <select asp-for="EditProduct.CategoryId" class="form-select">
-                                <option value="@Guid.Empty">Sin categoría</option>
+                                <option value="0">Sin categoría</option>
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
@@ -451,7 +451,7 @@
 </div>
 
 <!-- Backdrop para el modal -->
-@if (Model.EditProduct != null && Model.EditProduct.Id != Guid.Empty)
+@if (Model.EditProduct != null && Model.EditProduct.Id != 0)
 {
     <div class="modal-backdrop fade show"></div>
 }

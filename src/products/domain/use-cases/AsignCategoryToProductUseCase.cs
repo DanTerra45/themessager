@@ -18,7 +18,7 @@ namespace Mercadito
             _categoryRepository = categoryRepository;
         }
 
-        public async Task ExecuteAsync(Guid productId, Guid categoryId)
+        public async Task ExecuteAsync(long productId, long categoryId)
         {
             var product = await _productRepository.GetProductByIdAsync(productId);
             var category = await _categoryRepository.GetCategoryByIdAsync(categoryId);

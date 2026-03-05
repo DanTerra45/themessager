@@ -15,7 +15,7 @@ public class RegisterNewProductUseCase
         _logger = logger;
     }
 
-    public async Task<Guid> ExecuteAsync(CreateProductDto product)
+    public async Task<long> ExecuteAsync(CreateProductDto product)
     {
         try
         {

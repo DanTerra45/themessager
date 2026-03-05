@@ -3,7 +3,6 @@ namespace Mercadito
 {
     public static class ProductMapper
     {
-        private static readonly Guid defaultCategory;
         public static CreateProductDto ToRegisterProductEntity(RegisterNewProductWithCategoryDto dto)
         {
             return new CreateProductDto

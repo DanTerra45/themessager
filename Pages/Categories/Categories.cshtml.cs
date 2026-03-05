@@ -21,7 +21,7 @@ namespace Mercadito
             _categoryRepository = categoryRepository;
         }
 
-        public async Task OnGetAsync(Guid? editId)
+        public async Task OnGetAsync(long? editId)
         {
             await LoadCategoriesAsync();
             if (editId.HasValue)
@@ -130,7 +130,7 @@ namespace Mercadito
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id)
         {
             try
             {

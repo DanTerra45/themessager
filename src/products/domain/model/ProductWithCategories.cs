@@ -7,7 +7,7 @@ namespace Mercadito
 {
     public class ProductWithCategoriesModel
     {
-        public Guid Id { get; set; }
+        public long Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public int Stock { get; set; }
@@ -16,7 +16,7 @@ namespace Mercadito
         public decimal Price { get; set; }
         public List<string> Categories { get; set; }
         public ProductWithCategoriesModel() { }
-        public ProductWithCategoriesModel(Guid id, string name, string description, int stock, DateTime lote, DateTime fechaDeCaducidad, decimal price)
+        public ProductWithCategoriesModel(long id, string name, string description, int stock, DateTime lote, DateTime fechaDeCaducidad, decimal price)
         {
             Id = id;
             Name = name;

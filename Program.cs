@@ -1,4 +1,3 @@
-using Dapper;
 using Mercadito;
 
 using System.Globalization;
@@ -8,8 +7,6 @@ CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
 var builder = WebApplication.CreateBuilder(args);
-
-SqlMapper.AddTypeHandler(new GuidBinaryTypeHandler());
 
 // Add services to the container.
 builder.Services.AddRazorPages();

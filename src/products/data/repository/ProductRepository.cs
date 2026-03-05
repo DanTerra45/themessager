@@ -22,7 +22,7 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT BIN_TO_UUID(id) AS Id, nombre AS Name, descripcion AS Description, stock AS Stock, lote AS Lote, fechaCaducidad AS FechaDeCaducidad, precio AS Price FROM {tableName}";
+                var query = $"SELECT id AS Id, nombre AS Name, descripcion AS Description, stock AS Stock, lote AS Lote, fechaCaducidad AS FechaDeCaducidad, precio AS Price FROM {tableName}";
                 return await connection.QueryAsync<Product>(query);
                 
             }catch(Exception ex)
@@ -36,11 +36,11 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $@"SELECT BIN_TO_UUID(p.id) AS Id, p.nombre AS Name, p.descripcion AS Description, p.stock AS Stock, p.lote AS Lote, p.fechaCaducidad AS FechaDeCaducidad, p.precio AS Price, c.nombre AS Category
+                var query = $@"SELECT p.id AS Id, p.nombre AS Name, p.descripcion AS Description, p.stock AS Stock, p.lote AS Lote, p.fechaCaducidad AS FechaDeCaducidad, p.precio AS Price, c.nombre AS Category
                                FROM {tableName} p
                                LEFT JOIN {relationTableName} pc ON p.id = pc.productId
                                LEFT JOIN categorias c ON pc.categoriaId = c.id";
-                var productDictionary = new Dictionary<Guid, ProductWithCategoriesModel>();
+                var productDictionary = new Dictionary<long, ProductWithCategoriesModel>();
 
                 var products = await connection.QueryAsync<ProductWithCategoriesModel, string, ProductWithCategoriesModel>(
                     query,
@@ -77,7 +77,7 @@ namespace Mercadito
                 int offset = (page - 1) * pageSize;
                 using var connection = await _dbConnection.CreateConnectionAsync();
                 // Cambiado a sintaxis MySQL
-                var query = $"SELECT BIN_TO_UUID(id) AS Id, nombre AS Name, descripcion AS Description, stock AS Stock, lote AS Lote, fechaCaducidad AS FechaDeCaducidad, precio AS Price FROM {tableName} ORDER BY id LIMIT @PageSize OFFSET @Offset";
+                var query = $"SELECT id AS Id, nombre AS Name, descripcion AS Description, stock AS Stock, lote AS Lote, fechaCaducidad AS FechaDeCaducidad, precio AS Price FROM {tableName} ORDER BY id LIMIT @PageSize OFFSET @Offset";
                 return await connection.QueryAsync<Product>(query, new { Offset = offset, PageSize = pageSize });
             }
             catch(Exception ex)
@@ -97,7 +97,7 @@ namespace Mercadito
                 
                 var query = $@"
                     SELECT 
-                        BIN_TO_UUID(p.id) as Id,
+                        p.id as Id,
                         p.nombre as Name,
                         p.descripcion as Description,
                         p.stock as Stock,
@@ -115,7 +115,7 @@ namespace Mercadito
                 var products = await connection.QueryAsync<dynamic>(query, new { Offset = offset });
                 var productsList = products.Select(p => new ProductWithCategoriesModel
                 {
-                    Id = Guid.Parse((string)p.Id),
+                    Id = (long)p.Id,
                     Name = (string)p.Name,
                     Description = (string)p.Description,
                     Stock = (int)p.Stock,
@@ -135,7 +135,7 @@ namespace Mercadito
                 throw;
             }
         }
-        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, Guid categoryId)
+        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId)
         {            
             try
             {
@@ -144,7 +144,7 @@ namespace Mercadito
                 var offset = (page - 1) * 10;
                 var query = $@"
                     SELECT 
-                        BIN_TO_UUID(p.id) as Id,
+                        p.id as Id,
                         p.nombre as Name,
                         p.descripcion as Description,
                         p.stock as Stock,
@@ -155,14 +155,14 @@ namespace Mercadito
                     FROM {tableName} p
                     INNER JOIN {relationTableName} pc ON p.id = pc.productId
                     LEFT JOIN categorias c ON pc.categoriaId = c.id
-                    WHERE pc.categoriaId = UUID_TO_BIN(@CategoryId)
+                    WHERE pc.categoriaId = @CategoryId
                     GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                     ORDER BY p.nombre
                     LIMIT 10 OFFSET @Offset";
-                var products = await connection.QueryAsync<dynamic>(query, new { CategoryId = categoryId.ToString(), Offset = offset });
+                var products = await connection.QueryAsync<dynamic>(query, new { CategoryId = categoryId, Offset = offset });
                 var productsList = products.Select(p => new ProductWithCategoriesModel
                 {
-                    Id = Guid.Parse((string)p.Id),
+                    Id = (long)p.Id,
                     Name = (string)p.Name,
                     Description = (string)p.Description,
                     Stock = (int)p.Stock,
@@ -182,13 +182,13 @@ namespace Mercadito
                 throw;
             }
         }
-        public async Task<Product> GetProductByIdAsync(Guid id)
+        public async Task<Product?> GetProductByIdAsync(long id)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT BIN_TO_UUID(id) AS Id, nombre AS Name, descripcion AS Description, stock AS Stock, lote AS Lote, fechaCaducidad AS FechaDeCaducidad, precio AS Price FROM {tableName} WHERE id = UUID_TO_BIN(@Id)";
-                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id.ToString() });
+                var query = $"SELECT id AS Id, nombre AS Name, descripcion AS Description, stock AS Stock, lote AS Lote, fechaCaducidad AS FechaDeCaducidad, precio AS Price FROM {tableName} WHERE id = @Id";
+                return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id });
             }
             catch(Exception ex)
             {
@@ -196,15 +196,13 @@ namespace Mercadito
                 throw;
             }
         }
-        public async Task<Guid> AddProductAsync(CreateProductDto product)
+        public async Task<long> AddProductAsync(CreateProductDto product)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var productId = Guid.NewGuid();
-                var query = $"INSERT INTO {tableName} (id,nombre, descripcion, stock, lote, fechaCaducidad, precio) VALUES (UUID_TO_BIN(@Id), @Name, @Description, @Stock, @Lote, @FechaDeCaducidad, @Price)";
-                var result = await connection.ExecuteAsync(query, new {
-                    Id = productId.ToString(),
+                var query = $"INSERT INTO {tableName} (nombre, descripcion, stock, lote, fechaCaducidad, precio) VALUES (@Name, @Description, @Stock, @Lote, @FechaDeCaducidad, @Price); SELECT LAST_INSERT_ID();";
+                var result = await connection.ExecuteScalarAsync<long>(query, new {
                     Name = product.Name,
                     Description = product.Description,
                     Stock = product.Stock,
@@ -212,7 +210,7 @@ namespace Mercadito
                     FechaDeCaducidad = product.FechaDeCaducidad,
                     Price = product.Price
                 });
-                return result > 0 ? productId : Guid.Empty;
+                return result;
             }
             catch(Exception ex)
             {
@@ -226,10 +224,10 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"UPDATE {tableName} SET nombre = @Name, descripcion = @Description, stock = @Stock, lote = @Lote, fechaCaducidad = @FechaDeCaducidad, precio = @Price WHERE id = UUID_TO_BIN(@Id)";
+                var query = $"UPDATE {tableName} SET nombre = @Name, descripcion = @Description, stock = @Stock, lote = @Lote, fechaCaducidad = @FechaDeCaducidad, precio = @Price WHERE id = @Id";
                 await connection.ExecuteAsync(query, new
                 {
-                    Id = product.Id.ToString(),
+                    Id = product.Id,
                     Name = product.Name,
                     Description = product.Description,
                     Stock = product.Stock,
@@ -244,13 +242,13 @@ namespace Mercadito
                 throw;
             }
         }
-        public async Task DeleteProductAsync(Guid id)
+        public async Task DeleteProductAsync(long id)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"DELETE FROM {tableName} WHERE id = UUID_TO_BIN(@Id)";
-                await connection.ExecuteAsync(query, new { Id = id.ToString() });
+                var query = $"DELETE FROM {tableName} WHERE id = @Id";
+                await connection.ExecuteAsync(query, new { Id = id });
             }
             catch (Exception ex)
             {
@@ -272,7 +270,7 @@ namespace Mercadito
                 throw;
             }  
         }
-        public async Task<int> GetTotalProductsCountByCategoryAsync(Guid categoryId)
+        public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId)
         {
             try
             {
@@ -280,8 +278,8 @@ namespace Mercadito
                 var query = $@"SELECT COUNT(DISTINCT p.id) 
                        FROM {tableName} p
                        INNER JOIN {relationTableName} pc ON p.id = pc.productId
-                       WHERE pc.categoriaId = UUID_TO_BIN(@CategoryId)";
-                return await connection.ExecuteScalarAsync<int>(query, new { CategoryId = categoryId.ToString() });
+                       WHERE pc.categoriaId = @CategoryId";
+                return await connection.ExecuteScalarAsync<int>(query, new { CategoryId = categoryId });
             }
             catch(Exception ex)
             {

@@ -22,7 +22,7 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT BIN_TO_UUID(id) AS Id, codigo AS Code, nombre AS Name, descripcion AS Description, 0 AS ProductCount FROM {tableName}";
+                var query = $"SELECT id AS Id, codigo AS Code, nombre AS Name, descripcion AS Description, 0 AS ProductCount FROM {tableName}";
                 return await connection.QueryAsync<CategoryModel>(query);
                 
             }catch(Exception ex)
@@ -39,7 +39,7 @@ namespace Mercadito
                 int offset = (page - 1) * pageSize;
                 using var connection = await _dbConnection.CreateConnectionAsync();
                 // Sintaxis correcta para MySQL
-                var query = $@"SELECT BIN_TO_UUID(c.id) AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount 
+                var query = $@"SELECT c.id AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount 
                               FROM {tableName} c 
                               LEFT JOIN {relationTableName} p ON c.id = p.categoriaId 
                               GROUP BY c.id, c.codigo, c.nombre, c.descripcion 
@@ -53,17 +53,17 @@ namespace Mercadito
                 throw;
             }
         }
-        public async Task<CategoryModel?> GetCategoryByIdAsync(Guid id)
+        public async Task<CategoryModel?> GetCategoryByIdAsync(long id)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $@"SELECT BIN_TO_UUID(c.id) AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount 
+                var query = $@"SELECT c.id AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount 
                               FROM {tableName} c 
                               LEFT JOIN {relationTableName} p ON c.id = p.categoriaId 
-                              WHERE c.id = UUID_TO_BIN(@Id) 
+                              WHERE c.id = @Id 
                               GROUP BY c.id, c.codigo, c.nombre, c.descripcion";
-                return await connection.QueryFirstOrDefaultAsync<CategoryModel>(query, new { Id = id.ToString() });
+                return await connection.QueryFirstOrDefaultAsync<CategoryModel>(query, new { Id = id });
             }
             catch(Exception ex)
             {
@@ -90,9 +90,9 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"UPDATE {tableName} SET codigo = @Code, nombre = @Name, descripcion = @Description WHERE id = UUID_TO_BIN(@Id)";
+                var query = $"UPDATE {tableName} SET codigo = @Code, nombre = @Name, descripcion = @Description WHERE id = @Id";
                 _logger.LogInformation("Editando categoría con ID: {Id}, Código: {Code}, Nombre: {Name}, Descripción: {Description}", category.Id, category.Code, category.Name, category.Description);
-                await connection.ExecuteAsync(query, new { Id = category.Id.ToString(), Code = category.Code, Name = category.Name, Description = category.Description });
+                await connection.ExecuteAsync(query, new { Id = category.Id, Code = category.Code, Name = category.Name, Description = category.Description });
             }
             catch(Exception ex)
             {
@@ -100,13 +100,13 @@ namespace Mercadito
                 throw;
             }
         }
-        public async Task DeleteCategoryAsync(Guid id)
+        public async Task DeleteCategoryAsync(long id)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"DELETE FROM {tableName} WHERE id = UUID_TO_BIN(@Id)";
-                await connection.ExecuteAsync(query, new { Id = id.ToString() });
+                var query = $"DELETE FROM {tableName} WHERE id = @Id";
+                await connection.ExecuteAsync(query, new { Id = id });
             }
             catch(Exception ex)
             {

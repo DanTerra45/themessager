@@ -42,7 +42,7 @@ namespace Mercadito
             {
                 await _productCategoryRepository.DeleteProductCategoryAsync(existingRelation);
             }
-            if (updateProduct.CategoryId != Guid.Empty)
+            if (updateProduct.CategoryId != 0)
             {
                 var relationNow = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(updated.Id);
                 if (relationNow == null || relationNow.CategoryId != updateProduct.CategoryId)

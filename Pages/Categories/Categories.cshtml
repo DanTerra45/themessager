@@ -37,7 +37,7 @@
                     {
                         <tr>
                             <td class="small text-muted">
-                                @category.Id.ToString().Substring(0,8)
+                                @category.Id
                             </td>
 
                             <td>
@@ -236,12 +236,12 @@
 </div>
 
 <!-- Edit Category Modal -->
-<div class="modal fade @(Model.EditCategory?.Id != Guid.Empty ? "show" : "")" 
+<div class="modal fade @(Model.EditCategory?.Id != 0 ? "show" : "")" 
      id="editCategoryModal" 
      tabindex="-1"
-     style="@(Model.EditCategory?.Id != Guid.Empty ? "display:block;" : "")"
+     style="@(Model.EditCategory?.Id != 0 ? "display:block;" : "")"
      aria-labelledby="editCategoryModalLabel"
-     aria-hidden="@(Model.EditCategory?.Id != Guid.Empty ? "false" : "true")">
+     aria-hidden="@(Model.EditCategory?.Id != 0 ? "false" : "true")">
 
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow">
@@ -303,7 +303,7 @@
 </div>
 
 <!-- Backdrop para el modal -->
-@if (Model.EditCategory?.Id != Guid.Empty)
+@if (Model.EditCategory?.Id != 0)
 {
     <div class="modal-backdrop fade show"></div>
 }

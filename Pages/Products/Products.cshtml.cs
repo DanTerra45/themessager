@@ -24,7 +24,7 @@ namespace Mercadito.Pages.Products
         public List<ProductWithCategoriesModel> Products { get; set; } = new List<ProductWithCategoriesModel>();
         public List<CategoryModel> Categories { get; set; } = new List<CategoryModel>();
 
-        public Guid? CategoryFilter { get; set; }
+        public long? CategoryFilter { get; set; }
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
 
@@ -55,7 +55,7 @@ namespace Mercadito.Pages.Products
             _updateProductUseCase = updateProductUseCase;
         }
 
-        public async Task OnGetAsync(Guid? editId)
+        public async Task OnGetAsync(long? editId)
         {
             var pageParam = Request.Query["page"].ToString();
             var categoryFilterParam = Request.Query["categoryFilter"].ToString();
@@ -78,13 +78,13 @@ namespace Mercadito.Pages.Products
                         Lote = product.Lote,
                         FechaDeCaducidad = product.FechaDeCaducidad,
                         Price = product.Price,
-                        CategoryId = relation?.CategoryId ?? Guid.Empty
+                        CategoryId = relation?.CategoryId ?? 0
                     };
                 }
             }
         }
 
-        public async Task<IActionResult> OnPostFilterAsync(Guid? categoryFilter)
+        public async Task<IActionResult> OnPostFilterAsync(long? categoryFilter)
         {
             CategoryFilter = categoryFilter;
             CurrentPage = 1;
@@ -103,7 +103,7 @@ namespace Mercadito.Pages.Products
                 foreach (var key in ModelState.Keys)
                 {
                     var state = ModelState[key];
-                    if (state.Errors.Count > 0)
+                    if (state != null && state.Errors.Count > 0)
                     {
                         foreach (var error in state.Errors)
                         {
@@ -121,7 +121,7 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                if(newProduct.CategoryId == Guid.Empty)
+                if(newProduct.CategoryId == 0)
                 {
                     var createProductDto = ProductMapper.ToRegisterProductEntity(newProduct);
                     await _registerNewProductUseCase.ExecuteAsync(createProductDto);
@@ -187,7 +187,7 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id)
         {
             try
             {
@@ -292,16 +292,16 @@ namespace Mercadito.Pages.Products
             await LoadAllProductsPaginated();
         }
 
-        private async Task<Guid?> ResolveCategoryFilter(string categoryFilterParam)
+        private async Task<long?> ResolveCategoryFilter(string categoryFilterParam)
         {
             if (string.IsNullOrEmpty(categoryFilterParam))
             {
                 return null;
             }
             
-            if (Guid.TryParse(categoryFilterParam, out Guid categoryGuid))
+            if (long.TryParse(categoryFilterParam, out long categoryId))
             {
-                return categoryGuid;
+                return categoryId;
             }
             
             var category = Categories.Find(c => c.Code == categoryFilterParam);
@@ -316,7 +316,7 @@ namespace Mercadito.Pages.Products
 
         private async Task LoadProductsByState()
         {
-            if (CategoryFilter.HasValue && CategoryFilter.Value != Guid.Empty)
+            if (CategoryFilter.HasValue && CategoryFilter.Value != 0)
             {
                 await LoadProductsByCategoryPaginated();
             }
@@ -348,6 +348,12 @@ namespace Mercadito.Pages.Products
         {
             try
             {
+                if (!CategoryFilter.HasValue || CategoryFilter.Value == 0)
+                {
+                    await LoadAllProductsPaginated();
+                    return;
+                }
+                
                 var totalCount = await _productRepository.GetTotalProductsCountByCategoryAsync(CategoryFilter.Value);
                 TotalPages = (int)Math.Ceiling(totalCount / 10.0);
                 

@@ -7,10 +7,10 @@ namespace Mercadito
 {
     public class ProductCategory
     {
-        public Guid ProductId { get; set; }
-        public Guid CategoryId { get; set; }
+        public long ProductId { get; set; }
+        public long CategoryId { get; set; }
         public ProductCategory() { }
-        public ProductCategory(Guid productId, Guid categoryId)
+        public ProductCategory(long productId, long categoryId)
         {
             ProductId = productId;
             CategoryId = categoryId;
