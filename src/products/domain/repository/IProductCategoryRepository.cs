@@ -1,15 +1,14 @@
-using System;
+using Mercadito.src.products.data.entity;
 
-using Dapper;
-namespace Mercadito
+namespace Mercadito.src.products.domain.repository
 {
     public interface IProductCategoryRepository
     {
         Task<IEnumerable<ProductCategory>> GetAllProductCategoriesAsync();
-        Task<ProductCategory?> GetProductsCategoriesByProductIdAsync(Guid productId);
-        Task<ProductCategory?> GetProductsCategoriesByCategoryIdAsync(Guid categoryId);
+        Task<ProductCategory?> GetProductsCategoriesByProductIdAsync(long productId);
+        Task<ProductCategory?> GetProductsCategoriesByCategoryIdAsync(long categoryId);
         Task AddProductCategoryAsync(ProductCategory productCategory);
         Task DeleteProductCategoryAsync(ProductCategory productCategory);
-        Task DeleteProductCategoriesByProductIdAsync(Guid productId);
+        Task DeleteProductCategoriesByProductIdAsync(long productId);
     }
 }

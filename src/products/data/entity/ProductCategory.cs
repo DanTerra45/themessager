@@ -1,16 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace Mercadito
+namespace Mercadito.src.products.data.entity
 {
     public class ProductCategory
     {
-        public Guid ProductId { get; set; }
-        public Guid CategoryId { get; set; }
+        public long ProductId { get; set; }
+        public long CategoryId { get; set; }
+
         public ProductCategory() { }
-        public ProductCategory(Guid productId, Guid categoryId)
+
+        public ProductCategory(long productId, long categoryId)
         {
             ProductId = productId;
             CategoryId = categoryId;

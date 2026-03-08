@@ -1,130 +1,171 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
+using Mercadito.src.categories.domain.dto;
+using Mercadito.src.categories.domain.model;
+using Mercadito.src.categories.domain.usecases;
 
-namespace Mercadito
+namespace Mercadito.Pages.Categories
 {
     public class CategoriesModel : PageModel
     {
         private readonly ILogger<CategoriesModel> _logger;
-        private readonly ICategoryRepository _categoryRepository;
-        public List<CategoryModel> Categories { get; set; } = new List<CategoryModel>();
+        private readonly ICategoryManagementUseCase _categoryManagementUseCase;
+        private readonly int _defaultPageSize;
+
+        public List<CategoryModel> Categories { get; set; } = [];
+        [BindProperty(SupportsGet = true)]
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
 
-        [BindProperty]
-        public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto();
+        public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
 
-        // Use the dedicated UpdateCategoryDto (contains DataAnnotations for validation)
-        [BindProperty]
-        public UpdateCategoryDto EditCategory { get; set; } = new UpdateCategoryDto();
+        public UpdateCategoryDto EditCategory { get; set; } = new UpdateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
 
-        public CategoriesModel(ILogger<CategoriesModel> logger, ICategoryRepository categoryRepository)
+        [TempData]
+        public bool ShowEditCategoryModal { get; set; }
+
+        [TempData]
+        public bool ShowCreateCategoryModal { get; set; }
+
+        public CategoriesModel(
+            ILogger<CategoriesModel> logger,
+            ICategoryManagementUseCase categoryManagementUseCase,
+            IConfiguration configuration)
         {
             _logger = logger;
-            _categoryRepository = categoryRepository;
+            _categoryManagementUseCase = categoryManagementUseCase;
+            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
+            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
-        public async Task OnGetAsync()
+
+        public async Task OnGetAsync(int page = 1, long editId = 0)
         {
+            CurrentPage = page > 0 ? page : 1;
             await LoadCategoriesAsync();
+            if (editId > 0)
+            {
+                var category = await _categoryManagementUseCase.GetForEditAsync(editId);
+                if (category != null)
+                {
+                    EditCategory = category;
+                    ShowEditCategoryModal = true;
+                }
+            }
         }
+
         private async Task LoadCategoriesAsync()
         {
             try
             {
-                var resultado = (await _categoryRepository.GetAllCategoriesAsync()).ToList();
-                TotalPages = (int)Math.Ceiling(resultado.Count / 10.0);
-                resultado = await _categoryRepository.GetCategoryByPages(CurrentPage) as List<CategoryModel>;
-                Categories = resultado ?? new List<CategoryModel>();
+                var result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                TotalPages = result.TotalPages;
+
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                }
+
+                Categories = [.. result.Categories];
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al cargar categorías");
+                _logger.LogError(exception, "Error al cargar categorías");
                 ModelState.AddModelError(string.Empty, "Error al cargar las categorías. Intente nuevamente.");
             }
         }
-        public async Task<IActionResult> OnPostCreateAsync()
+
+        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewCategory")] CreateCategoryDto newCategory)
         {
+            NewCategory = newCategory;
+
             if (!ModelState.IsValid)
             {
+                ShowCreateCategoryModal = true;
                 await LoadCategoriesAsync();
                 return Page();
             }
 
             try
             {
-                await _categoryRepository.AddCategoryAsync(NewCategory);
+                await _categoryManagementUseCase.CreateAsync(NewCategory);
                 _logger.LogInformation("Categoría creada: {Name}", NewCategory.Name);
 
                 TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
                 return RedirectToPage();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al crear categoría");
+                _logger.LogError(exception, "Error al crear categoría");
                 ModelState.AddModelError(string.Empty, "Error al guardar la categoría. Intente nuevamente.");
+                ShowCreateCategoryModal = true;
                 await LoadCategoriesAsync();
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync()
+        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditCategory")] UpdateCategoryDto editCategory)
         {
+            EditCategory = editCategory;
+
+            _logger.LogInformation("ModelState válido: {IsValid}", ModelState.IsValid);
+            _logger.LogInformation("Datos recibidos: Id={Id} Code={Code}, Name={Name}, Description={Description}",
+                EditCategory.Id, EditCategory.Code, EditCategory.Name, EditCategory.Description);
+
             if (!ModelState.IsValid)
             {
                 await LoadCategoriesAsync();
-                // reopen modal on validation error (client will show messages)
-                TempData["ShowEditModal"] = "true";
+                ShowEditCategoryModal = true;
                 return Page();
             }
 
             try
             {
-                // Verify existence
-                var existing = await _categoryRepository.GetCategoryByIdAsync(EditCategory.Id);
-                if (existing == null)
-                {
-                    ModelState.AddModelError(string.Empty, "Categoría no encontrada.");
-                    await LoadCategoriesAsync();
-                    return Page();
-                }
-
-                // Map UpdateCategoryDto to domain entity
-                var updatedCategory = new Category
-                {
-                    Id = EditCategory.Id,
-                    Code = EditCategory.Code,
-                    Name = EditCategory.Name,
-                    Description = EditCategory.Description ?? string.Empty
-                };
-
-                await _categoryRepository.UpdateCategoryAsync(updatedCategory);
+                await _categoryManagementUseCase.UpdateAsync(EditCategory);
                 _logger.LogInformation("Categoría actualizada: {Id}", EditCategory.Id);
                 TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
                 return RedirectToPage();
             }
-            catch (Exception ex)
+            catch (ValidationException validationException)
             {
-                _logger.LogError(ex, "Error al actualizar categoría");
+                _logger.LogWarning(validationException, "Validación de negocio al actualizar categoría");
+                ModelState.AddModelError(string.Empty, validationException.Message);
+                await LoadCategoriesAsync();
+                ShowEditCategoryModal = true;
+                return Page();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error al actualizar categoría");
                 ModelState.AddModelError(string.Empty, "Error al actualizar la categoría. Intente nuevamente.");
                 await LoadCategoriesAsync();
+                ShowEditCategoryModal = true;
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id)
         {
             try
             {
-                await _categoryRepository.DeleteCategoryAsync(id);
-                TempData["SuccessMessage"] = "Categoría eliminada.";
+                var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id);
+                if (wasDeleted)
+                {
+                    TempData["SuccessMessage"] = "Categoría desactivada.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "La categoría no existe o ya estaba desactivada.";
+                }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al eliminar la categoría");
+                _logger.LogError(exception, "Error al eliminar la categoría");
                 TempData["ErrorMessage"] = "No se pudo eliminar la categoría.";
             }
             return RedirectToPage();
         }
+
     }
 }

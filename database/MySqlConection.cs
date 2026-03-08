@@ -1,7 +1,8 @@
-using System.Data;
+﻿using System.Data;
+using Mercadito.database.interfaces;
 using MySql.Data.MySqlClient;
 
-namespace Mercadito;
+namespace Mercadito.database;
 
 public class MySqlConnectionFactory : IDataBaseConnection
 {
@@ -11,29 +12,14 @@ public class MySqlConnectionFactory : IDataBaseConnection
     public MySqlConnectionFactory(IConfiguration configuration, ILogger<MySqlConnectionFactory> logger)
     {
         _logger = logger;
-        
-        var server = configuration["Database:Server"] ?? "127.0.0.1";
-        var port = configuration["Database:Port"] ?? "3306";
-        var database = configuration["Database:Name"] ?? "mydb";
-        var user = configuration["Database:User"] ?? "user";
-        var password = configuration["Database:Password"] ?? "password";
-        
-        _connectionString = $"Server={server};Port={port};Database={database};Uid={user};Pwd={password};";
-    }
 
-    public IDbConnection CreateConnection()
-    {
-        try
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            var connection = new MySqlConnection(_connectionString);
-            connection.Open();
-            return connection;
+            throw new InvalidOperationException("ConnectionStrings:DefaultConnection no esta configurado.");
         }
-        catch (MySqlException ex)
-        {
-            _logger.LogError(ex, "Error al crear conexión MySQL");
-            throw;
-        }
+
+        _connectionString = connectionString;
     }
 
     public async Task<IDbConnection> CreateConnectionAsync()
@@ -44,15 +30,10 @@ public class MySqlConnectionFactory : IDataBaseConnection
             await connection.OpenAsync();
             return connection;
         }
-        catch (MySqlException ex)
+        catch (MySqlException exception)
         {
-            _logger.LogError(ex, "Error al crear conexión MySQL asíncrona");
+            _logger.LogError(exception, "Error al crear conexion MySQL asincrona");
             throw;
         }
-    }
-
-    public void Dispose()
-    {
-        // Limpieza si es necesaria
     }
 }

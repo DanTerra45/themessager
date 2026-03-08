@@ -1,107 +1,96 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Mercadito.src.categories.data.entity;
+using Mercadito.src.categories.domain.model;
+using Mercadito.src.categories.domain.repository;
+using Mercadito.database.interfaces;
 using Dapper;
 
-namespace Mercadito
+namespace Mercadito.src.categories.data.repository
 {
-    public class CategoryRepository : ICategoryRepository
+    public class CategoryRepository(IDataBaseConnection dbConnection) : ICategoryRepository
     {
-        private readonly IDataBaseConnection _dbConnection;
+        private readonly IDataBaseConnection _dbConnection = dbConnection;
         private readonly string tableName = "categorias";
         private readonly string relationTableName = "categoriaDeProducto";
-        private readonly ILogger<CategoryRepository> _logger;
-        public CategoryRepository(IDataBaseConnection dbConnection, ILogger<CategoryRepository> logger)
-        {
-            _dbConnection = dbConnection;
-            _logger = logger;
-        }
+
         public async Task<IEnumerable<CategoryModel>> GetAllCategoriesAsync()
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT id AS Id, codigo AS Code, nombre AS Name, descripcion AS Description, 0 AS ProductCount FROM {tableName}";
-                return await connection.QueryAsync<CategoryModel>(query);
-                
-            }catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error al obtener todas las categorías");
-                throw;
-            }
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $@"SELECT id AS Id, 
+                        codigo AS Code, 
+                        nombre AS Name, 
+                        descripcion AS Description, 
+                        0 AS ProductCount 
+                        FROM {tableName} 
+                        WHERE estado = 'A'";
+            return await connection.QueryAsync<CategoryModel>(query);
         }
-        public async Task<IEnumerable<CategoryModel>> GetCategoryByPages(int page)
+
+        public async Task<int> GetTotalCategoriesCountAsync()
         {
-            try
-            {
-                int pageSize = 10;
-                int offset = (page - 1) * pageSize;
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT c.id AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount FROM {tableName} c LEFT JOIN {relationTableName} p ON c.id = p.categoriaId GROUP BY c.id, c.codigo, c.nombre, c.descripcion ORDER BY c.id OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
-                return await connection.QueryAsync<CategoryModel>(query, new { Offset = offset, PageSize = pageSize });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, $"Error al obtener categorías por página: {page}");
-                throw;
-            }
-    }
-        public async Task<CategoryModel?> GetCategoryByIdAsync(Guid id)
-        {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT c.id AS Id, c.codigo AS Code, c.nombre AS Name, c.descripcion AS Description, COUNT(p.categoriaId) AS ProductCount FROM {tableName} c LEFT JOIN {relationTableName} p ON c.id = p.categoriaId WHERE c.id = @Id GROUP BY c.id, c.codigo, c.nombre, c.descripcion";
-                return await connection.QueryFirstOrDefaultAsync<CategoryModel>(query, new { Id = id });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, $"Error al obtener la categoría con ID: {id}");
-                throw;
-            }
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $"SELECT COUNT(*) FROM {tableName} WHERE estado = 'A'";
+            return await connection.ExecuteScalarAsync<int>(query);
         }
-        public async Task AddCategoryAsync(CreateCategoryDto category)
+
+        public async Task<IEnumerable<CategoryModel>> GetCategoryByPages(int page, int pageSize)
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"INSERT INTO {tableName} (codigo, nombre, descripcion) VALUES (@Code, @Name, @Description)";
-                await connection.ExecuteAsync(query, new { Code = category.Code, Name = category.Name, Description = category.Description });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error al agregar la categoría");
-                throw;
-            }
+            int offset = (page - 1) * pageSize;
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $@"SELECT c.id AS Id, 
+                        c.codigo AS Code, 
+                        c.nombre AS Name, 
+                        c.descripcion AS Description, 
+                        COUNT(DISTINCT p.id) AS ProductCount 
+                        FROM {tableName} c 
+                        LEFT JOIN {relationTableName} cp ON c.id = cp.categoriaId 
+                        LEFT JOIN products p ON cp.productId = p.id AND p.estado = 'A'
+                        WHERE c.estado = 'A'
+                        GROUP BY c.id, c.codigo, c.nombre, c.descripcion 
+                        ORDER BY c.id 
+                        LIMIT @PageSize OFFSET @Offset";
+            return await connection.QueryAsync<CategoryModel>(query, new { Offset = offset, PageSize = pageSize });
         }
+
+        public async Task<CategoryModel?> GetCategoryByIdAsync(long id)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $@"SELECT c.id AS Id, 
+                        c.codigo AS Code, 
+                        c.nombre AS Name, 
+                        c.descripcion AS Description, 
+                        COUNT(DISTINCT p.id) AS ProductCount 
+                        FROM {tableName} c 
+                        LEFT JOIN {relationTableName} cp ON c.id = cp.categoriaId 
+                        LEFT JOIN products p ON cp.productId = p.id AND p.estado = 'A'
+                        WHERE c.id = @Id AND c.estado = 'A'
+                        GROUP BY c.id, c.codigo, c.nombre, c.descripcion";
+            return await connection.QueryFirstOrDefaultAsync<CategoryModel>(query, new { Id = id });
+        }
+
+        public async Task AddCategoryAsync(Category category)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $@"INSERT INTO {tableName} 
+                        (codigo, nombre, descripcion, estado) VALUES (@Code, @Name, @Description, 'A')";
+            await connection.ExecuteAsync(query, new { category.Code, category.Name, category.Description });
+        }
+
         public async Task UpdateCategoryAsync(Category category)
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"UPDATE {tableName} SET codigo = @Code, nombre = @Name, descripcion = @Description WHERE id = @Id";
-                await connection.ExecuteAsync(query, new { Id = category.Id, Code = category.Code, Name = category.Name, Description = category.Description });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error al actualizar la categoría");
-                throw;
-            }
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $@"UPDATE {tableName} 
+                        SET codigo = @Code, nombre = @Name, descripcion = @Description 
+                        WHERE id = @Id";
+            await connection.ExecuteAsync(query, new { category.Id, category.Code, category.Name, category.Description });
         }
-        public async Task DeleteCategoryAsync(Guid id)
+
+        public async Task<int> DeleteCategoryAsync(long id)
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"DELETE FROM {tableName} WHERE id = @Id";
-                await connection.ExecuteAsync(query, new { Id = id });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error al eliminar la categoría");
-                throw;
-            }
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            var query = $@"UPDATE {tableName} 
+                        SET estado = 'I' 
+                        WHERE id = @Id AND estado = 'A'";
+            return await connection.ExecuteAsync(query, new { id });
         }
     }
 }

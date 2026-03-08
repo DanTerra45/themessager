@@ -1,4 +1,5 @@
-@page
+@page "/Products"
+@using System.Data
 @model Mercadito.Pages.Products.ProductsModel
 @{
     ViewData["Title"] = "Productos";
@@ -10,6 +11,22 @@
     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addProductModal">
         <i class="bi bi-plus-circle"></i> Agregar Nuevo Producto
     </button>
+</div>
+<div class="filter mb-3">
+    <form method="post" class="row g-2" asp-page-handler="Filter">
+        <div class="col-md-3">
+            <select name="categoryFilter" class="form-select">
+                <option value="0" selected="@(Model.CategoryFilter == 0)">Todas las categorías</option>
+                @foreach (var category in Model.Categories)
+                {
+                    <option value="@category.Id" selected="@(Model.CategoryFilter == category.Id)">@category.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+    </form>
 </div>
 
 <div>
@@ -37,7 +54,7 @@
                         {
                             <tr>
                                 <td class="small text-muted">
-                                    @product.Id.ToString().Substring(0,8)
+                                    @product.Id
                                 </td>
 
                                 <td class="fw-semibold">@product.Name</td>
@@ -76,11 +93,11 @@
                                 </td>
 
                                 <td class="text-center">
-                                    @product.Lote.ToShortDateString()
+                                    @product.Batch.ToShortDateString()
                                 </td>
 
                                 <td class="text-center">
-                                    @product.FechaDeCaducidad.ToShortDateString()
+                                    @product.ExpirationDate.ToShortDateString()
                                 </td>
 
                                 <td class="text-end fw-bold">
@@ -89,21 +106,15 @@
 
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <!-- Keep product id and open an edit modal that will be populated by fetching product details -->
-                                        <button class="btn btn-outline-primary edit-product-btn"
-                                                data-product-id="@product.Id"
-                                                type="button">
+                                                     <a href="/Products?editId=@product.Id"
+                                                         class="btn btn-outline-primary">
                                             <i class="bi bi-pencil"></i> Editar
-                                        </button>
+                                        </a>
 
                                         <form method="post" asp-page-handler="Delete" class="d-inline">
                                             <input type="hidden" name="id" value="@product.Id" />
-                                            @{
-                                                var deleteConfirmMessage = (product.Categories != null && product.Categories.Count > 0)
-                                                    ? "Este producto tiene relación con una categoría. Se eliminará la relación y luego el producto. ¿Deseas continuar?"
-                                                    : "¿Eliminar producto?";
-                                            }
-                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('@deleteConfirmMessage')">
+                                            <button type="submit" class="btn btn-outline-danger" 
+                                                    onclick="return confirm('¿Eliminar producto?')">
                                                 <i class="bi bi-trash"></i> Eliminar
                                             </button>
                                         </form>
@@ -125,27 +136,53 @@
             </div>
         </div>
     </div>
-    <div class="d-flex justify-content-center">
+    
+    <div class="d-flex justify-content-center mt-3">
         <nav>
             <ul class="pagination">
                 <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                    <a class="page-link" asp-page-handler="Index" asp-route-page="@(Model.CurrentPage - 1)">Anterior</a>
+                    @{
+                        var prevPage = Model.CurrentPage - 1;
+                        var prevUrl = Model.CategoryFilter != 0 
+                            ? $"/Products?page={prevPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
+                            : $"/Products?page={prevPage}&t={DateTime.Now.Ticks}";
+                    }
+                    <a class="page-link" href="@prevUrl">
+                        Anterior
+                    </a>
                 </li>
+                
                 @for (int i = 1; i <= Model.TotalPages; i++)
                 {
+                    var pageUrl = Model.CategoryFilter != 0 
+                        ? $"/Products?page={i}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
+                        : $"/Products?page={i}&t={DateTime.Now.Ticks}";
+                    
                     <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                        <a class="page-link" asp-page-handler="Index" asp-route-page="@i">@i</a>
+                        <a class="page-link" href="@pageUrl">
+                            @i
+                        </a>
                     </li>
                 }
+                
                 <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link" asp-page-handler="Index" asp-route-page="@(Model.CurrentPage + 1)">Siguiente</a>
+                    @{
+                        var nextPage = Model.CurrentPage + 1;
+                        var nextUrl = Model.CategoryFilter != 0 
+                            ? $"/Products?page={nextPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
+                            : $"/Products?page={nextPage}&t={DateTime.Now.Ticks}";
+                    }
+                    <a class="page-link" href="@nextUrl">
+                        Siguiente
+                    </a>
                 </li>
+            </ul>
+        </nav>
     </div>
 </div>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
-<!-- Add Product Modal (unchanged) -->
 <div class="modal fade" id="addProductModal" tabindex="-1"
      aria-labelledby="addProductModalLabel"
      aria-hidden="true">
@@ -179,8 +216,8 @@
 
                         <div class="col-md-6 mb-3">
                             <label asp-for="NewProduct.CategoryId" class="form-label">Categoría</label>
-                            <select asp-for="NewProduct.CategoryId" class="form-select" required>
-                                <option value="@Guid.Empty">Seleccionar categoría</option>
+                            <select asp-for="NewProduct.CategoryId" class="form-select">
+                                <option value="0">Sin categoría</option>
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
@@ -194,9 +231,7 @@
                         <label asp-for="NewProduct.Description" class="form-label">Descripción</label>
                         <textarea asp-for="NewProduct.Description"
                                   class="form-control"
-                                  style="min-height:120px;
-                                  resize: none;"
-                                  ></textarea>
+                                  style="min-height:120px; resize: none;"></textarea>
                         <span asp-validation-for="NewProduct.Description" class="text-danger small"></span>
                     </div>
 
@@ -210,36 +245,38 @@
                             <input asp-for="NewProduct.Stock"
                                    type="number"
                                    class="form-control"
-                                   min="0"
                                    required />
                             <span asp-validation-for="NewProduct.Stock" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="NewProduct.Lote" class="form-label">Lote</label>
-                            <input asp-for="NewProduct.Lote"
-                                   type="date"
+                            <label asp-for="NewProduct.Batch" class="form-label">Lote</label>
+                            <input asp-for="NewProduct.Batch"
+                                    type="date"
+                                    max="@DateTime.Now.ToString("yyyy-MM-dd")"
+                                    value="@DateTime.Now.ToString("yyyy-MM-dd")"
                                    class="form-control"
                                    required />
-                            <span asp-validation-for="NewProduct.Lote" class="text-danger small"></span>
+                            <span asp-validation-for="NewProduct.Batch" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="NewProduct.FechaDeCaducidad" class="form-label">
+                            <label asp-for="NewProduct.ExpirationDate" class="form-label">
                                 Fecha de Vencimiento
                             </label>
-                            <input asp-for="NewProduct.FechaDeCaducidad"
+                            <input asp-for="NewProduct.ExpirationDate"
                                    type="date"
+                                      value="@DateTime.Now.AddMonths(3).ToString("yyyy-MM-dd")"
+                                      min="@DateTime.Now.ToString("yyyy-MM-dd")"
                                    class="form-control"
                                    required />
-                            <span asp-validation-for="NewProduct.FechaDeCaducidad" class="text-danger small"></span>
+                            <span asp-validation-for="NewProduct.ExpirationDate" class="text-danger small"></span>
                         </div>
                     </div>
 
                     <hr>
 
                     <h6 class="text-muted mb-3">Precio</h6>
-
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label asp-for="NewProduct.Price" class="form-label">Precio</label>
@@ -249,7 +286,6 @@
                                        type="number"
                                        step="0.01"
                                        class="form-control"
-                                       min="0"
                                        required />
                             </div>
                             <span asp-validation-for="NewProduct.Price" class="text-danger small"></span>
@@ -277,22 +313,34 @@
     </div>
 </div>
 
-<!-- Edit Product Modal -->
-<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+
+<div class="modal fade @(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "show" : "")" 
+     id="editProductModal" 
+     tabindex="-1"
+     style="@(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "display:block;" : "")"
+     aria-labelledby="editProductModalLabel"
+     aria-hidden="@(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "false" : "true")">
+
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow">
+
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="editProductModalLabel">
-                        <i class="bi bi-pencil me-2"></i> Editar Producto
+                        <i class="bi bi-pencil-square me-2"></i>
+                        Editar Producto
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                          <a href="/Products"
+                              class="btn-close"
+                       aria-label="Close"></a>
                 </div>
 
                 <div class="modal-body">
-                    <input asp-for="EditProduct.Id" type="hidden" />
+                    <input type="hidden" asp-for="EditProduct.Id" />
 
                     <h6 class="text-muted mb-3">Información General</h6>
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label asp-for="EditProduct.Name" class="form-label">Nombre</label>
@@ -302,8 +350,8 @@
 
                         <div class="col-md-6 mb-3">
                             <label asp-for="EditProduct.CategoryId" class="form-label">Categoría</label>
-                            <select asp-for="EditProduct.CategoryId" class="form-select" id="editProductCategorySelect">
-                                <option value="@Guid.Empty">No asignada</option>
+                            <select asp-for="EditProduct.CategoryId" class="form-select">
+                                <option value="0">Sin categoría</option>
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
@@ -315,30 +363,47 @@
 
                     <div class="mb-4">
                         <label asp-for="EditProduct.Description" class="form-label">Descripción</label>
-                        <textarea asp-for="EditProduct.Description" class="form-control" style="min-height:120px; resize: none;"></textarea>
+                        <textarea asp-for="EditProduct.Description"
+                                  class="form-control"
+                                  style="min-height:120px; resize: none;"></textarea>
                         <span asp-validation-for="EditProduct.Description" class="text-danger small"></span>
                     </div>
 
                     <hr>
 
                     <h6 class="text-muted mb-3">Inventario y Fechas</h6>
+
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label asp-for="EditProduct.Stock" class="form-label">Stock</label>
-                            <input asp-for="EditProduct.Stock" type="number" class="form-control" min="0" required />
+                            <input asp-for="EditProduct.Stock"
+                                   type="number"
+                                   class="form-control"
+                                   required />
                             <span asp-validation-for="EditProduct.Stock" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="EditProduct.Lote" class="form-label">Lote</label>
-                            <input asp-for="EditProduct.Lote" type="date" class="form-control" required />
-                            <span asp-validation-for="EditProduct.Lote" class="text-danger small"></span>
+                            <label asp-for="EditProduct.Batch" class="form-label">Lote</label>
+                            <input asp-for="EditProduct.Batch"
+                                   type="date"
+                                   class="form-control"
+                                   max="@DateTime.Now.ToString("yyyy-MM-dd")"
+                                value="@(Model.EditProduct != null ? Model.EditProduct.Batch.ToString("yyyy-MM-dd") : string.Empty)"
+                                   required />
+                            <span asp-validation-for="EditProduct.Batch" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="EditProduct.FechaDeCaducidad" class="form-label">Fecha de Vencimiento</label>
-                            <input asp-for="EditProduct.FechaDeCaducidad" type="date" class="form-control" required />
-                            <span asp-validation-for="EditProduct.FechaDeCaducidad" class="text-danger small"></span>
+                            <label asp-for="EditProduct.ExpirationDate" class="form-label">
+                                Fecha de Vencimiento
+                            </label>
+                            <input asp-for="EditProduct.ExpirationDate"
+                                   type="date"
+                                          value="@(Model.EditProduct != null ? Model.EditProduct.ExpirationDate.ToString("yyyy-MM-dd") : string.Empty)"
+                                   class="form-control"
+                                   required />
+                            <span asp-validation-for="EditProduct.ExpirationDate" class="text-danger small"></span>
                         </div>
                     </div>
 
@@ -350,7 +415,11 @@
                             <label asp-for="EditProduct.Price" class="form-label">Precio</label>
                             <div class="input-group">
                                 <span class="input-group-text">Bs.</span>
-                                <input asp-for="EditProduct.Price" type="number" step="0.01" class="form-control" min="0" required />
+                                <input asp-for="EditProduct.Price"
+                                       type="number"
+                                       step="0.01"
+                                       class="form-control"
+                                       required />
                             </div>
                             <span asp-validation-for="EditProduct.Price" class="text-danger small"></span>
                         </div>
@@ -359,66 +428,38 @@
                 </div>
 
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Guardar cambios</button>
+                          <a href="/Products"
+                              class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                    <button type="submit"
+                            class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Actualizar Producto
+                    </button>
                 </div>
+
             </form>
+
         </div>
     </div>
 </div>
 
+@if (Model.EditProduct != null && Model.EditProduct.Id != 0)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // use fetch to get full product details (including current category id)
-            var editBtns = document.querySelectorAll('.edit-product-btn');
-            editBtns.forEach(function (btn) {
-                btn.addEventListener('click', async function () {
-                    var productId = btn.getAttribute('data-product-id');
-                    if (!productId) return;
-
-                    try {
-                        var resp = await fetch(`/Products?handler=Details&id=${productId}`);
-                        if (!resp.ok) throw new Error('Error fetching product details');
-                        var data = await resp.json();
-
-                        var modal = document.getElementById('editProductModal');
-                        if (!modal) return;
-
-                        modal.querySelector('[name="EditProduct.Id"]').value = data.id ?? '';
-                        modal.querySelector('[name="EditProduct.Name"]').value = data.name ?? '';
-                        modal.querySelector('[name="EditProduct.Description"]').value = data.description ?? '';
-                        modal.querySelector('[name="EditProduct.Stock"]').value = data.stock ?? '';
-                        modal.querySelector('[name="EditProduct.Lote"]').value = data.lote ?? '';
-                        modal.querySelector('[name="EditProduct.FechaDeCaducidad"]').value = data.fechaDeCaducidad ?? '';
-                        modal.querySelector('[name="EditProduct.Price"]').value = data.price ?? '';
-
-                        // preselect category
-                        var select = document.getElementById('editProductCategorySelect');
-                        if (select) {
-                            var catId = data.categoryId ?? '';
-                            select.value = catId || "@Guid.Empty";
-                        }
-
-                        // show modal (in case it didn't open automatically)
-                        var bsModal = new bootstrap.Modal(modal);
-                        bsModal.show();
-                    } catch (err) {
-                        console.error(err);
-                        alert('No se pudo cargar la información del producto.');
-                    }
-                });
-            });
-
-            // If server requested modal reopen due to validation errors:
-            @if (TempData["ShowEditProductModal"] != null && TempData["ShowEditProductModal"].ToString() == "true")
-            {
-                <text>
-                var m = new bootstrap.Modal(document.getElementById('editProductModal'));
-                m.show();
-                </text>
-            }
-        });
-    </script>
+    
+    @if (Model.ShowModal)
+    {
+        <script>
+            var myModal = new bootstrap.Modal(document.getElementById('addProductModal'));
+            myModal.show();
+        </script>
+    }
+    
+    
 }
