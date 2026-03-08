@@ -1,29 +1,41 @@
-using Dapper;
+using Mercadito.src.products.domain.dto;
+using Mercadito.src.products.data.entity;
+using Mercadito.src.products.domain.repository;
+using System.ComponentModel.DataAnnotations;
 
-namespace Mercadito
+namespace Mercadito.src.products.domain.usecases
 {
-    public class RegisterNewProductWithCategoryUseCase
+    public class RegisterNewProductWithCategoryUseCase(
+        IProductRepository productRepository) : IRegisterNewProductWithCategoryUseCase
     {
-        
-        private readonly RegisterNewProductUseCase _registerProductCase;
-        private readonly AsignCategoryToProductUseCase _asignCategoryCase;
-        public RegisterNewProductWithCategoryUseCase(RegisterNewProductUseCase registerProductCase, AsignCategoryToProductUseCase asignCategoryCase)
-        {
-            _registerProductCase = registerProductCase;
-            _asignCategoryCase = asignCategoryCase;
-        }
-        public async Task ExecuteAsync(RegisterNewProductWithCategoryDto product)
+
+        private readonly IProductRepository _productRepository = productRepository;
+
+        public async Task ExecuteAsync(CreateProductDto newProduct)
         {
             try
             {
-                var productId = await _registerProductCase.ExecuteAsync(ProductMapper.ToRegisterProductEntity(product));
-                await _asignCategoryCase.ExecuteAsync(productId, product.CategoryId);
+                await _productRepository.AddProductWithCategoryAsync(
+                    ToProductEntity(newProduct),
+                    newProduct.CategoryId);
             }
-            catch(Exception ex)
+            catch(Exception exception)
             {
-                throw new InvalidOperationException("Error al registrar producto con categoría", ex);
+                throw new InvalidOperationException("Error al registrar producto con categoría", exception);
             }
         }
-            
+
+        private static Product ToProductEntity(CreateProductDto dto)
+        {
+            return new Product
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                Stock = dto.Stock,
+                Batch = dto.Batch,
+                ExpirationDate = dto.ExpirationDate,
+                Price = dto.Price
+            };
+        }
     }
 }

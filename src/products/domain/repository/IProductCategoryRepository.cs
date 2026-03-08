@@ -1,7 +1,6 @@
-using System;
+using Mercadito.src.products.data.entity;
 
-using Dapper;
-namespace Mercadito
+namespace Mercadito.src.products.domain.repository
 {
     public interface IProductCategoryRepository
     {

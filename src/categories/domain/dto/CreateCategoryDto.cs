@@ -1,20 +1,18 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace Mercadito
+namespace Mercadito.src.categories.domain.dto
 {
     public class CreateCategoryDto
     {
         [Required(ErrorMessage = "El nombre es obligatorio")]
-        public string Name { get; set; } = string.Empty;
+        [StringLength(150, ErrorMessage = "El nombre no puede exceder 150 caracteres")]
+        public required string Name { get; set; }
         [Required(ErrorMessage = "La descripción es obligatoria")]
-        public string Description { get; set; } = string.Empty;
+        [StringLength(150, ErrorMessage = "La descripción no puede exceder 150 caracteres")]
+        public required string Description { get; set; }
         [Required(ErrorMessage = "El código es obligatorio")]
         [StringLength(6, ErrorMessage = "El código no puede exceder 6 caracteres")]
-        public string Code { get; set; } = string.Empty;
+        public required string Code { get; set; }
         public CreateCategoryDto() { }
         public CreateCategoryDto(string name, string description, string code)
         {

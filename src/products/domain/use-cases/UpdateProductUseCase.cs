@@ -1,56 +1,36 @@
-using System;
+using Mercadito.src.products.domain.dto;
+using Mercadito.src.products.data.entity;
+using Mercadito.src.products.domain.repository;
+using System.ComponentModel.DataAnnotations;
 
-using Dapper;
-using Mercadito.src.products.data.dto;
-
-namespace Mercadito
+namespace Mercadito.src.products.domain.usecases
 {
-    
-    public class UpdateProductUseCase
+    public class UpdateProductUseCase(
+        IProductRepository productRepository) : IUpdateProductUseCase
     {
-        private readonly IProductRepository _productRepository;
-        private readonly ICategoryRepository _categoryRepository;
-        private readonly IProductCategoryRepository _productCategoryRepository;
-        private readonly AsignCategoryToProductUseCase _assignCategoryToProductUseCase;
-        public UpdateProductUseCase(IProductRepository productRepository, ICategoryRepository categoryRepository, AsignCategoryToProductUseCase assignCategoryToProductUseCase, IProductCategoryRepository productCategoryRepository)
-        {
-            _productRepository = productRepository;
-            _categoryRepository = categoryRepository;
-            _assignCategoryToProductUseCase = assignCategoryToProductUseCase;
-            _productCategoryRepository = productCategoryRepository;
-        }
+
+        private readonly IProductRepository _productRepository = productRepository;
 
         public async Task ExecuteAsync(UpdateProductDto updateProduct)
         {
-            var existing = await _productRepository.GetProductByIdAsync(updateProduct.Id);
-            var updated = new Product
+            var existingProduct = await _productRepository.GetProductByIdAsync(updateProduct.Id);
+            if (existingProduct == null)
             {
-             Id = updateProduct.Id,
-            Name = updateProduct.Name,
-                Description = updateProduct.Description ?? string.Empty,
+                throw new ValidationException("Producto no encontrado.");
+            }
+
+            var productToUpdate = new Product
+            {
+                Id = updateProduct.Id,
+                Name = updateProduct.Name,
+                Description = updateProduct.Description,
                 Stock = updateProduct.Stock,
-                Lote = updateProduct.Lote,
-                FechaDeCaducidad = updateProduct.FechaDeCaducidad,
+                Batch = updateProduct.Batch,
+                ExpirationDate = updateProduct.ExpirationDate,
                 Price = updateProduct.Price
             };
 
-            await _productRepository.UpdateProductAsync(updated);
-
-                // Manejar relación producto-categoría
-            var existingRelation = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(updated.Id);
-            if (existingRelation != null && existingRelation.CategoryId != updateProduct.CategoryId)
-            {
-                await _productCategoryRepository.DeleteProductCategoryAsync(existingRelation);
-            }
-            if (updateProduct.CategoryId != 0)
-            {
-                var relationNow = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(updated.Id);
-                if (relationNow == null || relationNow.CategoryId != updateProduct.CategoryId)
-                {
-                    var newRel = new ProductCategory(updated.Id, updateProduct.CategoryId);
-                    await _productCategoryRepository.AddProductCategoryAsync(newRel);
-                }
-            }
+            await _productRepository.UpdateProductWithCategoryAsync(productToUpdate, updateProduct.CategoryId);
         }
     }
 }

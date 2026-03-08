@@ -1,10 +1,8 @@
-using System;
 using System.Data;
 
-namespace Mercadito;
+namespace Mercadito.database.interfaces;
 
-public interface IDataBaseConnection : IDisposable
+public interface IDataBaseConnection
 {
-    IDbConnection CreateConnection();
     Task<IDbConnection> CreateConnectionAsync();
 }

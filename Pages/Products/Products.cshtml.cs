@@ -1,90 +1,69 @@
-using System;
-using System.Collections.Generic;
+using Mercadito.src.categories.domain.model;
+using Mercadito.src.products.domain.dto;
+using Mercadito.src.products.domain.model;
+using Mercadito.src.products.domain.usecases;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
-using Mercadito.src.products.data.dto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 
 namespace Mercadito.Pages.Products
 {
     public class ProductsModel : PageModel
     {
         private readonly ILogger<ProductsModel> _logger;
-        private readonly IProductRepository _productRepository;
-        private readonly ICategoryRepository _categoryRepository;
-        private readonly IProductCategoryRepository _productCategoryRepository;
-        private readonly RegisterNewProductUseCase _registerNewProductUseCase;
-        private readonly RegisterNewProductWithCategoryUseCase _registerNewProductWithCategoryUseCase;
-        private readonly AsignCategoryToProductUseCase _asignCategoryToProductUseCase;
-        private readonly UpdateProductUseCase _updateProductUseCase;
+        private readonly IProductManagementUseCase _productManagementUseCase;
+        private readonly IRegisterNewProductWithCategoryUseCase _registerNewProductWithCategoryUseCase;
+        private readonly IUpdateProductUseCase _updateProductUseCase;
+        private readonly int _defaultPageSize;
 
-        public List<ProductWithCategoriesModel> Products { get; set; } = new List<ProductWithCategoriesModel>();
-        public List<CategoryModel> Categories { get; set; } = new List<CategoryModel>();
+        public List<ProductWithCategoriesModel> Products { get; set; } = [];
+        public List<CategoryModel> Categories { get; set; } = [];
 
-        public long? CategoryFilter { get; set; }
+        public long CategoryFilter { get; set; }
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
 
-        public RegisterNewProductWithCategoryDto NewProduct { get; set; } = new RegisterNewProductWithCategoryDto();
-        public UpdateProductDto EditProduct { get; set; } = new UpdateProductDto();
+        public CreateProductDto NewProduct { get; set; } = new CreateProductDto { Name = string.Empty, Description = string.Empty };
+
+        public UpdateProductDto EditProduct { get; set; } = new UpdateProductDto { Name = string.Empty, Description = string.Empty };
 
         [TempData]
         public bool ShowModal { get; set; }
 
         public ProductsModel(
             ILogger<ProductsModel> logger,
-            IProductRepository productRepository,
-            ICategoryRepository categoryRepository,
-            IProductCategoryRepository productCategoryRepository,
-            RegisterNewProductUseCase registerNewProductUseCase,
-            RegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase,
-            AsignCategoryToProductUseCase asignCategoryToProductUseCase,
-            UpdateProductUseCase updateProductUseCase
+            IProductManagementUseCase productManagementUseCase,
+            IRegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase,
+            IUpdateProductUseCase updateProductUseCase,
+            IConfiguration configuration
             )
         {
             _logger = logger;
-            _productRepository = productRepository;
-            _categoryRepository = categoryRepository;
-            _productCategoryRepository = productCategoryRepository;
-            _registerNewProductUseCase = registerNewProductUseCase;
+            _productManagementUseCase = productManagementUseCase;
             _registerNewProductWithCategoryUseCase = registerNewProductWithCategoryUseCase;
-            _asignCategoryToProductUseCase = asignCategoryToProductUseCase;
             _updateProductUseCase = updateProductUseCase;
+            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
+            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
 
-        public async Task OnGetAsync(long? editId)
+        public async Task OnGetAsync(long editId = 0)
         {
             var pageParam = Request.Query["page"].ToString();
             var categoryFilterParam = Request.Query["categoryFilter"].ToString();
             await LoadCategoriesAsync();
             await HandleGetRequest(pageParam, categoryFilterParam);
             
-            if (editId.HasValue)
+            if (editId > 0)
             {
-                var product = await _productRepository.GetProductByIdAsync(editId.Value);
-                if (product != null)
+                var editProduct = await _productManagementUseCase.GetForEditAsync(editId);
+                if (editProduct != null)
                 {
-                    var relation = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(editId.Value);
-                    
-                    EditProduct = new UpdateProductDto
-                    {
-                        Id = product.Id,
-                        Name = product.Name,
-                        Description = product.Description,
-                        Stock = product.Stock,
-                        Lote = product.Lote,
-                        FechaDeCaducidad = product.FechaDeCaducidad,
-                        Price = product.Price,
-                        CategoryId = relation?.CategoryId ?? 0
-                    };
+                    EditProduct = editProduct;
                 }
             }
         }
 
-        public async Task<IActionResult> OnPostFilterAsync(long? categoryFilter)
+        public async Task<IActionResult> OnPostFilterAsync(long categoryFilter = 0)
         {
             CategoryFilter = categoryFilter;
             CurrentPage = 1;
@@ -95,8 +74,10 @@ namespace Mercadito.Pages.Products
             return Page();
         }
 
-        public async Task<IActionResult> OnPostCreateAsync(RegisterNewProductWithCategoryDto newProduct)
+        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewProduct")] CreateProductDto newProduct)
         {
+            NewProduct = newProduct;
+
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("ModelState inválido");
@@ -113,7 +94,6 @@ namespace Mercadito.Pages.Products
                 }
                 
                 ShowModal = true;
-                NewProduct = newProduct;
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
                 return Page();
@@ -121,36 +101,37 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                if(newProduct.CategoryId == 0)
-                {
-                    var createProductDto = ProductMapper.ToRegisterProductEntity(newProduct);
-                    await _registerNewProductUseCase.ExecuteAsync(createProductDto);
-                }
-                else
-                {
-                    await _registerNewProductWithCategoryUseCase.ExecuteAsync(newProduct);
-                }
+                await _registerNewProductWithCategoryUseCase.ExecuteAsync(NewProduct);
                 
                 TempData["SuccessMessage"] = "Producto agregado exitosamente.";
                 return RedirectToPage();
             }
-            catch (Exception ex)
+            catch (ValidationException validationException)
             {
-                _logger.LogError(ex, "Error al crear producto");
+                _logger.LogWarning(validationException, "Validación de negocio al crear producto");
+                ModelState.AddModelError(string.Empty, validationException.Message);
+                ShowModal = true;
+                await LoadCategoriesAsync();
+                await LoadProductsByState();
+                return Page();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error al crear producto");
                 ModelState.AddModelError(string.Empty, "Error al guardar el producto. Intente nuevamente.");
                 ShowModal = true;
-                NewProduct = newProduct;
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync(UpdateProductDto editProduct)
+        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditProduct")] UpdateProductDto editProduct)
         {
+            EditProduct = editProduct;
+
             if (!ModelState.IsValid)
             {
-                EditProduct = editProduct;
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
                 TempData["ShowEditProductModal"] = "true";
@@ -159,27 +140,24 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                var existing = await _productRepository.GetProductByIdAsync(editProduct.Id);
-                if (existing == null)
-                {
-                    ModelState.AddModelError(string.Empty, "Producto no encontrado.");
-                    EditProduct = editProduct;
-                    await LoadCategoriesAsync();
-                    await LoadProductsByState();
-                    TempData["ShowEditProductModal"] = "true";
-                    return Page();
-                }
-
-                await _updateProductUseCase.ExecuteAsync(editProduct);
+                await _updateProductUseCase.ExecuteAsync(EditProduct);
                 
                 TempData["SuccessMessage"] = "Producto actualizado correctamente.";
                 return RedirectToPage();
             }
-            catch (Exception ex)
+            catch (ValidationException validationException)
             {
-                _logger.LogError(ex, "Error al actualizar producto");
+                _logger.LogWarning(validationException, "Validación de negocio al actualizar producto");
+                ModelState.AddModelError(string.Empty, validationException.Message);
+                await LoadCategoriesAsync();
+                await LoadProductsByState();
+                TempData["ShowEditProductModal"] = "true";
+                return Page();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Error al actualizar producto");
                 ModelState.AddModelError(string.Empty, "Error al actualizar el producto. Intente nuevamente.");
-                EditProduct = editProduct;
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
                 TempData["ShowEditProductModal"] = "true";
@@ -191,26 +169,23 @@ namespace Mercadito.Pages.Products
         {
             try
             {
-                var hasRelation = await _productCategoryRepository.GetProductsCategoriesByProductIdAsync(id) != null;
-                if (hasRelation)
+                var wasDeleted = await _productManagementUseCase.DeleteAsync(id);
+                if (wasDeleted)
                 {
-                    await _productCategoryRepository.DeleteProductCategoriesByProductIdAsync(id);
+                    TempData["SuccessMessage"] = "Producto desactivado.";
                 }
-
-                await _productRepository.DeleteProductAsync(id);
-                TempData["SuccessMessage"] = hasRelation
-                    ? "Producto eliminado. También se eliminó su relación con categoría."
-                    : "Producto eliminado.";
+                else
+                {
+                    TempData["ErrorMessage"] = "El producto no existe o ya estaba desactivado.";
+                }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al eliminar producto");
+                _logger.LogError(exception, "Error al eliminar producto");
                 TempData["ErrorMessage"] = "No se pudo eliminar el producto.";
             }
             return RedirectToPage();
         }
-
-        #region Métodos Privados - Manejo de Estados
 
         private async Task HandleGetRequest(string pageParam, string categoryFilterParam)
         {
@@ -243,16 +218,16 @@ namespace Mercadito.Pages.Products
                 CurrentPage = 1;
             }
             
-            CategoryFilter = null;
+            CategoryFilter = 0;
             await LoadAllProductsPaginated();
         }
 
         private async Task HandleCategoryFilterOnly(string categoryFilterParam)
         {
             CurrentPage = 1;
-            CategoryFilter = await ResolveCategoryFilter(categoryFilterParam);
+            CategoryFilter = ResolveCategoryFilter(categoryFilterParam);
             
-            if (CategoryFilter.HasValue)
+            if (CategoryFilter != 0)
             {
                 await LoadProductsByCategoryPaginated();
             }
@@ -273,9 +248,9 @@ namespace Mercadito.Pages.Products
                 CurrentPage = 1;
             }
             
-            CategoryFilter = await ResolveCategoryFilter(categoryFilterParam);
+            CategoryFilter = ResolveCategoryFilter(categoryFilterParam);
             
-            if (CategoryFilter.HasValue)
+            if (CategoryFilter != 0)
             {
                 await LoadProductsByCategoryPaginated();
             }
@@ -288,15 +263,15 @@ namespace Mercadito.Pages.Products
         private async Task HandleDefaultState()
         {
             CurrentPage = 1;
-            CategoryFilter = null;
+            CategoryFilter = 0;
             await LoadAllProductsPaginated();
         }
 
-        private async Task<long?> ResolveCategoryFilter(string categoryFilterParam)
+        private long ResolveCategoryFilter(string categoryFilterParam)
         {
             if (string.IsNullOrEmpty(categoryFilterParam))
             {
-                return null;
+                return 0;
             }
             
             if (long.TryParse(categoryFilterParam, out long categoryId))
@@ -311,12 +286,12 @@ namespace Mercadito.Pages.Products
             }
             
             _logger.LogWarning("No se pudo resolver CategoryFilter: {Param}", categoryFilterParam);
-            return null;
+            return 0;
         }
 
         private async Task LoadProductsByState()
         {
-            if (CategoryFilter.HasValue && CategoryFilter.Value != 0)
+            if (CategoryFilter != 0)
             {
                 await LoadProductsByCategoryPaginated();
             }
@@ -330,16 +305,14 @@ namespace Mercadito.Pages.Products
         {
             try
             {
-                var totalCount = await _productRepository.GetTotalProductsCountAsync();
-                TotalPages = (int)Math.Ceiling(totalCount / 10.0);
-                
-                var productos = await _productRepository.GetProductsWithCategoriesByPages(CurrentPage);
-                Products = productos?.ToList() ?? new List<ProductWithCategoriesModel>();
+                var result = await _productManagementUseCase.GetPageAsync(CurrentPage, 0, _defaultPageSize);
+                TotalPages = result.TotalPages;
+                Products = [.. result.Products];
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al cargar productos");
-                Products = new List<ProductWithCategoriesModel>();
+                _logger.LogError(exception, "Error al cargar productos");
+                Products = [];
                 TotalPages = 1;
             }
         }
@@ -348,46 +321,36 @@ namespace Mercadito.Pages.Products
         {
             try
             {
-                if (!CategoryFilter.HasValue || CategoryFilter.Value == 0)
+                if (CategoryFilter == 0)
                 {
                     await LoadAllProductsPaginated();
                     return;
                 }
-                
-                var totalCount = await _productRepository.GetTotalProductsCountByCategoryAsync(CategoryFilter.Value);
-                TotalPages = (int)Math.Ceiling(totalCount / 10.0);
-                
-                var productos = await _productRepository.GetProductsWithCategoriesFilterByCategoryByPages(
-                    CurrentPage, CategoryFilter.Value);
-                Products = productos?.ToList() ?? new List<ProductWithCategoriesModel>();
+
+                var result = await _productManagementUseCase.GetPageAsync(CurrentPage, CategoryFilter, _defaultPageSize);
+                TotalPages = result.TotalPages;
+                Products = [.. result.Products];
                 
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al cargar productos filtrados");
-                Products = new List<ProductWithCategoriesModel>();
+                _logger.LogError(exception, "Error al cargar productos filtrados");
+                Products = [];
                 TotalPages = 1;
             }
         }
-
-        #endregion
-
-        #region Métodos Privados - Auxiliares
 
         private async Task LoadCategoriesAsync()
         {
             try
             {
-                var categories = await _categoryRepository.GetAllCategoriesAsync();
-                Categories = categories?.ToList() ?? new List<CategoryModel>();
+                Categories = [.. await _productManagementUseCase.GetCategoriesAsync()];
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Error al cargar categorías");
-                Categories = new List<CategoryModel>();
+                _logger.LogError(exception, "Error al cargar categorías");
+                Categories = [];
             }
         }
-
-        #endregion
     }
 }

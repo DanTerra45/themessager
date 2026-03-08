@@ -8,7 +8,7 @@ namespace Mercadito.Pages;
 [IgnoreAntiforgeryToken]
 public class ErrorModel : PageModel
 {
-    public string? RequestId { get; set; }
+    public string RequestId { get; set; } = string.Empty;
 
     public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
@@ -21,7 +21,14 @@ public class ErrorModel : PageModel
 
     public void OnGet()
     {
-        RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        var currentActivity = Activity.Current;
+        if (currentActivity != null && !string.IsNullOrEmpty(currentActivity.Id))
+        {
+            RequestId = currentActivity.Id;
+            return;
+        }
+
+        RequestId = HttpContext.TraceIdentifier;
     }
 }
 

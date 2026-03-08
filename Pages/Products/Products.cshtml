@@ -1,4 +1,4 @@
-@page
+@page "/Products"
 @using System.Data
 @model Mercadito.Pages.Products.ProductsModel
 @{
@@ -16,7 +16,7 @@
     <form method="post" class="row g-2" asp-page-handler="Filter">
         <div class="col-md-3">
             <select name="categoryFilter" class="form-select">
-                <option value="0" selected="@(Model.CategoryFilter == null || Model.CategoryFilter == 0)">Todas las categorías</option>
+                <option value="0" selected="@(Model.CategoryFilter == 0)">Todas las categorías</option>
                 @foreach (var category in Model.Categories)
                 {
                     <option value="@category.Id" selected="@(Model.CategoryFilter == category.Id)">@category.Name</option>
@@ -29,7 +29,6 @@
     </form>
 </div>
 
-<!-- Tabla de productos -->
 <div>
     <div class="card shadow-sm">
         <div class="card-body">
@@ -94,11 +93,11 @@
                                 </td>
 
                                 <td class="text-center">
-                                    @product.Lote.ToShortDateString()
+                                    @product.Batch.ToShortDateString()
                                 </td>
 
                                 <td class="text-center">
-                                    @product.FechaDeCaducidad.ToShortDateString()
+                                    @product.ExpirationDate.ToShortDateString()
                                 </td>
 
                                 <td class="text-end fw-bold">
@@ -107,9 +106,8 @@
 
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                        <a asp-page="/Products/Products" 
-                                           asp-route-editId="@product.Id"
-                                           class="btn btn-outline-primary">
+                                                     <a href="/Products?editId=@product.Id"
+                                                         class="btn btn-outline-primary">
                                             <i class="bi bi-pencil"></i> Editar
                                         </a>
 
@@ -139,16 +137,15 @@
         </div>
     </div>
     
-    <!-- PAGINACIÓN (TU CÓDIGO INTEGRADO) -->
     <div class="d-flex justify-content-center mt-3">
         <nav>
             <ul class="pagination">
                 <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                     @{
                         var prevPage = Model.CurrentPage - 1;
-                        var prevUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != 0 
-                            ? $"/Products/Products?page={prevPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                            : $"/Products/Products?page={prevPage}&t={DateTime.Now.Ticks}";
+                        var prevUrl = Model.CategoryFilter != 0 
+                            ? $"/Products?page={prevPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
+                            : $"/Products?page={prevPage}&t={DateTime.Now.Ticks}";
                     }
                     <a class="page-link" href="@prevUrl">
                         Anterior
@@ -157,9 +154,9 @@
                 
                 @for (int i = 1; i <= Model.TotalPages; i++)
                 {
-                    var pageUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != 0 
-                        ? $"/Products/Products?page={i}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                        : $"/Products/Products?page={i}&t={DateTime.Now.Ticks}";
+                    var pageUrl = Model.CategoryFilter != 0 
+                        ? $"/Products?page={i}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
+                        : $"/Products?page={i}&t={DateTime.Now.Ticks}";
                     
                     <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
                         <a class="page-link" href="@pageUrl">
@@ -171,9 +168,9 @@
                 <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                     @{
                         var nextPage = Model.CurrentPage + 1;
-                        var nextUrl = Model.CategoryFilter.HasValue && Model.CategoryFilter.Value != 0 
-                            ? $"/Products/Products?page={nextPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                            : $"/Products/Products?page={nextPage}&t={DateTime.Now.Ticks}";
+                        var nextUrl = Model.CategoryFilter != 0 
+                            ? $"/Products?page={nextPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
+                            : $"/Products?page={nextPage}&t={DateTime.Now.Ticks}";
                     }
                     <a class="page-link" href="@nextUrl">
                         Siguiente
@@ -186,7 +183,6 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
-<!-- Modal Agregar Producto (CÓDIGO DE TU COMPAÑERO) -->
 <div class="modal fade" id="addProductModal" tabindex="-1"
      aria-labelledby="addProductModalLabel"
      aria-hidden="true">
@@ -220,8 +216,8 @@
 
                         <div class="col-md-6 mb-3">
                             <label asp-for="NewProduct.CategoryId" class="form-label">Categoría</label>
-                            <select asp-for="NewProduct.CategoryId" class="form-select" required>
-                                <option value="0">Seleccionar categoría</option>
+                            <select asp-for="NewProduct.CategoryId" class="form-select">
+                                <option value="0">Sin categoría</option>
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
@@ -254,27 +250,27 @@
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="NewProduct.Lote" class="form-label">Lote</label>
-                            <input asp-for="NewProduct.Lote"
+                            <label asp-for="NewProduct.Batch" class="form-label">Lote</label>
+                            <input asp-for="NewProduct.Batch"
                                     type="date"
                                     max="@DateTime.Now.ToString("yyyy-MM-dd")"
                                     value="@DateTime.Now.ToString("yyyy-MM-dd")"
                                    class="form-control"
                                    required />
-                            <span asp-validation-for="NewProduct.Lote" class="text-danger small"></span>
+                            <span asp-validation-for="NewProduct.Batch" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="NewProduct.FechaDeCaducidad" class="form-label">
+                            <label asp-for="NewProduct.ExpirationDate" class="form-label">
                                 Fecha de Vencimiento
                             </label>
-                            <input asp-for="NewProduct.FechaDeCaducidad"
+                            <input asp-for="NewProduct.ExpirationDate"
                                    type="date"
                                       value="@DateTime.Now.AddMonths(3).ToString("yyyy-MM-dd")"
                                       min="@DateTime.Now.ToString("yyyy-MM-dd")"
                                    class="form-control"
                                    required />
-                            <span asp-validation-for="NewProduct.FechaDeCaducidad" class="text-danger small"></span>
+                            <span asp-validation-for="NewProduct.ExpirationDate" class="text-danger small"></span>
                         </div>
                     </div>
 
@@ -318,7 +314,6 @@
 </div>
 
 
-<!-- Edit Product Modal -->
 <div class="modal fade @(Model.EditProduct != null && Model.EditProduct.Id != 0 ? "show" : "")" 
      id="editProductModal" 
      tabindex="-1"
@@ -336,8 +331,8 @@
                         <i class="bi bi-pencil-square me-2"></i>
                         Editar Producto
                     </h5>
-                    <a asp-page="/Products/Products" 
-                       class="btn-close"
+                          <a href="/Products"
+                              class="btn-close"
                        aria-label="Close"></a>
                 </div>
 
@@ -389,26 +384,26 @@
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="EditProduct.Lote" class="form-label">Lote</label>
-                            <input asp-for="EditProduct.Lote"
+                            <label asp-for="EditProduct.Batch" class="form-label">Lote</label>
+                            <input asp-for="EditProduct.Batch"
                                    type="date"
                                    class="form-control"
                                    max="@DateTime.Now.ToString("yyyy-MM-dd")"
-                                   value="@Model.EditProduct.Lote.ToString("yyyy-MM-dd")"
+                                value="@(Model.EditProduct != null ? Model.EditProduct.Batch.ToString("yyyy-MM-dd") : string.Empty)"
                                    required />
-                            <span asp-validation-for="EditProduct.Lote" class="text-danger small"></span>
+                            <span asp-validation-for="EditProduct.Batch" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-4 mb-3">
-                            <label asp-for="EditProduct.FechaDeCaducidad" class="form-label">
+                            <label asp-for="EditProduct.ExpirationDate" class="form-label">
                                 Fecha de Vencimiento
                             </label>
-                            <input asp-for="EditProduct.FechaDeCaducidad"
+                            <input asp-for="EditProduct.ExpirationDate"
                                    type="date"
-                                   value="@Model.EditProduct.FechaDeCaducidad.ToString("yyyy-MM-dd")"
+                                          value="@(Model.EditProduct != null ? Model.EditProduct.ExpirationDate.ToString("yyyy-MM-dd") : string.Empty)"
                                    class="form-control"
                                    required />
-                            <span asp-validation-for="EditProduct.FechaDeCaducidad" class="text-danger small"></span>
+                            <span asp-validation-for="EditProduct.ExpirationDate" class="text-danger small"></span>
                         </div>
                     </div>
 
@@ -433,8 +428,8 @@
                 </div>
 
                 <div class="modal-footer border-0 pt-0">
-                    <a asp-page="/Products/Products" 
-                       class="btn btn-outline-secondary">
+                          <a href="/Products"
+                              class="btn btn-outline-secondary">
                         Cancelar
                     </a>
                     <button type="submit"
@@ -450,7 +445,6 @@
     </div>
 </div>
 
-<!-- Backdrop para el modal -->
 @if (Model.EditProduct != null && Model.EditProduct.Id != 0)
 {
     <div class="modal-backdrop fade show"></div>
