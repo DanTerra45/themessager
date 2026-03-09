@@ -1,0 +1,281 @@
+@page
+@model Mercadito.Pages.Employees.EmployeesModel
+@{
+    ViewData["Title"] = "Empleados";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+        <i class="bi bi-plus-circle"></i> Agregar Nuevo Empleado
+    </button>
+</div>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>CI</th>
+                        <th>Complemento</th>
+                        <th>Nombres</th>
+                        <th>Primer Apellido</th>
+                        <th>Segundo Apellido</th>
+                        <th>Rol</th>
+                        <th>Contacto</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Employees != null && Model.Employees.Any())
+                {
+                    @foreach (var emp in Model.Employees)
+                    {
+                        <tr>
+                            <td class="small text-muted">@emp.Id.ToString().Substring(0,8)</td>
+                            <td>@emp.Ci</td>
+                            <td>@emp.Complemento</td>
+                            <td>@emp.Nombres</td>
+                            <td>@emp.PrimerApellido</td>
+                            <td>@emp.SegundoApellido</td>
+                            <td>
+                                @if (emp.Rol == "Cajero")
+                                {
+                                    <span class="badge bg-primary">Cajero</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-info">Inventario</span>
+                                }
+                            </td>
+                            <td>@emp.NumeroContacto</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary edit-employee-btn"
+                                            data-id="@emp.Id"
+                                            data-ci="@emp.Ci"
+                                            data-complemento="@emp.Complemento"
+                                            data-nombres="@emp.Nombres"
+                                            data-primerapellido="@emp.PrimerApellido"
+                                            data-segundoapellido="@emp.SegundoApellido"
+                                            data-rol="@emp.Rol"
+                                            data-numerocontacto="@emp.NumeroContacto"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editEmployeeModal">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </button>
+                                    <form method="post" asp-page-handler="Delete" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@emp.Id" />
+                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Eliminar empleado?')">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            No se encontraron empleados.
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-center mt-3">
+            <nav>
+                <ul class="pagination pagination-sm">
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Employees" asp-route-page="@(Model.CurrentPage - 1)"><i class="bi bi-chevron-left"></i></a>
+                    </li>
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-page="./Employees" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Employees" asp-route-page="@(Model.CurrentPage + 1)"><i class="bi bi-chevron-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Agregar Empleado -->
+<div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-semibold" id="addEmployeeModalLabel">
+                        <i class="bi bi-person-plus me-2"></i> Nuevo Empleado
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="NewEmployee_Ci" class="form-label">CI</label>
+                            <input asp-for="NewEmployee.Ci" id="NewEmployee_Ci" class="form-control" required />
+                            <span asp-validation-for="NewEmployee.Ci" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="NewEmployee_Complemento" class="form-label">Complemento</label>
+                            <input asp-for="NewEmployee.Complemento" id="NewEmployee_Complemento" class="form-control" />
+                            <span asp-validation-for="NewEmployee.Complemento" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="NewEmployee_Nombres" class="form-label">Nombres</label>
+                            <input asp-for="NewEmployee.Nombres" id="NewEmployee_Nombres" class="form-control" required />
+                            <span asp-validation-for="NewEmployee.Nombres" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="NewEmployee_PrimerApellido" class="form-label">Primer Apellido</label>
+                            <input asp-for="NewEmployee.PrimerApellido" id="NewEmployee_PrimerApellido" class="form-control" required />
+                            <span asp-validation-for="NewEmployee.PrimerApellido" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="NewEmployee_SegundoApellido" class="form-label">Segundo Apellido</label>
+                            <input asp-for="NewEmployee.SegundoApellido" id="NewEmployee_SegundoApellido" class="form-control" />
+                            <span asp-validation-for="NewEmployee.SegundoApellido" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="NewEmployee_Rol" class="form-label">Rol</label>
+                            <select asp-for="NewEmployee.Rol" id="NewEmployee_Rol" class="form-select" required>
+                                <option value="">Seleccionar rol</option>
+                                <option value="Cajero">Cajero</option>
+                                <option value="Inventario">Inventario</option>
+                            </select>
+                            <span asp-validation-for="NewEmployee.Rol" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="NewEmployee_NumeroContacto" class="form-label">Número de Contacto</label>
+                        <input asp-for="NewEmployee.NumeroContacto" id="NewEmployee_NumeroContacto" class="form-control" required />
+                        <span asp-validation-for="NewEmployee.NumeroContacto" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Empleado (versión con select) -->
+<div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-semibold" id="editEmployeeModalLabel">
+                        <i class="bi bi-pencil me-2"></i> Editar Empleado
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input asp-for="EditEmployee.Id" type="hidden" id="EditEmployee_Id" />
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="EditEmployee_Ci" class="form-label">CI</label>
+                            <input asp-for="EditEmployee.Ci" id="EditEmployee_Ci" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.Ci" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="EditEmployee_Complemento" class="form-label">Complemento</label>
+                            <input asp-for="EditEmployee.Complemento" id="EditEmployee_Complemento" class="form-control" />
+                            <span asp-validation-for="EditEmployee.Complemento" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="EditEmployee_Nombres" class="form-label">Nombres</label>
+                            <input asp-for="EditEmployee.Nombres" id="EditEmployee_Nombres" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.Nombres" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="EditEmployee_PrimerApellido" class="form-label">Primer Apellido</label>
+                            <input asp-for="EditEmployee.PrimerApellido" id="EditEmployee_PrimerApellido" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.PrimerApellido" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="EditEmployee_SegundoApellido" class="form-label">Segundo Apellido</label>
+                            <input asp-for="EditEmployee.SegundoApellido" id="EditEmployee_SegundoApellido" class="form-control" />
+                            <span asp-validation-for="EditEmployee.SegundoApellido" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="EditEmployee_Rol" class="form-label">Rol</label>
+                            <select asp-for="EditEmployee.Rol" id="EditEmployee_Rol" class="form-select" required>
+                                <option value="">Seleccionar rol</option>
+                                <option value="Cajero">Cajero</option>
+                                <option value="Inventario">Inventario</option>
+                            </select>
+                            <span asp-validation-for="EditEmployee.Rol" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="EditEmployee_NumeroContacto" class="form-label">Número de Contacto</label>
+                        <input asp-for="EditEmployee.NumeroContacto" id="EditEmployee_NumeroContacto" class="form-control" required />
+                        <span asp-validation-for="EditEmployee.NumeroContacto" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i> Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const editButtons = document.querySelectorAll(".edit-employee-btn");
+
+            editButtons.forEach(btn => {
+
+                btn.addEventListener("click", function () {
+
+                    document.getElementById("EditEmployee_Id").value = btn.dataset.id;
+                    document.getElementById("EditEmployee_Ci").value = btn.dataset.ci || "";
+                    document.getElementById("EditEmployee_Complemento").value = btn.dataset.complemento || "";
+                    document.getElementById("EditEmployee_Nombres").value = btn.dataset.nombres || "";
+                    document.getElementById("EditEmployee_PrimerApellido").value = btn.dataset.primerapellido || "";
+                    document.getElementById("EditEmployee_SegundoApellido").value = btn.dataset.segundoapellido || "";
+                    document.getElementById("EditEmployee_Rol").value = btn.dataset.rol || "";
+                    document.getElementById("EditEmployee_NumeroContacto").value = btn.dataset.numerocontacto || "";
+
+                });
+
+            });
+
+        });
+    </script>
+}
