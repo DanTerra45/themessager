@@ -8,23 +8,17 @@ namespace Mercadito.src.products.data.repository
 {
     public class ProductRepository(IDataBaseConnection dbConnection) : IProductRepository
     {
-        private sealed class ProductWithCategoriesRow
-        {
-            public long Id { get; set; }
-            public string Name { get; set; } = string.Empty;
-            public string Description { get; set; } = string.Empty;
-            public int Stock { get; set; }
-            public DateTime Batch { get; set; }
-            public DateTime ExpirationDate { get; set; }
-            public decimal Price { get; set; }
-            public string CategoriesString { get; set; } = string.Empty;
-        }
-
         private readonly IDataBaseConnection _dbConnection = dbConnection;
-        private readonly string tableName = "products";
-        private readonly string relationTableName = "categoriaDeProducto";
 
-        private static ProductWithCategoriesModel ToProductWithCategoriesModel(ProductWithCategoriesRow row)
+        private static ProductWithCategoriesModel ToProductWithCategoriesModel((
+            long Id,
+            string Name,
+            string Description,
+            int Stock,
+            DateTime Batch,
+            DateTime ExpirationDate,
+            decimal Price,
+            string CategoriesString) row)
         {
             return new ProductWithCategoriesModel
             {
@@ -35,8 +29,8 @@ namespace Mercadito.src.products.data.repository
                 Batch = row.Batch,
                 ExpirationDate = row.ExpirationDate,
                 Price = row.Price,
-                Categories = !string.IsNullOrEmpty(row.CategoriesString)
-                    ? [.. row.CategoriesString.Split(',')]
+                Categories = !string.IsNullOrWhiteSpace(row.CategoriesString)
+                    ? [.. row.CategoriesString.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
                     : []
             };
         }
@@ -56,15 +50,17 @@ namespace Mercadito.src.products.data.repository
                     p.fechaCaducidad as ExpirationDate,
                     COALESCE(p.precio, 0.00) as Price,
                     COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
-                FROM {tableName} p
-                LEFT JOIN {relationTableName} pc ON p.id = pc.productId
+                FROM products p
+                LEFT JOIN categoriaDeProducto pc ON p.id = pc.productId
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = 'A'
                 WHERE p.estado = 'A'
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                 ORDER BY p.nombre
                 LIMIT @PageSize OFFSET @Offset";
 
-            var products = await connection.QueryAsync<ProductWithCategoriesRow>(query, new { Offset = offset, PageSize = pageSize });
+            var products = await connection.QueryAsync<(long Id, string Name, string Description, int Stock, DateTime Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+                query,
+                new { Offset = offset, PageSize = pageSize });
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
@@ -82,21 +78,23 @@ namespace Mercadito.src.products.data.repository
                     p.fechaCaducidad as ExpirationDate,
                     COALESCE(p.precio, 0.00) as Price,
                     COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
-                FROM {tableName} p
-                INNER JOIN {relationTableName} pc ON p.id = pc.productId
+                FROM products p
+                INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = 'A'
                 WHERE pc.categoriaId = @CategoryId AND p.estado = 'A'
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                 ORDER BY p.nombre
                 LIMIT @PageSize OFFSET @Offset";
-            var products = await connection.QueryAsync<ProductWithCategoriesRow>(query, new { CategoryId = categoryId, Offset = offset, PageSize = pageSize });
+            var products = await connection.QueryAsync<(long Id, string Name, string Description, int Stock, DateTime Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+                query,
+                new { CategoryId = categoryId, Offset = offset, PageSize = pageSize });
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
         public async Task<Product?> GetProductByIdAsync(long id)
         {
             using var connection = await _dbConnection.CreateConnectionAsync();
-            var query = $@"SELECT 
+                        const string query = @"SELECT 
                             id AS Id,
                             COALESCE(nombre, '') AS Name,
                             COALESCE(descripcion, '') AS Description,
@@ -104,7 +102,7 @@ namespace Mercadito.src.products.data.repository
                             lote AS Batch,
                             fechaCaducidad AS ExpirationDate,
                             COALESCE(precio, 0.00) AS Price
-                          FROM {tableName} 
+                                                    FROM products 
                           WHERE id = @Id AND estado = 'A'";
             return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id });
         }
@@ -112,7 +110,7 @@ namespace Mercadito.src.products.data.repository
         public async Task<ProductForEditModel?> GetProductForEditAsync(long id)
         {
             using var connection = await _dbConnection.CreateConnectionAsync();
-            var query = $@"SELECT 
+                        const string query = @"SELECT 
                             p.id AS Id,
                             COALESCE(p.nombre, '') AS Name,
                             COALESCE(p.descripcion, '') AS Description,
@@ -121,8 +119,8 @@ namespace Mercadito.src.products.data.repository
                             p.fechaCaducidad AS ExpirationDate,
                             COALESCE(p.precio, 0.00) AS Price,
                             COALESCE(cp.categoriaId, 0) AS CategoryId
-                          FROM {tableName} p
-                          LEFT JOIN {relationTableName} cp ON p.id = cp.productId
+                                                    FROM products p
+                                                    LEFT JOIN categoriaDeProducto cp ON p.id = cp.productId
                           WHERE p.id = @Id AND p.estado = 'A'
                           LIMIT 1";
             return await connection.QueryFirstOrDefaultAsync<ProductForEditModel>(query, new { Id = id });
@@ -135,7 +133,7 @@ namespace Mercadito.src.products.data.repository
 
             try
             {
-                var insertProductQuery = $"INSERT INTO {tableName} (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, 'A'); SELECT LAST_INSERT_ID();";
+                const string insertProductQuery = "INSERT INTO products (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, 'A'); SELECT LAST_INSERT_ID();";
                 var createdProductId = await connection.ExecuteScalarAsync<long>(insertProductQuery, new
                 {
                     product.Name,
@@ -148,7 +146,7 @@ namespace Mercadito.src.products.data.repository
 
                 if (categoryId > 0)
                 {
-                    var insertRelationQuery = $@"INSERT INTO {relationTableName} (productId, categoriaId)
+                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto (productId, categoriaId)
                                              VALUES (@ProductId, @CategoryId)";
                     await connection.ExecuteAsync(insertRelationQuery, new { ProductId = createdProductId, CategoryId = categoryId }, transaction);
                 }
@@ -170,7 +168,7 @@ namespace Mercadito.src.products.data.repository
 
             try
             {
-                var updateProductQuery = $@"UPDATE {tableName}
+                const string updateProductQuery = @"UPDATE products
                                             SET nombre = @Name,
                                                 descripcion = @Description,
                                                 stock = @Stock,
@@ -196,13 +194,13 @@ namespace Mercadito.src.products.data.repository
                     throw new InvalidOperationException("No se pudo actualizar el producto solicitado.");
                 }
 
-                var deleteRelationQuery = $@"DELETE FROM {relationTableName}
+                const string deleteRelationQuery = @"DELETE FROM categoriaDeProducto
                                              WHERE productId = @ProductId";
                 await connection.ExecuteAsync(deleteRelationQuery, new { ProductId = product.Id }, transaction);
 
                 if (categoryId > 0)
                 {
-                    var insertRelationQuery = $@"INSERT INTO {relationTableName}
+                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto
                                                  (productId, categoriaId)
                                                  VALUES (@ProductId, @CategoryId)";
                     await connection.ExecuteAsync(insertRelationQuery, new { ProductId = product.Id, CategoryId = categoryId }, transaction);
@@ -220,23 +218,23 @@ namespace Mercadito.src.products.data.repository
         public async Task<int> DeleteProductAsync(long id)
         {
             using var connection = await _dbConnection.CreateConnectionAsync();
-            var query = $"UPDATE {tableName} SET estado = 'I' WHERE id = @Id AND estado = 'A'";
+            const string query = "UPDATE products SET estado = 'I' WHERE id = @Id AND estado = 'A'";
             return await connection.ExecuteAsync(query, new { Id = id });
         }
 
         public async Task<int> GetTotalProductsCountAsync()
         {
             using var connection = await _dbConnection.CreateConnectionAsync();
-            var query = $"SELECT COUNT(*) FROM {tableName} WHERE estado = 'A'";
+            const string query = "SELECT COUNT(*) FROM products WHERE estado = 'A'";
             return await connection.ExecuteScalarAsync<int>(query);
         }
 
         public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId)
         {
             using var connection = await _dbConnection.CreateConnectionAsync();
-            var query = $@"SELECT COUNT(DISTINCT p.id) 
-                   FROM {tableName} p
-                   INNER JOIN {relationTableName} pc ON p.id = pc.productId
+                 const string query = @"SELECT COUNT(DISTINCT p.id) 
+                     FROM products p
+                     INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
                     WHERE pc.categoriaId = @CategoryId AND p.estado = 'A'";
             return await connection.ExecuteScalarAsync<int>(query, new { CategoryId = categoryId });
         }

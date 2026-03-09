@@ -22,10 +22,8 @@ namespace Mercadito.Pages.Categories
 
         public UpdateCategoryDto EditCategory { get; set; } = new UpdateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
 
-        [TempData]
         public bool ShowEditCategoryModal { get; set; }
 
-        [TempData]
         public bool ShowCreateCategoryModal { get; set; }
 
         public CategoriesModel(

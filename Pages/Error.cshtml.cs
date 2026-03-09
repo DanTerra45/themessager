@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Mercadito.Pages;
 
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-[IgnoreAntiforgeryToken]
 public class ErrorModel : PageModel
 {
     public string RequestId { get; set; } = string.Empty;
@@ -25,10 +24,16 @@ public class ErrorModel : PageModel
         if (currentActivity != null && !string.IsNullOrEmpty(currentActivity.Id))
         {
             RequestId = currentActivity.Id;
-            return;
+        }
+        else
+        {
+            RequestId = HttpContext.TraceIdentifier;
         }
 
-        RequestId = HttpContext.TraceIdentifier;
+        _logger.LogError(
+            "Unhandled request reached Error page. RequestId: {RequestId}, Path: {Path}",
+            RequestId,
+            HttpContext.Request.Path.Value);
     }
 }
 
