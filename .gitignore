@@ -3,6 +3,12 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Sonarcube
+.sonarqube/
+
+# Config
+.config/
+
 # dotenv files
 .env
 

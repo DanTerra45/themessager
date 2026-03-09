@@ -4,7 +4,4 @@ namespace Mercadito.Pages;
 
 public class IndexModel : PageModel
 {
-    public void OnGet()
-    {
-    }
 }

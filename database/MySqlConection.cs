@@ -7,12 +7,9 @@ namespace Mercadito.database;
 public class MySqlConnectionFactory : IDataBaseConnection
 {
     private readonly string _connectionString;
-    private readonly ILogger<MySqlConnectionFactory> _logger;
 
-    public MySqlConnectionFactory(IConfiguration configuration, ILogger<MySqlConnectionFactory> logger)
+    public MySqlConnectionFactory(IConfiguration configuration)
     {
-        _logger = logger;
-
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -32,8 +29,9 @@ public class MySqlConnectionFactory : IDataBaseConnection
         }
         catch (MySqlException exception)
         {
-            _logger.LogError(exception, "Error al crear conexion MySQL asincrona");
-            throw;
+            throw new InvalidOperationException(
+                "No se pudo abrir una conexion a MySQL. Verifique la configuracion de acceso y la disponibilidad del servidor.",
+                exception);
         }
     }
 }
