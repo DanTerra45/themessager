@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Mercadito</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Mercadito.styles.css" asp-append-version="true" />
 </head>
@@ -29,10 +30,10 @@
                             <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Products/Products">Productos</a>
+                            <a class="nav-link text-dark" href="/Products">Productos</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Categories/Categories">Categorías</a>
+                            <a class="nav-link text-dark" href="/Categories">Categorías</a>
                         </li>
                     </ul>
                 </div>
@@ -40,6 +41,22 @@
         </nav>
     </header>
     <div class="container">
+        @if (TempData["SuccessMessage"] is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                @successMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (TempData["ErrorMessage"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                @errorMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
         <main role="main" class="pb-3">
             @RenderBody()
         </main>

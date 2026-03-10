@@ -1,19 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Mercadito.src.products.data.entity;
+using Mercadito.src.products.domain.model;
 
-namespace Mercadito
+namespace Mercadito.src.products.domain.repository
 {
     public interface IProductRepository
     {
-        Task<IEnumerable<Product>> GetAllProductsAsync();
-        Task<IEnumerable<ProductWithCategoriesModel>> GetAllProductsWithCategoriesAsync();
-        Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page);
-        Task<IEnumerable<Product>> GetProductsByPages(int page);
-        Task<Product?> GetProductByIdAsync(Guid id);
-        Task<Guid> AddProductAsync(CreateProductDto product);
-        Task UpdateProductAsync(Product product);
-        Task DeleteProductAsync(Guid id);
+        Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize);
+        Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize);
+        Task<Product?> GetProductByIdAsync(long id);
+        Task<ProductForEditModel?> GetProductForEditAsync(long id);
+        Task<long> AddProductWithCategoryAsync(Product product, long categoryId);
+        Task UpdateProductWithCategoryAsync(Product product, long categoryId);
+        Task<int> DeleteProductAsync(long id);
+        Task<int> GetTotalProductsCountAsync();
+        Task<int> GetTotalProductsCountByCategoryAsync(long categoryId);
     }
 }

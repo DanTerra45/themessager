@@ -1,82 +1,66 @@
-using System;
-
 using Dapper;
-namespace Mercadito
+using Mercadito.database.interfaces;
+using Mercadito.src.products.data.entity;
+using Mercadito.src.products.domain.repository;
+
+namespace Mercadito.src.products.data.repository
 {
-    public class ProductCategoryRepository : IProductCategoryRepository
+    public class ProductCategoryRepository(IDataBaseConnection dbConnection) : IProductCategoryRepository
     {
-        private readonly IDataBaseConnection _dbConnection;
-        private readonly string tableName = "categoriaDeProducto";
-        private readonly ILogger<ProductCategoryRepository> _logger;
-        public ProductCategoryRepository(IDataBaseConnection dbConnection, ILogger<ProductCategoryRepository> logger)
-        {
-            _dbConnection = dbConnection;
-            _logger = logger;
-        }
+        private readonly IDataBaseConnection _dbConnection = dbConnection;
+
         public async Task<IEnumerable<ProductCategory>> GetAllProductCategoriesAsync()
         {
-            throw new NotImplementedException();
-        }
-        public async Task<ProductCategory?> GetProductsCategoriesByProductIdAsync(Guid productId)
-        {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT productId AS ProductId, categoriaId AS CategoryId FROM {tableName} WHERE productId = @ProductId";
-                return await connection.QueryFirstOrDefaultAsync<ProductCategory>(query, new { ProductId = productId });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving product category by product ID");
-                throw;
-            }
-        }
-        public async Task<ProductCategory?> GetProductsCategoriesByCategoryIdAsync(Guid categoryId)
-        {
-            throw new NotImplementedException();
-        }
-        public async Task AddProductCategoryAsync(ProductCategory productCategory)
-        {
-           try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"INSERT INTO {tableName} (productId, categoriaId) VALUES (@ProductId, @CategoryId)";
-                await connection.ExecuteAsync(query, new { ProductId = productCategory.ProductId, CategoryId = productCategory.CategoryId });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error adding product category");
-                throw;
-            }
-        }
-        public async Task DeleteProductCategoryAsync(ProductCategory productCategory)
-        {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"DELETE FROM {tableName} WHERE productId = @ProductId AND categoriaId = @CategoryId";
-                await connection.ExecuteAsync(query, new { ProductId = productCategory.ProductId, CategoryId = productCategory.CategoryId });
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting product category relation");
-                throw;
-            }
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"SELECT productId AS ProductId,
+                        categoriaId AS CategoryId
+                        FROM categoriaDeProducto";
+            return await connection.QueryAsync<ProductCategory>(query);
         }
 
-        public async Task DeleteProductCategoriesByProductIdAsync(Guid productId)
+        public async Task<ProductCategory?> GetProductsCategoriesByProductIdAsync(long productId)
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"DELETE FROM {tableName} WHERE productId = @ProductId";
-                await connection.ExecuteAsync(query, new { ProductId = productId });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting product category relations by product ID");
-                throw;
-            }
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"SELECT productId AS ProductId,
+                        categoriaId AS CategoryId
+                        FROM categoriaDeProducto
+                        WHERE productId = @ProductId";
+            return await connection.QueryFirstOrDefaultAsync<ProductCategory>(query, new { productId });
+        }
+
+        public async Task<ProductCategory?> GetProductsCategoriesByCategoryIdAsync(long categoryId)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"SELECT productId AS ProductId,
+                        categoriaId AS CategoryId
+                        FROM categoriaDeProducto
+                        WHERE categoriaId = @CategoryId";
+            return await connection.QueryFirstOrDefaultAsync<ProductCategory>(query, new { categoryId });
+        }
+
+        public async Task AddProductCategoryAsync(ProductCategory productCategory)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"INSERT INTO categoriaDeProducto (productId, categoriaId)
+                        VALUES (@ProductId, @CategoryId)";
+            await connection.ExecuteAsync(query, new { productCategory.ProductId, productCategory.CategoryId });
+        }
+
+        public async Task DeleteProductCategoryAsync(ProductCategory productCategory)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"DELETE FROM categoriaDeProducto
+                        WHERE productId = @ProductId
+                        AND categoriaId = @CategoryId";
+            await connection.ExecuteAsync(query, new { productCategory.ProductId, productCategory.CategoryId });
+        }
+
+        public async Task DeleteProductCategoriesByProductIdAsync(long productId)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"DELETE FROM categoriaDeProducto
+                        WHERE productId = @ProductId";
+            await connection.ExecuteAsync(query, new { productId });
         }
     }
 }

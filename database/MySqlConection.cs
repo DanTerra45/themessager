@@ -1,39 +1,22 @@
-using System.Data;
+﻿using System.Data;
+using Mercadito.database.interfaces;
 using MySql.Data.MySqlClient;
 
-namespace Mercadito;
+namespace Mercadito.database;
 
 public class MySqlConnectionFactory : IDataBaseConnection
 {
     private readonly string _connectionString;
-    private readonly ILogger<MySqlConnectionFactory> _logger;
 
-    public MySqlConnectionFactory(IConfiguration configuration, ILogger<MySqlConnectionFactory> logger)
+    public MySqlConnectionFactory(IConfiguration configuration)
     {
-        _logger = logger;
-        
-        var server = configuration["Database:Server"] ?? "127.0.0.1";
-        var port = configuration["Database:Port"] ?? "3306";
-        var database = configuration["Database:Name"] ?? "mydb";
-        var user = configuration["Database:User"] ?? "user";
-        var password = configuration["Database:Password"] ?? "password";
-        
-        _connectionString = $"Server={server};Port={port};Database={database};Uid={user};Pwd={password};";
-    }
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("ConnectionStrings:DefaultConnection no esta configurado.");
+        }
 
-    public IDbConnection CreateConnection()
-    {
-        try
-        {
-            var connection = new MySqlConnection(_connectionString);
-            connection.Open();
-            return connection;
-        }
-        catch (MySqlException ex)
-        {
-            _logger.LogError(ex, "Error al crear conexión MySQL");
-            throw;
-        }
+        _connectionString = connectionString;
     }
 
     public async Task<IDbConnection> CreateConnectionAsync()
@@ -44,15 +27,11 @@ public class MySqlConnectionFactory : IDataBaseConnection
             await connection.OpenAsync();
             return connection;
         }
-        catch (MySqlException ex)
+        catch (MySqlException exception)
         {
-            _logger.LogError(ex, "Error al crear conexión MySQL asíncrona");
-            throw;
+            throw new InvalidOperationException(
+                "No se pudo abrir una conexion a MySQL. Verifique la configuracion de acceso y la disponibilidad del servidor.",
+                exception);
         }
-    }
-
-    public void Dispose()
-    {
-        // Limpieza si es necesaria
     }
 }
