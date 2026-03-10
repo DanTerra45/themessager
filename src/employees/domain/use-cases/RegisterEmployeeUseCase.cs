@@ -1,33 +1,33 @@
-using Mercadito.src.employees.data.dto;
+using Mercadito.src.employees.data.entity;
+using Mercadito.src.employees.domain.dto;
 using Mercadito.src.employees.domain.repository;
-using Microsoft.Extensions.Logging;
 
 namespace Mercadito.src.employees.domain.usecases
 {
-    #pragma warning disable S2139 // Permite loggear y relanzar excepciones
     public class RegisterEmployeeUseCase : IRegisterEmployeeUseCase
     {
         private readonly IEmployeeRepository _employeeRepository;
-        private readonly ILogger<RegisterEmployeeUseCase> _logger;
 
-        public RegisterEmployeeUseCase(IEmployeeRepository employeeRepository, ILogger<RegisterEmployeeUseCase> logger)
+        public RegisterEmployeeUseCase(IEmployeeRepository employeeRepository)
         {
             _employeeRepository = employeeRepository;
-            _logger = logger;
         }
 
-        public async Task<long> ExecuteAsync(CreateEmployeeDto employee)
+        public async Task<long> ExecuteAsync(CreateEmployeeDto employee, CancellationToken cancellationToken = default)
         {
-            try
+            var employeeToCreate = new Employee
             {
-                return await _employeeRepository.AddEmployeeAsync(employee);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error en caso de uso al registrar empleado");
-                throw;
-            }
+                Ci = employee.Ci,
+                Complemento = employee.Complemento,
+                Nombres = employee.Nombres,
+                PrimerApellido = employee.PrimerApellido,
+                SegundoApellido = employee.SegundoApellido,
+                Rol = employee.Rol,
+                NumeroContacto = employee.NumeroContacto,
+                IsActive = true
+            };
+
+            return await _employeeRepository.AddEmployeeAsync(employeeToCreate, cancellationToken);
         }
     }
-    #pragma warning restore S2139
 }

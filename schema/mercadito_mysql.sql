@@ -1,50 +1,66 @@
 CREATE TABLE `categorias` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-  `codigo` VARCHAR(6) UNIQUE,
-  `nombre` VARCHAR(150),
-  `descripcion` VARCHAR(150),
-  `estado` CHAR(1),
-  `fechaRegistro` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `ultimaActualizacion` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `codigo` VARCHAR(6) NOT NULL,
+  `nombre` VARCHAR(150) NOT NULL,
+  `descripcion` VARCHAR(150) NOT NULL,
+  `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_categorias_codigo` UNIQUE (`codigo`),
+  CONSTRAINT `chk_categorias_codigo_no_vacio` CHECK (`codigo` <> ''),
+  CONSTRAINT `chk_categorias_nombre_no_vacio` CHECK (`nombre` <> ''),
+  CONSTRAINT `chk_categorias_descripcion_no_vacia` CHECK (`descripcion` <> '')
 );
 
 CREATE TABLE `products` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-  `nombre` VARCHAR(150),
-  `descripcion` VARCHAR(150),
-  `lote` DATETIME,
-  `fechaCaducidad` DATETIME,
-  `precio` DECIMAL(10,2),
-  `stock` INT,
-  `estado` CHAR(1),
-  `fechaRegistro` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `ultimaActualizacion` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `nombre` VARCHAR(150) NOT NULL,
+  `descripcion` VARCHAR(150) NOT NULL,
+  `lote` DATE NOT NULL,
+  `fechaCaducidad` DATE NOT NULL,
+  `precio` DECIMAL(10,2) NOT NULL,
+  `stock` INT NOT NULL,
+  `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `chk_products_nombre_no_vacio` CHECK (`nombre` <> ''),
+  CONSTRAINT `chk_products_descripcion_no_vacia` CHECK (`descripcion` <> ''),
+  CONSTRAINT `chk_products_stock_positivo` CHECK (`stock` >= 0),
+  CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01),
+  CONSTRAINT `chk_products_fechas_consistentes` CHECK (`fechaCaducidad` > `lote`)
 );
 
 CREATE TABLE `empleados` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-  `ci` BIGINT,
+  `ci` BIGINT NOT NULL,
   `complemento` VARCHAR(20),
-  `nombres` VARCHAR(40),
-  `primerApellido` VARCHAR(40),
+  `nombres` VARCHAR(40) NOT NULL,
+  `primerApellido` VARCHAR(40) NOT NULL,
   `segundoApellido` VARCHAR(40),
-  `rol` ENUM ('Cajero', 'Inventario'),
-  `numeroContacto` VARCHAR(40),
-  `estado` CHAR(1),
-  `fechaRegistro` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `ultimaActualizacion` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `rol` ENUM ('Cajero', 'Inventario') NOT NULL,
+  `numeroContacto` VARCHAR(40) NOT NULL,
+  `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `chk_empleados_ci_positivo` CHECK (`ci` > 0),
+  CONSTRAINT `chk_empleados_nombres_no_vacios` CHECK (`nombres` <> ''),
+  CONSTRAINT `chk_empleados_primer_apellido_no_vacio` CHECK (`primerApellido` <> ''),
+  CONSTRAINT `chk_empleados_contacto_no_vacio` CHECK (`numeroContacto` <> '')
 );
 
 CREATE TABLE `categoriaDeProducto` (
-  `productId` BIGINT,
-  `categoriaId` BIGINT,
+  `productId` BIGINT NOT NULL,
+  `categoriaId` BIGINT NOT NULL,
   PRIMARY KEY (`productId`, `categoriaId`)
 );
 
-CREATE INDEX `products_index_1` ON `products` (`lote`, `fechaCaducidad`);
+CREATE INDEX `categorias_index_1` ON `categorias` (`estado`, `nombre`);
+CREATE INDEX `products_index_1` ON `products` (`estado`, `nombre`);
+CREATE INDEX `products_index_2` ON `products` (`lote`, `fechaCaducidad`);
 CREATE INDEX `products_index_3` ON `products` (`fechaCaducidad`);
-CREATE INDEX `empleados_index_4` ON `empleados` (`ci`);
-CREATE INDEX `empleados_index_5` ON `empleados` (`rol`);
+CREATE INDEX `empleados_index_4` ON `empleados` (`estado`, `primerApellido`, `segundoApellido`, `nombres`);
+CREATE INDEX `empleados_index_5` ON `empleados` (`ci`);
+CREATE INDEX `empleados_index_6` ON `empleados` (`rol`);
 
 CREATE INDEX `categoriaDeProducto_idx_categoria` ON `categoriaDeProducto` (`categoriaId`);
 ALTER TABLE `categoriaDeProducto` ADD FOREIGN KEY (`categoriaId`) REFERENCES `categorias` (`id`) ON DELETE CASCADE;

@@ -1,9 +1,10 @@
-using Mercadito.src.employees.data.dto;
 using Mercadito.src.employees.data.entity;
+using Mercadito.src.employees.domain.dto;
 using Mercadito.src.employees.domain.usecases;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Employees
 {
@@ -57,13 +58,14 @@ namespace Mercadito.Pages.Employees
         {
             try
             {
-                var result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                var cancellationToken = HttpContext.RequestAborted;
+                var result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
                 TotalPages = result.TotalPages;
 
                 if (CurrentPage > TotalPages)
                 {
                     CurrentPage = TotalPages;
-                    result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                    result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
                 }
 
                 Employees = [.. result.Employees];
@@ -75,8 +77,9 @@ namespace Mercadito.Pages.Employees
             }
         }
 
-        public async Task<IActionResult> OnPostCreateAsync()
+        public async Task<IActionResult> OnPostCreateAsync(int pageNumber = 1)
         {
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
             ModelState.Clear();
             ModelState.ClearValidationState(nameof(NewEmployee));
             var isValid = TryValidateModel(NewEmployee, nameof(NewEmployee));
@@ -90,9 +93,17 @@ namespace Mercadito.Pages.Employees
 
             try
             {
-                await _registerEmployeeUseCase.ExecuteAsync(NewEmployee);
+                await _registerEmployeeUseCase.ExecuteAsync(NewEmployee, HttpContext.RequestAborted);
                 TempData["SuccessMessage"] = "Empleado agregado exitosamente.";
-                return RedirectToPage();
+                return RedirectToPage(new { pageNumber = CurrentPage });
+            }
+            catch (ValidationException validationException)
+            {
+                _logger.LogWarning(validationException, "Validacion de negocio al crear empleado");
+                ModelState.AddModelError(string.Empty, validationException.Message);
+                ShowCreateEmployeeModal = true;
+                await LoadEmployeesAsync();
+                return Page();
             }
             catch (Exception ex)
             {
@@ -104,8 +115,9 @@ namespace Mercadito.Pages.Employees
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync()
+        public async Task<IActionResult> OnPostEditAsync(int pageNumber = 1)
         {
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
             ModelState.Clear();
             ModelState.ClearValidationState(nameof(EditEmployee));
             var isValid = TryValidateModel(EditEmployee, nameof(EditEmployee));
@@ -119,17 +131,17 @@ namespace Mercadito.Pages.Employees
 
             try
             {
-                var existing = await _employeeManagementUseCase.GetForEditAsync(EditEmployee.Id);
-                if (existing == null)
-                {
-                    ModelState.AddModelError(string.Empty, "Empleado no encontrado.");
-                    await LoadEmployeesAsync();
-                    return Page();
-                }
-
-                await _updateEmployeeUseCase.ExecuteAsync(EditEmployee);
+                await _updateEmployeeUseCase.ExecuteAsync(EditEmployee, HttpContext.RequestAborted);
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
-                return RedirectToPage();
+                return RedirectToPage(new { pageNumber = CurrentPage });
+            }
+            catch (InvalidOperationException invalidOperationException)
+            {
+                _logger.LogWarning(invalidOperationException, "Empleado no encontrado al actualizar");
+                ModelState.AddModelError(string.Empty, invalidOperationException.Message);
+                await LoadEmployeesAsync();
+                ShowEditEmployeeModal = true;
+                return Page();
             }
             catch (Exception ex)
             {
@@ -141,11 +153,13 @@ namespace Mercadito.Pages.Employees
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(long id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1)
         {
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+
             try
             {
-                var deleted = await _employeeManagementUseCase.DeleteAsync(id);
+                var deleted = await _employeeManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
                 TempData[deleted ? "SuccessMessage" : "ErrorMessage"] = deleted
                     ? "Empleado eliminado."
                     : "Empleado no encontrado.";
@@ -155,7 +169,7 @@ namespace Mercadito.Pages.Employees
                 _logger.LogError(ex, "Error al eliminar empleado");
                 TempData["ErrorMessage"] = "No se pudo eliminar el empleado.";
             }
-            return RedirectToPage();
+            return RedirectToPage(new { pageNumber = CurrentPage });
         }
     }
 }

@@ -7,29 +7,23 @@ namespace Mercadito.src.employees.domain.usecases
     {
         private readonly IEmployeeRepository _employeeRepository = employeeRepository;
 
-        public async Task<(IReadOnlyList<Employee> Employees, int TotalPages)> GetPageAsync(int currentPage, int pageSize)
+        public async Task<(IReadOnlyList<Employee> Employees, int TotalPages)> GetPageAsync(int currentPage, int pageSize, CancellationToken cancellationToken = default)
         {
-            var totalCount = await _employeeRepository.GetTotalEmployeesCountAsync();
+            var totalCount = await _employeeRepository.GetTotalEmployeesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var employees = (await _employeeRepository.GetEmployeesByPages(currentPage, pageSize)).ToList();
+            var employees = (await _employeeRepository.GetEmployeesByPages(currentPage, pageSize, cancellationToken)).ToList();
             return (employees, totalPages);
         }
 
-        public async Task<Employee?> GetForEditAsync(long employeeId)
+        public async Task<Employee?> GetForEditAsync(long employeeId, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.GetEmployeeByIdAsync(employeeId);
+            return await _employeeRepository.GetEmployeeByIdAsync(employeeId, cancellationToken);
         }
 
-        public async Task<bool> DeleteAsync(long employeeId)
+        public async Task<bool> DeleteAsync(long employeeId, CancellationToken cancellationToken = default)
         {
-            var employee = await _employeeRepository.GetEmployeeByIdAsync(employeeId);
-            if (employee is null)
-            {
-                return false;
-            }
-
-            await _employeeRepository.DeleteEmployeeAsync(employeeId);
-            return true;
+            var affectedRows = await _employeeRepository.DeleteEmployeeAsync(employeeId, cancellationToken);
+            return affectedRows > 0;
 
         }
 

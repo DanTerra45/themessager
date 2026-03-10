@@ -5,11 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>e7dfa2e9-398c-4028-877c-18f98319ee30</UserSecretsId>
+    <SonarQubeTestProject>false</SonarQubeTestProject>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.72" />
-    <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="MySql.Data" Version="9.6.0" />
   </ItemGroup>
 

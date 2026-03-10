@@ -1,7 +1,9 @@
 ﻿@page "/Categories"
 @model Mercadito.Pages.Categories.CategoriesModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
 @{
     ViewData["Title"] = "Categorías";
+    var showIdColumn = HostEnvironment.IsDevelopment();
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -19,7 +21,10 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light text-center">
                     <tr>
-                        <th>ID</th>
+                        @if (showIdColumn)
+                        {
+                            <th>ID</th>
+                        }
                         <th>Código</th>
                         <th>Nombre</th>
                         <th>Descripción</th>
@@ -34,9 +39,12 @@
                     @foreach (var category in Model.Categories)
                     {
                         <tr>
-                            <td class="small text-muted">
-                                @category.Id
-                            </td>
+                            @if (showIdColumn)
+                            {
+                                <td class="small text-muted">
+                                    @category.Id
+                                </td>
+                            }
 
                             <td>
                                 <span class="badge bg-secondary">
@@ -96,6 +104,7 @@
 
                                     <form method="post" asp-page-handler="Delete" class="d-inline">
                                         <input type="hidden" name="id" value="@category.Id" />
+                                        <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                                         <button type="submit" class="btn btn-outline-danger" 
                                                     onclick="return confirm('Eliminar categoría?')">
                                             <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
@@ -109,7 +118,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="@(showIdColumn ? 6 : 5)" class="text-center text-muted py-4">
                             No se encontraron categorías.
                         </td>
                     </tr>
@@ -167,6 +176,7 @@
         <div class="modal-content shadow">
 
             <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
+                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
 
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="addCategoryModalLabel">
@@ -248,6 +258,7 @@
         <div class="modal-content shadow">
 
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
 
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="editCategoryModalLabel">
@@ -263,6 +274,8 @@
 
                 <div class="modal-body">
                     <input type="hidden" asp-for="EditCategory.Id" />
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
                     <div class="form-floating mb-3">
                         <input asp-for="EditCategory.Code"
@@ -309,6 +322,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
     @if (Model.ShowCreateCategoryModal)
     {
         <script>
@@ -337,7 +351,8 @@
                 editModalElement.addEventListener('hidden.bs.modal', function () {
                     var url = new URL(window.location.href);
                     if (url.searchParams.has('editId')) {
-                        window.location.href = '@Url.Page("./Categories", new { pageNumber = Model.CurrentPage })';
+                        url.searchParams.delete('editId');
+                        window.location.href = url.toString();
                     }
                 }, { once: true });
                 editModal.show();

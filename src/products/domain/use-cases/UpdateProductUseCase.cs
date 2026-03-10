@@ -11,14 +11,8 @@ namespace Mercadito.src.products.domain.usecases
 
         private readonly IProductRepository _productRepository = productRepository;
 
-        public async Task ExecuteAsync(UpdateProductDto updateProduct)
+        public async Task ExecuteAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default)
         {
-            var existingProduct = await _productRepository.GetProductByIdAsync(updateProduct.Id);
-            if (existingProduct == null)
-            {
-                throw new ValidationException("Producto no encontrado.");
-            }
-
             var productToUpdate = new Product
             {
                 Id = updateProduct.Id,
@@ -30,7 +24,33 @@ namespace Mercadito.src.products.domain.usecases
                 Price = updateProduct.Price
             };
 
-            await _productRepository.UpdateProductWithCategoryAsync(productToUpdate, updateProduct.CategoryId);
+            var categoryIds = GetDistinctCategoryIds(updateProduct.CategoryIds);
+            var affectedRows = await _productRepository.UpdateProductWithCategoriesAsync(productToUpdate, categoryIds, cancellationToken);
+            if (affectedRows == 0)
+            {
+                throw new ValidationException("Producto no encontrado.");
+            }
+        }
+
+        private static List<long> GetDistinctCategoryIds(IReadOnlyList<long> categoryIds)
+        {
+            var distinctCategoryIds = new List<long>();
+            var uniqueCategoryIds = new HashSet<long>();
+
+            foreach (var categoryId in categoryIds)
+            {
+                if (categoryId <= 0)
+                {
+                    continue;
+                }
+
+                if (uniqueCategoryIds.Add(categoryId))
+                {
+                    distinctCategoryIds.Add(categoryId);
+                }
+            }
+
+            return distinctCategoryIds;
         }
     }
 }

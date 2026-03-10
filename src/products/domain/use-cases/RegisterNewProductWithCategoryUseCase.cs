@@ -1,7 +1,6 @@
 using Mercadito.src.products.domain.dto;
 using Mercadito.src.products.data.entity;
 using Mercadito.src.products.domain.repository;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.products.domain.usecases
 {
@@ -11,18 +10,34 @@ namespace Mercadito.src.products.domain.usecases
 
         private readonly IProductRepository _productRepository = productRepository;
 
-        public async Task ExecuteAsync(CreateProductDto newProduct)
+        public async Task ExecuteAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default)
         {
-            try
+            var categoryIds = GetDistinctCategoryIds(newProduct.CategoryIds);
+            await _productRepository.AddProductWithCategoriesAsync(
+                ToProductEntity(newProduct),
+            categoryIds,
+            cancellationToken);
+        }
+
+        private static List<long> GetDistinctCategoryIds(IReadOnlyList<long> categoryIds)
+        {
+            var distinctCategoryIds = new List<long>();
+            var uniqueCategoryIds = new HashSet<long>();
+
+            foreach (var categoryId in categoryIds)
             {
-                await _productRepository.AddProductWithCategoryAsync(
-                    ToProductEntity(newProduct),
-                    newProduct.CategoryId);
+                if (categoryId <= 0)
+                {
+                    continue;
+                }
+
+                if (uniqueCategoryIds.Add(categoryId))
+                {
+                    distinctCategoryIds.Add(categoryId);
+                }
             }
-            catch(Exception exception)
-            {
-                throw new InvalidOperationException("Error al registrar producto con categoría", exception);
-            }
+
+            return distinctCategoryIds;
         }
 
         private static Product ToProductEntity(CreateProductDto dto)

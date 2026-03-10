@@ -6,9 +6,9 @@ namespace Mercadito.src.products.domain.model
         public required string Name { get; set; }
         public required string Description { get; set; }
         public int Stock { get; set; }
-        public DateTime Batch { get; set; }
-        public DateTime ExpirationDate { get; set; }
+        public DateOnly Batch { get; set; }
+        public DateOnly ExpirationDate { get; set; }
         public decimal Price { get; set; }
-        public long CategoryId { get; set; }
+        public List<long> CategoryIds { get; set; } = [];
     }
 }

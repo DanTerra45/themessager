@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.products.domain.validation;
 
 namespace Mercadito.src.products.domain.dto
 {
@@ -21,21 +20,20 @@ namespace Mercadito.src.products.domain.dto
         [Required(ErrorMessage = "La fecha de lote es obligatoria")]
         [Display(Name = "Fecha del Lote")]
         [DataType(DataType.Date)]
-        public DateTime Batch { get; set; }
+        public DateOnly Batch { get; set; }
         [Required(ErrorMessage = "La fecha de caducidad es obligatoria")]
         [Display(Name = "Fecha de Caducidad")]
-        [DateGreaterThan("Batch", ErrorMessage = "La fecha de caducidad debe ser posterior a la fecha del lote")]
-        public DateTime ExpirationDate { get; set; }
+        public DateOnly ExpirationDate { get; set; }
         [Required(ErrorMessage = "El precio es obligatorio")]
         [Range(typeof(decimal), "0.01", "99999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true, ErrorMessage = "El precio debe estar entre 0.01 y 99999999.99")]
         public decimal Price { get; set; }
 
-        [Range(0, long.MaxValue, ErrorMessage = "La categora seleccionada es invlida")]
-        public long CategoryId { get; set; } = 0;
+        [Display(Name = "Categorías")]
+        public List<long> CategoryIds { get; set; } = [];
         
         public CreateProductDto() { }
         
-        public CreateProductDto(string name, string description, int stock, DateTime batch, DateTime expirationDate, decimal price, long categoryId)
+        public CreateProductDto(string name, string description, int stock, DateOnly batch, DateOnly expirationDate, decimal price, IReadOnlyCollection<long> categoryIds)
         {
             Name = name;
             Description = description;
@@ -43,7 +41,11 @@ namespace Mercadito.src.products.domain.dto
             Batch = batch;
             ExpirationDate = expirationDate;
             Price = price;
-            CategoryId = categoryId;
+
+            foreach (var categoryId in categoryIds)
+            {
+                CategoryIds.Add(categoryId);
+            }
         }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -56,6 +58,27 @@ namespace Mercadito.src.products.domain.dto
             if (ExpirationDate == default)
             {
                 yield return new ValidationResult("La fecha de caducidad es obligatoria", [nameof(ExpirationDate)]);
+            }
+
+            if (Batch != default && ExpirationDate != default && ExpirationDate <= Batch)
+            {
+                yield return new ValidationResult("La fecha de caducidad debe ser posterior a la fecha del lote", [nameof(ExpirationDate)]);
+            }
+
+            var distinctCategoryIds = new HashSet<long>();
+            foreach (var categoryId in CategoryIds)
+            {
+                if (categoryId <= 0)
+                {
+                    yield return new ValidationResult("Las categorías seleccionadas son inválidas", [nameof(CategoryIds)]);
+                    yield break;
+                }
+
+                if (!distinctCategoryIds.Add(categoryId))
+                {
+                    yield return new ValidationResult("No puede repetir categorías para el mismo producto", [nameof(CategoryIds)]);
+                    yield break;
+                }
             }
         }
     }

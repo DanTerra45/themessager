@@ -19,12 +19,12 @@ public class MySqlConnectionFactory : IDataBaseConnection
         _connectionString = connectionString;
     }
 
-    public async Task<IDbConnection> CreateConnectionAsync()
+    public async Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var connection = new MySqlConnection(_connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(cancellationToken);
             return connection;
         }
         catch (MySqlException exception)

@@ -14,16 +14,26 @@ namespace Mercadito.Pages.Products
         private readonly IProductManagementUseCase _productManagementUseCase;
         private readonly IRegisterNewProductWithCategoryUseCase _registerNewProductWithCategoryUseCase;
         private readonly IUpdateProductUseCase _updateProductUseCase;
+        private readonly IResolveProductPageStateUseCase _resolveProductPageStateUseCase;
         private readonly int _defaultPageSize;
 
         public List<ProductWithCategoriesModel> Products { get; set; } = [];
         public List<CategoryModel> Categories { get; set; } = [];
 
+        [BindProperty(SupportsGet = true)]
         public long CategoryFilter { get; set; }
+
+        [BindProperty(SupportsGet = true)]
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
 
-        public CreateProductDto NewProduct { get; set; } = new CreateProductDto { Name = string.Empty, Description = string.Empty };
+        public CreateProductDto NewProduct { get; set; } = new CreateProductDto
+        {
+            Name = string.Empty,
+            Description = string.Empty,
+            Batch = DateOnly.FromDateTime(DateTime.Today),
+            ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3))
+        };
 
         public UpdateProductDto EditProduct { get; set; } = new UpdateProductDto { Name = string.Empty, Description = string.Empty };
 
@@ -35,6 +45,7 @@ namespace Mercadito.Pages.Products
             IProductManagementUseCase productManagementUseCase,
             IRegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase,
             IUpdateProductUseCase updateProductUseCase,
+            IResolveProductPageStateUseCase resolveProductPageStateUseCase,
             IConfiguration configuration
             )
         {
@@ -42,6 +53,7 @@ namespace Mercadito.Pages.Products
             _productManagementUseCase = productManagementUseCase;
             _registerNewProductWithCategoryUseCase = registerNewProductWithCategoryUseCase;
             _updateProductUseCase = updateProductUseCase;
+            _resolveProductPageStateUseCase = resolveProductPageStateUseCase;
             var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
@@ -49,17 +61,27 @@ namespace Mercadito.Pages.Products
         public async Task OnGetAsync(long editId = 0)
         {
             var pageParam = Request.Query["pageNumber"].ToString();
-            if (string.IsNullOrWhiteSpace(pageParam))
-            {
-                pageParam = Request.Query["page"].ToString();
-            }
             var categoryFilterParam = Request.Query["categoryFilter"].ToString();
+
             await LoadCategoriesAsync();
-            await HandleGetRequest(pageParam, categoryFilterParam);
+            var state = _resolveProductPageStateUseCase.Resolve(pageParam, categoryFilterParam, Categories);
+            CurrentPage = state.CurrentPage;
+            CategoryFilter = state.CategoryFilter;
+            await LoadProductsByState();
+
+            if (NewProduct.Batch == default)
+            {
+                NewProduct.Batch = DateOnly.FromDateTime(DateTime.Today);
+            }
+
+            if (NewProduct.ExpirationDate == default)
+            {
+                NewProduct.ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3));
+            }
             
             if (editId > 0)
             {
-                var editProduct = await _productManagementUseCase.GetForEditAsync(editId);
+                var editProduct = await _productManagementUseCase.GetForEditAsync(editId, HttpContext.RequestAborted);
                 if (editProduct != null)
                 {
                     EditProduct = editProduct;
@@ -78,9 +100,11 @@ namespace Mercadito.Pages.Products
             return Page();
         }
 
-        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewProduct")] CreateProductDto newProduct)
+        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewProduct")] CreateProductDto newProduct, int pageNumber = 1, long categoryFilter = 0)
         {
             NewProduct = newProduct;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+            CategoryFilter = categoryFilter;
 
             if (!ModelState.IsValid)
             {
@@ -105,10 +129,10 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                await _registerNewProductWithCategoryUseCase.ExecuteAsync(NewProduct);
+                await _registerNewProductWithCategoryUseCase.ExecuteAsync(NewProduct, HttpContext.RequestAborted);
                 
                 TempData["SuccessMessage"] = "Producto agregado exitosamente.";
-                return RedirectToPage();
+                return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
@@ -130,24 +154,25 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditProduct")] UpdateProductDto editProduct)
+        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditProduct")] UpdateProductDto editProduct, int pageNumber = 1, long categoryFilter = 0)
         {
             EditProduct = editProduct;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+            CategoryFilter = categoryFilter;
 
             if (!ModelState.IsValid)
             {
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
-                TempData["ShowEditProductModal"] = "true";
                 return Page();
             }
 
             try
             {
-                await _updateProductUseCase.ExecuteAsync(EditProduct);
+                await _updateProductUseCase.ExecuteAsync(EditProduct, HttpContext.RequestAborted);
                 
                 TempData["SuccessMessage"] = "Producto actualizado correctamente.";
-                return RedirectToPage();
+                return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
@@ -155,7 +180,6 @@ namespace Mercadito.Pages.Products
                 ModelState.AddModelError(string.Empty, validationException.Message);
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
-                TempData["ShowEditProductModal"] = "true";
                 return Page();
             }
             catch (Exception exception)
@@ -164,16 +188,18 @@ namespace Mercadito.Pages.Products
                 ModelState.AddModelError(string.Empty, "Error al actualizar el producto. Intente nuevamente.");
                 await LoadCategoriesAsync();
                 await LoadProductsByState();
-                TempData["ShowEditProductModal"] = "true";
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(long id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1, long categoryFilter = 0)
         {
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+            CategoryFilter = categoryFilter;
+
             try
             {
-                var wasDeleted = await _productManagementUseCase.DeleteAsync(id);
+                var wasDeleted = await _productManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
                 if (wasDeleted)
                 {
                     TempData["SuccessMessage"] = "Producto desactivado.";
@@ -188,128 +214,31 @@ namespace Mercadito.Pages.Products
                 _logger.LogError(exception, "Error al eliminar producto");
                 TempData["ErrorMessage"] = "No se pudo eliminar el producto.";
             }
-            return RedirectToPage();
+            return RedirectToCurrentState();
         }
 
-        private async Task HandleGetRequest(string pageParam, string categoryFilterParam)
+        private RedirectToPageResult RedirectToCurrentState()
         {
-            if (!string.IsNullOrEmpty(pageParam) && string.IsNullOrEmpty(categoryFilterParam))
+            if (CategoryFilter == 0)
             {
-                await HandlePaginationOnly(pageParam);
+                return RedirectToPage(new { pageNumber = CurrentPage });
             }
-            else if (string.IsNullOrEmpty(pageParam) && !string.IsNullOrEmpty(categoryFilterParam))
-            {
-                await HandleCategoryFilterOnly(categoryFilterParam);
-            }
-            else if (!string.IsNullOrEmpty(pageParam) && !string.IsNullOrEmpty(categoryFilterParam))
-            {
-                await HandleCategoryFilterWithPagination(pageParam, categoryFilterParam);
-            }
-            else
-            {
-                await HandleDefaultState();
-            }
-        }
 
-        private async Task HandlePaginationOnly(string pageParam)
-        {
-            if (int.TryParse(pageParam, out int page) && page > 0)
-            {
-                CurrentPage = page;
-            }
-            else
-            {
-                CurrentPage = 1;
-            }
-            
-            CategoryFilter = 0;
-            await LoadAllProductsPaginated();
-        }
-
-        private async Task HandleCategoryFilterOnly(string categoryFilterParam)
-        {
-            CurrentPage = 1;
-            CategoryFilter = ResolveCategoryFilter(categoryFilterParam);
-            
-            if (CategoryFilter != 0)
-            {
-                await LoadProductsByCategoryPaginated();
-            }
-            else
-            {
-                await LoadAllProductsPaginated();
-            }
-        }
-
-        private async Task HandleCategoryFilterWithPagination(string pageParam, string categoryFilterParam)
-        {
-            if (int.TryParse(pageParam, out int page) && page > 0)
-            {
-                CurrentPage = page;
-            }
-            else
-            {
-                CurrentPage = 1;
-            }
-            
-            CategoryFilter = ResolveCategoryFilter(categoryFilterParam);
-            
-            if (CategoryFilter != 0)
-            {
-                await LoadProductsByCategoryPaginated();
-            }
-            else
-            {
-                await LoadAllProductsPaginated();
-            }
-        }
-
-        private async Task HandleDefaultState()
-        {
-            CurrentPage = 1;
-            CategoryFilter = 0;
-            await LoadAllProductsPaginated();
-        }
-
-        private long ResolveCategoryFilter(string categoryFilterParam)
-        {
-            if (string.IsNullOrEmpty(categoryFilterParam))
-            {
-                return 0;
-            }
-            
-            if (long.TryParse(categoryFilterParam, out long categoryId))
-            {
-                return categoryId;
-            }
-            
-            var category = Categories.Find(c => c.Code == categoryFilterParam);
-            if (category != null)
-            {
-                return category.Id;
-            }
-            
-            _logger.LogWarning("No se pudo resolver CategoryFilter: {Param}", categoryFilterParam);
-            return 0;
+            return RedirectToPage(new { pageNumber = CurrentPage, categoryFilter = CategoryFilter });
         }
 
         private async Task LoadProductsByState()
         {
-            if (CategoryFilter != 0)
-            {
-                await LoadProductsByCategoryPaginated();
-            }
-            else
-            {
-                await LoadAllProductsPaginated();
-            }
-        }
-
-        private async Task LoadAllProductsPaginated()
-        {
             try
             {
-                var result = await _productManagementUseCase.GetPageAsync(CurrentPage, 0, _defaultPageSize);
+                var cancellationToken = HttpContext.RequestAborted;
+                var result = await _productManagementUseCase.GetPageAsync(CurrentPage, CategoryFilter, _defaultPageSize, cancellationToken);
+                if (CurrentPage > result.TotalPages)
+                {
+                    CurrentPage = result.TotalPages;
+                    result = await _productManagementUseCase.GetPageAsync(CurrentPage, CategoryFilter, _defaultPageSize, cancellationToken);
+                }
+
                 TotalPages = result.TotalPages;
                 Products = [.. result.Products];
             }
@@ -321,34 +250,11 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        private async Task LoadProductsByCategoryPaginated()
-        {
-            try
-            {
-                if (CategoryFilter == 0)
-                {
-                    await LoadAllProductsPaginated();
-                    return;
-                }
-
-                var result = await _productManagementUseCase.GetPageAsync(CurrentPage, CategoryFilter, _defaultPageSize);
-                TotalPages = result.TotalPages;
-                Products = [.. result.Products];
-                
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar productos filtrados");
-                Products = [];
-                TotalPages = 1;
-            }
-        }
-
         private async Task LoadCategoriesAsync()
         {
             try
             {
-                Categories = [.. await _productManagementUseCase.GetCategoriesAsync()];
+                Categories = [.. await _productManagementUseCase.GetCategoriesAsync(HttpContext.RequestAborted)];
             }
             catch (Exception exception)
             {

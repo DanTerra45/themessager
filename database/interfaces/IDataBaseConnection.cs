@@ -4,5 +4,5 @@ namespace Mercadito.database.interfaces;
 
 public interface IDataBaseConnection
 {
-    Task<IDbConnection> CreateConnectionAsync();
+    Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default);
 }
