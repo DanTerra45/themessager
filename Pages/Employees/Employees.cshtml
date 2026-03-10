@@ -1,4 +1,4 @@
-@page
+@page "/Employees"
 @model Mercadito.Pages.Employees.EmployeesModel
 @{
     ViewData["Title"] = "Empleados";
@@ -12,8 +12,6 @@
     </button>
 </div>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
@@ -21,12 +19,11 @@
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
-                        <th>Nombre Completo</th>
-                        <th>Cargo</th>
-                        <th>Email</th>
-                        <th>Teléfono</th>
-                        <th>Fecha Ingreso</th>
-                        <th>Salario</th>
+                        <th>CI</th>
+                        <th>Nombres</th>
+                        <th>Apellidos</th>
+                        <th>Rol</th>
+                        <th>Contacto</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
@@ -37,13 +34,12 @@
                     @foreach (var emp in Model.Employees)
                     {
                         <tr>
-                            <td class="small text-muted">@emp.Id.ToString().Substring(0,8)</td>
-                            <td>@emp.FirstName @emp.LastName</td>
-                            <td>@emp.Position</td>
-                            <td>@emp.Email</td>
-                            <td>@emp.Phone</td>
-                            <td>@emp.HireDate.ToShortDateString()</td>
-                            <td class="text-end">@($"{emp.Salary:N2} Bs.")</td>
+                            <td class="small text-muted">@emp.Id</td>
+                            <td>@emp.Ci @if (!string.IsNullOrWhiteSpace(emp.Complemento)) { <span>- @emp.Complemento</span> }</td>
+                            <td>@emp.Nombres</td>
+                            <td>@emp.PrimerApellido @emp.SegundoApellido</td>
+                            <td>@emp.Rol</td>
+                            <td>@emp.NumeroContacto</td>
                             <td>
                                 @if (emp.IsActive)
                                 {
@@ -58,14 +54,13 @@
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-primary edit-employee-btn"
                                             data-id="@emp.Id"
-                                            data-firstname="@emp.FirstName"
-                                            data-lastname="@emp.LastName"
-                                            data-position="@emp.Position"
-                                            data-hiredate="@emp.HireDate.ToString("yyyy-MM-dd")"
-                                            data-salary="@emp.Salary"
-                                            data-email="@emp.Email"
-                                            data-phone="@emp.Phone"
-                                            data-address="@emp.Address"
+                                            data-ci="@emp.Ci"
+                                            data-complemento="@emp.Complemento"
+                                            data-nombres="@emp.Nombres"
+                                            data-primerapellido="@emp.PrimerApellido"
+                                            data-segundoapellido="@emp.SegundoApellido"
+                                            data-rol="@emp.Rol"
+                                            data-numerocontacto="@emp.NumeroContacto"
                                             data-isactive="@emp.IsActive"
                                             data-bs-toggle="modal"
                                             data-bs-target="#editEmployeeModal">
@@ -85,7 +80,7 @@
                 else
                 {
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             No se encontraron empleados.
                         </td>
                     </tr>
@@ -99,16 +94,16 @@
             <nav>
                 <ul class="pagination pagination-sm">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                        <a class="page-link" asp-page="./Employees" asp-route-page="@(Model.CurrentPage - 1)"><i class="bi bi-chevron-left"></i></a>
+                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage - 1)"><i class="bi bi-chevron-left"></i></a>
                     </li>
                     @for (int i = 1; i <= Model.TotalPages; i++)
                     {
                         <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                            <a class="page-link" asp-page="./Employees" asp-route-page="@i">@i</a>
+                            <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@i">@i</a>
                         </li>
                     }
                     <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                        <a class="page-link" asp-page="./Employees" asp-route-page="@(Model.CurrentPage + 1)"><i class="bi bi-chevron-right"></i></a>
+                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage + 1)"><i class="bi bi-chevron-right"></i></a>
                     </li>
                 </ul>
             </nav>
@@ -128,53 +123,50 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div asp-validation-summary="All" class="text-danger small mb-2"></div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.FirstName)" class="form-label">Nombre</label>
-                            <input asp-for="NewEmployee.FirstName" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.FirstName" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.NewEmployee.Ci)" class="form-label">CI</label>
+                            <input asp-for="NewEmployee.Ci" type="number" class="form-control" required />
+                            <span asp-validation-for="NewEmployee.Ci" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.LastName)" class="form-label">Apellido</label>
-                            <input asp-for="NewEmployee.LastName" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.LastName" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.NewEmployee.Complemento)" class="form-label">Complemento</label>
+                            <input asp-for="NewEmployee.Complemento" class="form-control" />
+                            <span asp-validation-for="NewEmployee.Complemento" class="text-danger small"></span>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Position)" class="form-label">Cargo</label>
-                            <input asp-for="NewEmployee.Position" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.Position" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.NewEmployee.Nombres)" class="form-label">Nombres</label>
+                            <input asp-for="NewEmployee.Nombres" class="form-control" required />
+                            <span asp-validation-for="NewEmployee.Nombres" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.HireDate)" class="form-label">Fecha Ingreso</label>
-                            <input asp-for="NewEmployee.HireDate" type="date" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.HireDate" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.NewEmployee.PrimerApellido)" class="form-label">Primer Apellido</label>
+                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" required />
+                            <span asp-validation-for="NewEmployee.PrimerApellido" class="text-danger small"></span>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Email)" class="form-label">Email</label>
-                            <input asp-for="NewEmployee.Email" type="email" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.Email" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.NewEmployee.SegundoApellido)" class="form-label">Segundo Apellido</label>
+                            <input asp-for="NewEmployee.SegundoApellido" class="form-control" />
+                            <span asp-validation-for="NewEmployee.SegundoApellido" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Phone)" class="form-label">Teléfono</label>
-                            <input asp-for="NewEmployee.Phone" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.Phone" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.NewEmployee.Rol)" class="form-label">Rol</label>
+                            <select asp-for="NewEmployee.Rol" class="form-select" required>
+                                <option value="Cajero">Cajero</option>
+                                <option value="Inventario">Inventario</option>
+                            </select>
+                            <span asp-validation-for="NewEmployee.Rol" class="text-danger small"></span>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="@Html.IdFor(m => m.NewEmployee.Address)" class="form-label">Dirección</label>
-                        <input asp-for="NewEmployee.Address" class="form-control" />
-                        <span asp-validation-for="NewEmployee.Address" class="text-danger small"></span>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Salary)" class="form-label">Salario (Bs.)</label>
-                            <input asp-for="NewEmployee.Salary" type="number" step="0.01" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.Salary" class="text-danger small"></span>
-                        </div>
+                        <label for="@Html.IdFor(m => m.NewEmployee.NumeroContacto)" class="form-label">Número de Contacto</label>
+                        <input asp-for="NewEmployee.NumeroContacto" class="form-control" required />
+                        <span asp-validation-for="NewEmployee.NumeroContacto" class="text-danger small"></span>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -199,59 +191,54 @@
                 </div>
                 <div class="modal-body">
                     <input asp-for="EditEmployee.Id" type="hidden" />
+                    <div asp-validation-summary="All" class="text-danger small mb-2"></div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.FirstName)" class="form-label">Nombre</label>
-                            <input asp-for="EditEmployee.FirstName" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.FirstName" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.EditEmployee.Ci)" class="form-label">CI</label>
+                            <input asp-for="EditEmployee.Ci" type="number" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.Ci" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.LastName)" class="form-label">Apellido</label>
-                            <input asp-for="EditEmployee.LastName" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.LastName" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.EditEmployee.Complemento)" class="form-label">Complemento</label>
+                            <input asp-for="EditEmployee.Complemento" class="form-control" />
+                            <span asp-validation-for="EditEmployee.Complemento" class="text-danger small"></span>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Position)" class="form-label">Cargo</label>
-                            <input asp-for="EditEmployee.Position" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.Position" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.EditEmployee.Nombres)" class="form-label">Nombres</label>
+                            <input asp-for="EditEmployee.Nombres" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.Nombres" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.HireDate)" class="form-label">Fecha Ingreso</label>
-                            <input asp-for="EditEmployee.HireDate" type="date" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.HireDate" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.EditEmployee.PrimerApellido)" class="form-label">Primer Apellido</label>
+                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.PrimerApellido" class="text-danger small"></span>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Email)" class="form-label">Email</label>
-                            <input asp-for="EditEmployee.Email" type="email" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.Email" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.EditEmployee.SegundoApellido)" class="form-label">Segundo Apellido</label>
+                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" />
+                            <span asp-validation-for="EditEmployee.SegundoApellido" class="text-danger small"></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Phone)" class="form-label">Teléfono</label>
-                            <input asp-for="EditEmployee.Phone" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.Phone" class="text-danger small"></span>
+                            <label for="@Html.IdFor(m => m.EditEmployee.Rol)" class="form-label">Rol</label>
+                            <select asp-for="EditEmployee.Rol" class="form-select" required>
+                                <option value="Cajero">Cajero</option>
+                                <option value="Inventario">Inventario</option>
+                            </select>
+                            <span asp-validation-for="EditEmployee.Rol" class="text-danger small"></span>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="@Html.IdFor(m => m.EditEmployee.Address)" class="form-label">Dirección</label>
-                        <input asp-for="EditEmployee.Address" class="form-control" />
-                        <span asp-validation-for="EditEmployee.Address" class="text-danger small"></span>
+                        <label for="@Html.IdFor(m => m.EditEmployee.NumeroContacto)" class="form-label">Número de Contacto</label>
+                        <input asp-for="EditEmployee.NumeroContacto" class="form-control" required />
+                        <span asp-validation-for="EditEmployee.NumeroContacto" class="text-danger small"></span>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Salary)" class="form-label">Salario (Bs.)</label>
-                            <input asp-for="EditEmployee.Salary" type="number" step="0.01" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.Salary" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="form-check mt-4">
-                                <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" />
-                                <label for="@Html.IdFor(m => m.EditEmployee.IsActive)" class="form-check-label">Activo</label>
-                            </div>
-                        </div>
+                    <div class="form-check mt-1">
+                        <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" />
+                        <label for="@Html.IdFor(m => m.EditEmployee.IsActive)" class="form-check-label">Activo</label>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -265,6 +252,29 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    @if (Model.ShowCreateEmployeeModal)
+    {
+        <script>
+            var addEmployeeModalElement = document.getElementById('addEmployeeModal');
+            if (addEmployeeModalElement && typeof bootstrap !== 'undefined') {
+                var addEmployeeModal = new bootstrap.Modal(addEmployeeModalElement);
+                addEmployeeModal.show();
+            }
+        </script>
+    }
+
+    @if (Model.ShowEditEmployeeModal)
+    {
+        <script>
+            var editEmployeeModalElement = document.getElementById('editEmployeeModal');
+            if (editEmployeeModalElement && typeof bootstrap !== 'undefined') {
+                var editEmployeeModal = new bootstrap.Modal(editEmployeeModalElement);
+                editEmployeeModal.show();
+            }
+        </script>
+    }
+
     <script>
         // Poblar el modal de edición con los datos del botón
         document.addEventListener('DOMContentLoaded', function () {
@@ -272,26 +282,24 @@
             editBtns.forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     var id = btn.getAttribute('data-id');
-                    var firstName = btn.getAttribute('data-firstname') || '';
-                    var lastName = btn.getAttribute('data-lastname') || '';
-                    var position = btn.getAttribute('data-position') || '';
-                    var hireDate = btn.getAttribute('data-hiredate') || '';
-                    var salary = btn.getAttribute('data-salary') || '';
-                    var email = btn.getAttribute('data-email') || '';
-                    var phone = btn.getAttribute('data-phone') || '';
-                    var address = btn.getAttribute('data-address') || '';
+                    var ci = btn.getAttribute('data-ci') || '';
+                    var complemento = btn.getAttribute('data-complemento') || '';
+                    var nombres = btn.getAttribute('data-nombres') || '';
+                    var primerApellido = btn.getAttribute('data-primerapellido') || '';
+                    var segundoApellido = btn.getAttribute('data-segundoapellido') || '';
+                    var rol = btn.getAttribute('data-rol') || 'Cajero';
+                    var numeroContacto = btn.getAttribute('data-numerocontacto') || '';
                     var isActive = btn.getAttribute('data-isactive') === 'True';
 
                     var modal = document.getElementById('editEmployeeModal');
                     modal.querySelector('[name="EditEmployee.Id"]').value = id;
-                    modal.querySelector('[name="EditEmployee.FirstName"]').value = firstName;
-                    modal.querySelector('[name="EditEmployee.LastName"]').value = lastName;
-                    modal.querySelector('[name="EditEmployee.Position"]').value = position;
-                    modal.querySelector('[name="EditEmployee.HireDate"]').value = hireDate;
-                    modal.querySelector('[name="EditEmployee.Salary"]').value = salary;
-                    modal.querySelector('[name="EditEmployee.Email"]').value = email;
-                    modal.querySelector('[name="EditEmployee.Phone"]').value = phone;
-                    modal.querySelector('[name="EditEmployee.Address"]').value = address;
+                    modal.querySelector('[name="EditEmployee.Ci"]').value = ci;
+                    modal.querySelector('[name="EditEmployee.Complemento"]').value = complemento;
+                    modal.querySelector('[name="EditEmployee.Nombres"]').value = nombres;
+                    modal.querySelector('[name="EditEmployee.PrimerApellido"]').value = primerApellido;
+                    modal.querySelector('[name="EditEmployee.SegundoApellido"]').value = segundoApellido;
+                    modal.querySelector('[name="EditEmployee.Rol"]').value = rol;
+                    modal.querySelector('[name="EditEmployee.NumeroContacto"]').value = numeroContacto;
                     modal.querySelector('[name="EditEmployee.IsActive"]').checked = isActive;
                 });
             });

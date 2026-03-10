@@ -1,46 +1,55 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Mercadito.src.employees.data.dto;
+using Mercadito.src.employees.data.entity;
+using Mercadito.src.employees.domain.usecases;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 
 namespace Mercadito.Pages.Employees
 {
     public class EmployeesModel : PageModel
     {
         private readonly ILogger<EmployeesModel> _logger;
-        private readonly IEmployeeRepository _employeeRepository;
-        private readonly RegisterEmployeeUseCase _registerEmployeeUseCase;
-        private readonly UpdateEmployeeUseCase _updateEmployeeUseCase;
+        private readonly IEmployeeManagementUseCase _employeeManagementUseCase;
+        private readonly IRegisterEmployeeUseCase _registerEmployeeUseCase;
+        private readonly IUpdateEmployeeUseCase _updateEmployeeUseCase;
+        private readonly int _defaultPageSize;
 
-        public List<Employee> Employees { get; set; } = new List<Employee>();
+        public List<Employee> Employees { get; set; } = [];
+        [BindProperty(SupportsGet = true)]
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
-        private const int PageSize = 10;
 
         [BindProperty]
+        [ValidateNever]
         public CreateEmployeeDto NewEmployee { get; set; } = new CreateEmployeeDto();
 
         [BindProperty]
+        [ValidateNever]
         public UpdateEmployeeDto EditEmployee { get; set; } = new UpdateEmployeeDto();
+
+        public bool ShowCreateEmployeeModal { get; set; }
+
+        public bool ShowEditEmployeeModal { get; set; }
 
         public EmployeesModel(
             ILogger<EmployeesModel> logger,
-            IEmployeeRepository employeeRepository,
-            RegisterEmployeeUseCase registerEmployeeUseCase,
-            UpdateEmployeeUseCase updateEmployeeUseCase)
+            IEmployeeManagementUseCase employeeManagementUseCase,
+            IRegisterEmployeeUseCase registerEmployeeUseCase,
+            IUpdateEmployeeUseCase updateEmployeeUseCase,
+            IConfiguration configuration)
         {
             _logger = logger;
-            _employeeRepository = employeeRepository;
+            _employeeManagementUseCase = employeeManagementUseCase;
             _registerEmployeeUseCase = registerEmployeeUseCase;
             _updateEmployeeUseCase = updateEmployeeUseCase;
+            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
+            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
 
-        public async Task OnGetAsync(int? page)
+        public async Task OnGetAsync(int pageNumber = 1)
         {
-            CurrentPage = page ?? 1;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
             await LoadEmployeesAsync();
         }
 
@@ -48,10 +57,16 @@ namespace Mercadito.Pages.Employees
         {
             try
             {
-                var allEmployees = (await _employeeRepository.GetAllEmployeesAsync()).ToList();
-                TotalPages = (int)Math.Ceiling(allEmployees.Count / (double)PageSize);
-                var paged = await _employeeRepository.GetEmployeesByPages(CurrentPage, PageSize);
-                Employees = paged?.ToList() ?? new List<Employee>();
+                var result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                TotalPages = result.TotalPages;
+
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                    result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                }
+
+                Employees = [.. result.Employees];
             }
             catch (Exception ex)
             {
@@ -62,8 +77,13 @@ namespace Mercadito.Pages.Employees
 
         public async Task<IActionResult> OnPostCreateAsync()
         {
-            if (!ModelState.IsValid)
+            ModelState.Clear();
+            ModelState.ClearValidationState(nameof(NewEmployee));
+            var isValid = TryValidateModel(NewEmployee, nameof(NewEmployee));
+
+            if (!isValid)
             {
+                ShowCreateEmployeeModal = true;
                 await LoadEmployeesAsync();
                 return Page();
             }
@@ -78,6 +98,7 @@ namespace Mercadito.Pages.Employees
             {
                 _logger.LogError(ex, "Error al crear empleado");
                 ModelState.AddModelError(string.Empty, "Error al guardar el empleado.");
+                ShowCreateEmployeeModal = true;
                 await LoadEmployeesAsync();
                 return Page();
             }
@@ -85,16 +106,20 @@ namespace Mercadito.Pages.Employees
 
         public async Task<IActionResult> OnPostEditAsync()
         {
-            if (!ModelState.IsValid)
+            ModelState.Clear();
+            ModelState.ClearValidationState(nameof(EditEmployee));
+            var isValid = TryValidateModel(EditEmployee, nameof(EditEmployee));
+
+            if (!isValid)
             {
                 await LoadEmployeesAsync();
-                TempData["ShowEditModal"] = "true";
+                ShowEditEmployeeModal = true;
                 return Page();
             }
 
             try
             {
-                var existing = await _employeeRepository.GetEmployeeByIdAsync(EditEmployee.Id);
+                var existing = await _employeeManagementUseCase.GetForEditAsync(EditEmployee.Id);
                 if (existing == null)
                 {
                     ModelState.AddModelError(string.Empty, "Empleado no encontrado.");
@@ -102,21 +127,7 @@ namespace Mercadito.Pages.Employees
                     return Page();
                 }
 
-                var updated = new Employee
-                {
-                    Id = EditEmployee.Id,
-                    FirstName = EditEmployee.FirstName,
-                    LastName = EditEmployee.LastName,
-                    Position = EditEmployee.Position,
-                    HireDate = EditEmployee.HireDate,
-                    Salary = EditEmployee.Salary,
-                    Email = EditEmployee.Email,
-                    Phone = EditEmployee.Phone,
-                    Address = EditEmployee.Address ?? string.Empty,
-                    IsActive = EditEmployee.IsActive
-                };
-
-                await _updateEmployeeUseCase.ExecuteAsync(updated);
+                await _updateEmployeeUseCase.ExecuteAsync(EditEmployee);
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
                 return RedirectToPage();
             }
@@ -125,16 +136,19 @@ namespace Mercadito.Pages.Employees
                 _logger.LogError(ex, "Error al actualizar empleado");
                 ModelState.AddModelError(string.Empty, "Error al actualizar el empleado.");
                 await LoadEmployeesAsync();
+                ShowEditEmployeeModal = true;
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id)
         {
             try
             {
-                await _employeeRepository.DeleteEmployeeAsync(id);
-                TempData["SuccessMessage"] = "Empleado eliminado.";
+                var deleted = await _employeeManagementUseCase.DeleteAsync(id);
+                TempData[deleted ? "SuccessMessage" : "ErrorMessage"] = deleted
+                    ? "Empleado eliminado."
+                    : "Empleado no encontrado.";
             }
             catch (Exception ex)
             {

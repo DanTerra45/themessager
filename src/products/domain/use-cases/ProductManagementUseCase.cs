@@ -65,8 +65,7 @@ namespace Mercadito.src.products.domain.usecases
 
         public async Task<bool> DeleteAsync(long productId)
         {
-            var deletedRows = await _productRepository.DeleteProductAsync(productId);
-            return deletedRows > 0;
+            throw new NotImplementedException("Pending external upload.");
         }
     }
 }

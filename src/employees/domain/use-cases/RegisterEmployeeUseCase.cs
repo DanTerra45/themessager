@@ -1,11 +1,11 @@
-using System;
-using System.Threading.Tasks;
+using Mercadito.src.employees.data.dto;
+using Mercadito.src.employees.domain.repository;
 using Microsoft.Extensions.Logging;
 
-namespace Mercadito
+namespace Mercadito.src.employees.domain.usecases
 {
     #pragma warning disable S2139 // Permite loggear y relanzar excepciones
-    public class RegisterEmployeeUseCase
+    public class RegisterEmployeeUseCase : IRegisterEmployeeUseCase
     {
         private readonly IEmployeeRepository _employeeRepository;
         private readonly ILogger<RegisterEmployeeUseCase> _logger;
@@ -16,7 +16,7 @@ namespace Mercadito
             _logger = logger;
         }
 
-        public async Task<Guid> ExecuteAsync(CreateEmployeeDto employee)
+        public async Task<long> ExecuteAsync(CreateEmployeeDto employee)
         {
             try
             {

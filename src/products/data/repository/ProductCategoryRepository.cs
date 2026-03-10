@@ -48,19 +48,12 @@ namespace Mercadito.src.products.data.repository
 
         public async Task DeleteProductCategoryAsync(ProductCategory productCategory)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = @"DELETE FROM categoriaDeProducto
-                        WHERE productId = @ProductId
-                        AND categoriaId = @CategoryId";
-            await connection.ExecuteAsync(query, new { productCategory.ProductId, productCategory.CategoryId });
+            throw new NotImplementedException("Pending external upload.");
         }
 
         public async Task DeleteProductCategoriesByProductIdAsync(long productId)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = @"DELETE FROM categoriaDeProducto
-                        WHERE productId = @ProductId";
-            await connection.ExecuteAsync(query, new { productId });
+            throw new NotImplementedException("Pending external upload.");
         }
     }
 }

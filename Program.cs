@@ -3,6 +3,9 @@ using Mercadito.src.categories.domain.repository;
 using Mercadito.src.categories.domain.usecases;
 using Mercadito.database;
 using Mercadito.database.interfaces;
+using Mercadito.src.employees.data.repository;
+using Mercadito.src.employees.domain.repository;
+using Mercadito.src.employees.domain.usecases;
 using Mercadito.src.products.data.repository;
 using Mercadito.src.products.domain.repository;
 using Mercadito.src.products.domain.usecases;
@@ -23,12 +26,14 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
-// Use Cases
-builder.Services.AddScoped<AsignCategoryToProductUseCase>();
-builder.Services.AddScoped<RegisterNewProductUseCase>();
-builder.Services.AddScoped<RegisterNewProductWithCategoryUseCase>();
-builder.Services.AddScoped<RegisterEmployeeUseCase>();
-builder.Services.AddScoped<UpdateEmployeeUseCase>();
+builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
+builder.Services.AddScoped<IRegisterNewProductWithCategoryUseCase, RegisterNewProductWithCategoryUseCase>();
+builder.Services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
+builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();
+
+builder.Services.AddScoped<IEmployeeManagementUseCase, EmployeeManagementUseCase>();
+builder.Services.AddScoped<IRegisterEmployeeUseCase, RegisterEmployeeUseCase>();
+builder.Services.AddScoped<IUpdateEmployeeUseCase, UpdateEmployeeUseCase>();
 
 var app = builder.Build();
 

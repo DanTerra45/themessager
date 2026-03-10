@@ -1,16 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Mercadito.src.employees.data.dto;
+using Mercadito.src.employees.data.entity;
 
-namespace Mercadito
+namespace Mercadito.src.employees.domain.repository
 {
     public interface IEmployeeRepository
     {
         Task<IEnumerable<Employee>> GetAllEmployeesAsync();
         Task<IEnumerable<Employee>> GetEmployeesByPages(int page, int pageSize = 10);
-        Task<Employee?> GetEmployeeByIdAsync(Guid id);
-        Task<Guid> AddEmployeeAsync(CreateEmployeeDto employee);
+        Task<int> GetTotalEmployeesCountAsync();
+        Task<Employee?> GetEmployeeByIdAsync(long id);
+        Task<long> AddEmployeeAsync(CreateEmployeeDto employee);
         Task UpdateEmployeeAsync(Employee employee);
-        Task DeleteEmployeeAsync(Guid id);
+        Task DeleteEmployeeAsync(long id);
     }
 }

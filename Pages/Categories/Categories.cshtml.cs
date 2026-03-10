@@ -37,9 +37,9 @@ namespace Mercadito.Pages.Categories
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
 
-        public async Task OnGetAsync(int page = 1, long editId = 0)
+        public async Task OnGetAsync(int pageNumber = 1, long editId = 0)
         {
-            CurrentPage = page > 0 ? page : 1;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
             await LoadCategoriesAsync();
             if (editId > 0)
             {
@@ -92,6 +92,14 @@ namespace Mercadito.Pages.Categories
 
                 TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
                 return RedirectToPage();
+            }
+            catch (ValidationException validationException)
+            {
+                _logger.LogWarning(validationException, "Business validation while creating category");
+                ModelState.AddModelError(string.Empty, validationException.Message);
+                ShowCreateCategoryModal = true;
+                await LoadCategoriesAsync();
+                return Page();
             }
             catch (Exception exception)
             {

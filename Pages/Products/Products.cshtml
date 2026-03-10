@@ -106,8 +106,9 @@
 
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                                     <a href="/Products?editId=@product.Id"
-                                                         class="btn btn-outline-primary">
+                                        <a asp-page="./Products"
+                                           asp-route-editId="@product.Id"
+                                           class="btn btn-outline-primary">
                                             <i class="bi bi-pencil" aria-hidden="true"></i> Editar
                                         </a>
 
@@ -140,42 +141,52 @@
     <div class="d-flex justify-content-center mt-3">
         <nav>
             <ul class="pagination">
-                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                    @{
-                        var prevPage = Model.CurrentPage - 1;
-                        var prevUrl = Model.CategoryFilter != 0 
-                            ? $"/Products?page={prevPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                            : $"/Products?page={prevPage}&t={DateTime.Now.Ticks}";
-                    }
-                    <a class="page-link" href="@prevUrl">
-                        Anterior
-                    </a>
-                </li>
-                
-                @for (int i = 1; i <= Model.TotalPages; i++)
+                @if (Model.CategoryFilter != 0)
                 {
-                    var pageUrl = Model.CategoryFilter != 0 
-                        ? $"/Products?page={i}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                        : $"/Products?page={i}&t={DateTime.Now.Ticks}";
-                    
-                    <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                        <a class="page-link" href="@pageUrl">
-                            @i
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage - 1)" asp-route-categoryFilter="@Model.CategoryFilter">
+                            Anterior
+                        </a>
+                    </li>
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-page="./Products" asp-route-pageNumber="@i" asp-route-categoryFilter="@Model.CategoryFilter">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage + 1)" asp-route-categoryFilter="@Model.CategoryFilter">
+                            Siguiente
                         </a>
                     </li>
                 }
-                
-                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                    @{
-                        var nextPage = Model.CurrentPage + 1;
-                        var nextUrl = Model.CategoryFilter != 0 
-                            ? $"/Products?page={nextPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                            : $"/Products?page={nextPage}&t={DateTime.Now.Ticks}";
+                else
+                {
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage - 1)">
+                            Anterior
+                        </a>
+                    </li>
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-page="./Products" asp-route-pageNumber="@i">
+                                @i
+                            </a>
+                        </li>
                     }
-                    <a class="page-link" href="@nextUrl">
-                        Siguiente
-                    </a>
-                </li>
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage + 1)">
+                            Siguiente
+                        </a>
+                    </li>
+                }
             </ul>
         </nav>
     </div>
@@ -427,8 +438,7 @@
                 </div>
 
                 <div class="modal-footer border-0 pt-0">
-                          <a href="/Products"
-                              class="btn btn-outline-secondary">
+                    <a asp-page="./Products" class="btn btn-outline-secondary">
                         Cancelar
                     </a>
                     <button type="submit"
@@ -464,7 +474,7 @@
                 editModalElement.addEventListener('hidden.bs.modal', function () {
                     var url = new URL(window.location.href);
                     if (url.searchParams.has('editId')) {
-                        window.location.href = '/Products';
+                        window.location.href = '@Url.Page("./Products")';
                     }
                 }, { once: true });
                 editModal.show();

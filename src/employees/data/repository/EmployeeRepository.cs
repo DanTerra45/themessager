@@ -1,17 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Dapper;
+using Mercadito.database.interfaces;
+using Mercadito.src.employees.data.dto;
+using Mercadito.src.employees.data.entity;
+using Mercadito.src.employees.domain.repository;
 using Microsoft.Extensions.Logging;
 
-namespace Mercadito
+namespace Mercadito.src.employees.data.repository
 {
     #pragma warning disable S2139 // Permite loggear y relanzar excepciones
     public class EmployeeRepository : IEmployeeRepository
     {
         private readonly IDataBaseConnection _dbConnection;
         private readonly ILogger<EmployeeRepository> _logger;
-        private readonly string tableName = "employees";
+        private const string TableName = "empleados";
 
         public EmployeeRepository(IDataBaseConnection dbConnection, ILogger<EmployeeRepository> logger)
         {
@@ -25,7 +26,18 @@ namespace Mercadito
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT id AS Id, firstName AS FirstName, lastName AS LastName, position AS Position, hireDate AS HireDate, salary AS Salary, email AS Email, phone AS Phone, address AS Address, isActive AS IsActive FROM {tableName}";
+                var query = $@"SELECT
+                    id AS Id,
+                    ci AS Ci,
+                    COALESCE(complemento, '') AS Complemento,
+                    COALESCE(nombres, '') AS Nombres,
+                    COALESCE(primerApellido, '') AS PrimerApellido,
+                    COALESCE(segundoApellido, '') AS SegundoApellido,
+                    COALESCE(rol, '') AS Rol,
+                    COALESCE(numeroContacto, '') AS NumeroContacto,
+                    (estado = 'A') AS IsActive
+                    FROM {TableName}
+                    WHERE estado = 'A'";
                 return await connection.QueryAsync<Employee>(query);
             }
             catch (Exception ex)
@@ -41,7 +53,20 @@ namespace Mercadito
             {
                 int offset = (page - 1) * pageSize;
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT id AS Id, firstName AS FirstName, lastName AS LastName, position AS Position, hireDate AS HireDate, salary AS Salary, email AS Email, phone AS Phone, address AS Address, isActive AS IsActive FROM {tableName} ORDER BY lastName, firstName LIMIT @PageSize OFFSET @Offset";
+                var query = $@"SELECT
+                    id AS Id,
+                    ci AS Ci,
+                    COALESCE(complemento, '') AS Complemento,
+                    COALESCE(nombres, '') AS Nombres,
+                    COALESCE(primerApellido, '') AS PrimerApellido,
+                    COALESCE(segundoApellido, '') AS SegundoApellido,
+                    COALESCE(rol, '') AS Rol,
+                    COALESCE(numeroContacto, '') AS NumeroContacto,
+                    (estado = 'A') AS IsActive
+                    FROM {TableName}
+                    WHERE estado = 'A'
+                    ORDER BY primerApellido, segundoApellido, nombres
+                    LIMIT @PageSize OFFSET @Offset";
                 return await connection.QueryAsync<Employee>(query, new { Offset = offset, PageSize = pageSize });
             }
             catch (Exception ex)
@@ -51,12 +76,38 @@ namespace Mercadito
             }
         }
 
-        public async Task<Employee?> GetEmployeeByIdAsync(Guid id)
+        public async Task<int> GetTotalEmployeesCountAsync()
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"SELECT id AS Id, firstName AS FirstName, lastName AS LastName, position AS Position, hireDate AS HireDate, salary AS Salary, email AS Email, phone AS Phone, address AS Address, isActive AS IsActive FROM {tableName} WHERE id = @Id";
+                var query = $"SELECT COUNT(*) FROM {TableName} WHERE estado = 'A'";
+                return await connection.ExecuteScalarAsync<int>(query);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al contar empleados");
+                throw;
+            }
+        }
+
+        public async Task<Employee?> GetEmployeeByIdAsync(long id)
+        {
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $@"SELECT
+                    id AS Id,
+                    ci AS Ci,
+                    COALESCE(complemento, '') AS Complemento,
+                    COALESCE(nombres, '') AS Nombres,
+                    COALESCE(primerApellido, '') AS PrimerApellido,
+                    COALESCE(segundoApellido, '') AS SegundoApellido,
+                    COALESCE(rol, '') AS Rol,
+                    COALESCE(numeroContacto, '') AS NumeroContacto,
+                    (estado = 'A') AS IsActive
+                    FROM {TableName}
+                    WHERE id = @Id";
                 return await connection.QueryFirstOrDefaultAsync<Employee>(query, new { Id = id });
             }
             catch (Exception ex)
@@ -66,31 +117,28 @@ namespace Mercadito
             }
         }
 
-        public async Task<Guid> AddEmployeeAsync(CreateEmployeeDto employee)
+        public async Task<long> AddEmployeeAsync(CreateEmployeeDto employee)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
-                var employeeId = Guid.NewGuid();
-                var query = $@"INSERT INTO {tableName} 
-                    (id, firstName, lastName, position, hireDate, salary, email, phone, address, isActive) 
+                var query = $@"INSERT INTO {TableName} 
+                    (ci, complemento, nombres, primerApellido, segundoApellido, rol, numeroContacto, estado) 
                     VALUES 
-                    (@Id, @FirstName, @LastName, @Position, @HireDate, @Salary, @Email, @Phone, @Address, @IsActive)";
-                
-                var result = await connection.ExecuteAsync(query, new
+                    (@Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Rol, @NumeroContacto, 'A')";
+
+                await connection.ExecuteAsync(query, new
                 {
-                    Id = employeeId,
-                    employee.FirstName,
-                    employee.LastName,
-                    employee.Position,
-                    employee.HireDate,
-                    employee.Salary,
-                    employee.Email,
-                    employee.Phone,
-                    employee.Address,
-                    IsActive = true
+                    employee.Ci,
+                    employee.Complemento,
+                    employee.Nombres,
+                    employee.PrimerApellido,
+                    employee.SegundoApellido,
+                    employee.Rol,
+                    employee.NumeroContacto
                 });
-                return result > 0 ? employeeId : Guid.Empty;
+
+                return await connection.ExecuteScalarAsync<long>("SELECT LAST_INSERT_ID();");
             }
             catch (Exception ex)
             {
@@ -101,43 +149,12 @@ namespace Mercadito
 
         public async Task UpdateEmployeeAsync(Employee employee)
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $@"UPDATE {tableName} SET 
-                    firstName = @FirstName,
-                    lastName = @LastName,
-                    position = @Position,
-                    hireDate = @HireDate,
-                    salary = @Salary,
-                    email = @Email,
-                    phone = @Phone,
-                    address = @Address,
-                    isActive = @IsActive
-                    WHERE id = @Id";
-                
-                await connection.ExecuteAsync(query, employee);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al actualizar empleado");
-                throw;
-            }
+            throw new NotImplementedException("Pending external upload.");
         }
 
-        public async Task DeleteEmployeeAsync(Guid id)
+        public async Task DeleteEmployeeAsync(long id)
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var query = $"DELETE FROM {tableName} WHERE id = @Id";
-                await connection.ExecuteAsync(query, new { Id = id });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al eliminar empleado");
-                throw;
-            }
+            throw new NotImplementedException("Pending external upload.");
         }
         #pragma warning restore S2325
     }

@@ -163,63 +163,12 @@ namespace Mercadito.src.products.data.repository
 
         public async Task UpdateProductWithCategoryAsync(Product product, long categoryId)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            using var transaction = connection.BeginTransaction();
-
-            try
-            {
-                const string updateProductQuery = @"UPDATE products
-                                            SET nombre = @Name,
-                                                descripcion = @Description,
-                                                stock = @Stock,
-                                                lote = @Batch,
-                                                fechaCaducidad = @ExpirationDate,
-                                                precio = @Price
-                                            WHERE id = @Id
-                                            AND estado = 'A'";
-
-                var affectedRows = await connection.ExecuteAsync(updateProductQuery, new
-                {
-                    product.Id,
-                    product.Name,
-                    product.Description,
-                    product.Stock,
-                    product.Batch,
-                    product.ExpirationDate,
-                    product.Price
-                }, transaction);
-
-                if (affectedRows == 0)
-                {
-                    throw new InvalidOperationException("No se pudo actualizar el producto solicitado.");
-                }
-
-                const string deleteRelationQuery = @"DELETE FROM categoriaDeProducto
-                                             WHERE productId = @ProductId";
-                await connection.ExecuteAsync(deleteRelationQuery, new { ProductId = product.Id }, transaction);
-
-                if (categoryId > 0)
-                {
-                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto
-                                                 (productId, categoriaId)
-                                                 VALUES (@ProductId, @CategoryId)";
-                    await connection.ExecuteAsync(insertRelationQuery, new { ProductId = product.Id, CategoryId = categoryId }, transaction);
-                }
-
-                transaction.Commit();
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
+            throw new NotImplementedException("Pending external upload.");
         }
 
         public async Task<int> DeleteProductAsync(long id)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = "UPDATE products SET estado = 'I' WHERE id = @Id AND estado = 'A'";
-            return await connection.ExecuteAsync(query, new { Id = id });
+            throw new NotImplementedException("Pending external upload.");
         }
 
         public async Task<int> GetTotalProductsCountAsync()

@@ -1,44 +1,38 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Mercadito
+namespace Mercadito.src.employees.data.dto
 {
     public class UpdateEmployeeDto
     {
         [Required]
-        public Guid Id { get; set; }
+        public long Id { get; set; }
 
-        [Required(ErrorMessage = "El nombre es requerido")]
-        [StringLength(50, ErrorMessage = "Máximo 50 caracteres")]
-        public string FirstName { get; set; } = string.Empty;
+        [Required(ErrorMessage = "El CI es requerido")]
+        [Range(1, long.MaxValue, ErrorMessage = "El CI debe ser mayor a cero")]
+        public long Ci { get; set; }
 
-        [Required(ErrorMessage = "El apellido es requerido")]
-        [StringLength(50, ErrorMessage = "Máximo 50 caracteres")]
-        public string LastName { get; set; } = string.Empty;
+        [StringLength(20, ErrorMessage = "Máximo 20 caracteres")]
+        public string? Complemento { get; set; }
 
-        [Required(ErrorMessage = "El cargo es requerido")]
-        [StringLength(100, ErrorMessage = "Máximo 100 caracteres")]
-        public string Position { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Los nombres son requeridos")]
+        [StringLength(40, MinimumLength = 2, ErrorMessage = "Los nombres deben tener entre 2 y 40 caracteres")]
+        public string Nombres { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "La fecha de ingreso es requerida")]
-        [DataType(DataType.Date)]
-        public DateTime HireDate { get; set; }
+        [Required(ErrorMessage = "El primer apellido es requerido")]
+        [StringLength(40, MinimumLength = 2, ErrorMessage = "El primer apellido debe tener entre 2 y 40 caracteres")]
+        public string PrimerApellido { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El salario es requerido")]
-        [Range(0, double.MaxValue, ErrorMessage = "El salario debe ser mayor o igual a cero")]
-        public decimal Salary { get; set; }
+        [StringLength(40, ErrorMessage = "Máximo 40 caracteres")]
+        public string? SegundoApellido { get; set; }
 
-        [Required(ErrorMessage = "El email es requerido")]
-        [EmailAddress(ErrorMessage = "Formato de email inválido")]
-        public string Email { get; set; } = string.Empty;
+        [Required(ErrorMessage = "El rol es requerido")]
+        [RegularExpression("^(Cajero|Inventario)$", ErrorMessage = "El rol debe ser Cajero o Inventario")]
+        public string Rol { get; set; } = "Cajero";
 
-        [Required(ErrorMessage = "El teléfono es requerido")]
-        [Phone(ErrorMessage = "Formato de teléfono inválido")]
-        public string Phone { get; set; } = string.Empty;
+        [Required(ErrorMessage = "El número de contacto es requerido")]
+        [StringLength(40, MinimumLength = 7, ErrorMessage = "El número de contacto debe tener entre 7 y 40 caracteres")]
+        public string NumeroContacto { get; set; } = string.Empty;
 
-        [StringLength(200, ErrorMessage = "Máximo 200 caracteres")]
-        public string Address { get; set; } = string.Empty;
-
-        public bool IsActive { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }

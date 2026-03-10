@@ -48,7 +48,11 @@ namespace Mercadito.Pages.Products
 
         public async Task OnGetAsync(long editId = 0)
         {
-            var pageParam = Request.Query["page"].ToString();
+            var pageParam = Request.Query["pageNumber"].ToString();
+            if (string.IsNullOrWhiteSpace(pageParam))
+            {
+                pageParam = Request.Query["page"].ToString();
+            }
             var categoryFilterParam = Request.Query["categoryFilter"].ToString();
             await LoadCategoriesAsync();
             await HandleGetRequest(pageParam, categoryFilterParam);

@@ -3,6 +3,8 @@ using Mercadito.src.categories.domain.model;
 using Mercadito.src.categories.domain.repository;
 using Mercadito.database.interfaces;
 using Dapper;
+using MySql.Data.MySqlClient;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.categories.data.repository
 {
@@ -67,28 +69,27 @@ namespace Mercadito.src.categories.data.repository
 
         public async Task AddCategoryAsync(Category category)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = @"INSERT INTO categorias 
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                const string query = @"INSERT INTO categorias 
                         (codigo, nombre, descripcion, estado) VALUES (@Code, @Name, @Description, 'A')";
-            await connection.ExecuteAsync(query, new { category.Code, category.Name, category.Description });
+                await connection.ExecuteAsync(query, new { category.Code, category.Name, category.Description });
+            }
+            catch (MySqlException exception) when (exception.Number == 1062)
+            {
+                throw new ValidationException("Ya existe una categoría con ese código.");
+            }
         }
 
         public async Task UpdateCategoryAsync(Category category)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = @"UPDATE categorias 
-                        SET codigo = @Code, nombre = @Name, descripcion = @Description 
-                        WHERE id = @Id";
-            await connection.ExecuteAsync(query, new { category.Id, category.Code, category.Name, category.Description });
+            throw new NotImplementedException("Pending external upload.");
         }
 
         public async Task<int> DeleteCategoryAsync(long id)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = @"UPDATE categorias 
-                        SET estado = 'I' 
-                        WHERE id = @Id AND estado = 'A'";
-            return await connection.ExecuteAsync(query, new { id });
+            throw new NotImplementedException("Pending external upload.");
         }
     }
 }

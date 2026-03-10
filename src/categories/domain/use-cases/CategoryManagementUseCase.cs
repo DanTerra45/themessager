@@ -57,27 +57,12 @@ namespace Mercadito.src.categories.domain.usecases
 
         public async Task UpdateAsync(UpdateCategoryDto editCategory)
         {
-            var categoryExists = await _categoryRepository.GetCategoryByIdAsync(editCategory.Id);
-            if (categoryExists == null)
-            {
-                throw new ValidationException("Categoría no encontrada.");
-            }
-
-            var category = new Category
-            {
-                Id = editCategory.Id,
-                Code = editCategory.Code,
-                Name = editCategory.Name,
-                Description = editCategory.Description
-            };
-
-            await _categoryRepository.UpdateCategoryAsync(category);
+            throw new NotImplementedException("Pending external upload.");
         }
 
         public async Task<bool> DeleteAsync(long categoryId)
         {
-            var deletedRows = await _categoryRepository.DeleteCategoryAsync(categoryId);
-            return deletedRows > 0;
+            throw new NotImplementedException("Pending external upload.");
         }
     }
 }
