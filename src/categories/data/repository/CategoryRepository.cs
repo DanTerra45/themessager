@@ -84,12 +84,21 @@ namespace Mercadito.src.categories.data.repository
 
         public async Task UpdateCategoryAsync(Category category)
         {
-            throw new NotImplementedException("Pending external upload.");
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"UPDATE categorias
+         SET codigo = @Code, nombre = @Name, descripcion = @Description
+         WHERE id = @Id";
+            await connection.ExecuteAsync(query, new { category.Id, category.Code, category.Name, category.Description });
         }
 
         public async Task<int> DeleteCategoryAsync(long id)
         {
-            throw new NotImplementedException("Pending external upload.");
+            using var connection = await _dbConnection.CreateConnectionAsync();
+            const string query = @"UPDATE categorias
+         SET estado = 'I'
+         WHERE id = @Id AND estado = 'A'";
+            return await connection.ExecuteAsync(query, new { id });
+
         }
     }
 }
