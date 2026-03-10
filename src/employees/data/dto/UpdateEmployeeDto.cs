@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito
@@ -6,7 +5,7 @@ namespace Mercadito
     public class UpdateEmployeeDto
     {
         [Required]
-        public Guid Id { get; set; }
+        public long Id { get; set; }            
 
         [Required(ErrorMessage = "El CI es requerido")]
         public long Ci { get; set; }
@@ -26,5 +25,7 @@ namespace Mercadito
 
         [Required(ErrorMessage = "El número de contacto es requerido")]
         public string NumeroContacto { get; set; } = string.Empty;
+
+        public string? Estado { get; set; }          
     }
 }

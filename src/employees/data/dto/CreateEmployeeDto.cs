@@ -22,5 +22,6 @@ namespace Mercadito
 
         [Required(ErrorMessage = "El número de contacto es requerido")]
         public string NumeroContacto { get; set; } = string.Empty;
+
     }
 }

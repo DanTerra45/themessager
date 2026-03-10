@@ -33,7 +33,8 @@ namespace Mercadito
                     primerApellido AS PrimerApellido, 
                     segundoApellido AS SegundoApellido, 
                     rol AS Rol, 
-                    numeroContacto AS NumeroContacto 
+                    numeroContacto AS NumeroContacto,
+                    estado AS Estado
                 FROM {tableName}";
                 return await connection.QueryAsync<Employee>(query);
             }
@@ -58,7 +59,8 @@ namespace Mercadito
                     primerApellido AS PrimerApellido, 
                     segundoApellido AS SegundoApellido, 
                     rol AS Rol, 
-                    numeroContacto AS NumeroContacto 
+                    numeroContacto AS NumeroContacto,
+                    estado AS Estado
                 FROM {tableName} 
                 ORDER BY primerApellido, nombres 
                 LIMIT @PageSize OFFSET @Offset";
@@ -71,7 +73,7 @@ namespace Mercadito
             }
         }
 
-        public async Task<Employee?> GetEmployeeByIdAsync(Guid id)
+        public async Task<Employee?> GetEmployeeByIdAsync(long id)
         {
             try
             {
@@ -84,7 +86,8 @@ namespace Mercadito
                     primerApellido AS PrimerApellido, 
                     segundoApellido AS SegundoApellido, 
                     rol AS Rol, 
-                    numeroContacto AS NumeroContacto 
+                    numeroContacto AS NumeroContacto,
+                    estado AS Estado
                 FROM {tableName} 
                 WHERE id = @Id";
                 return await connection.QueryFirstOrDefaultAsync<Employee>(query, new { Id = id });
@@ -96,36 +99,42 @@ namespace Mercadito
             }
         }
 
-        public async Task<Guid> AddEmployeeAsync(CreateEmployeeDto employee)
+       public async Task<long> AddEmployeeAsync(CreateEmployeeDto employee)
+{
+    try
+    {
+        using var connection = await _dbConnection.CreateConnectionAsync();
+        _logger.LogWarning("Insertando empleado en BD...");
+
+        var insertQuery = $@"INSERT INTO {tableName} 
+            (ci, complemento, nombres, primerApellido, segundoApellido, rol, numeroContacto, estado) 
+            VALUES 
+            (@Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Rol, @NumeroContacto, 'A')";
+
+        var parameters = new
         {
-            try
-            {
-                using var connection = await _dbConnection.CreateConnectionAsync();
-                var employeeId = Guid.NewGuid();
-                var query = $@"INSERT INTO {tableName} 
-                    (id, ci, complemento, nombres, primerApellido, segundoApellido, rol, numeroContacto) 
-                    VALUES 
-                    (@Id, @Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Rol, @NumeroContacto)";
-                
-                var result = await connection.ExecuteAsync(query, new
-                {
-                    Id = employeeId,
-                    employee.Ci,
-                    Complemento = employee.Complemento ?? "",
-                    employee.Nombres,
-                    employee.PrimerApellido,
-                    SegundoApellido = employee.SegundoApellido ?? "",
-                    employee.Rol,
-                    employee.NumeroContacto
-                });
-                return result > 0 ? employeeId : Guid.Empty;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al agregar empleado");
-                throw;
-            }
-        }
+            employee.Ci,
+            Complemento = string.IsNullOrEmpty(employee.Complemento) ? null : employee.Complemento,
+            employee.Nombres,
+            employee.PrimerApellido,
+            SegundoApellido = string.IsNullOrEmpty(employee.SegundoApellido) ? null : employee.SegundoApellido,
+            employee.Rol,
+            employee.NumeroContacto
+        };
+
+        var affected = await connection.ExecuteAsync(insertQuery, parameters);
+        _logger.LogWarning("Filas insertadas: {Affected}", affected);
+
+        var id = await connection.QuerySingleAsync<long>("SELECT LAST_INSERT_ID();");
+        _logger.LogWarning("ID generado: {Id}", id);
+        return id;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error en repositorio al agregar empleado. Datos: {@Employee}", employee);
+        throw;
+    }
+}
 
         public async Task UpdateEmployeeAsync(Employee employee)
         {
@@ -139,29 +148,32 @@ namespace Mercadito
                     primerApellido = @PrimerApellido,
                     segundoApellido = @SegundoApellido,
                     rol = @Rol,
-                    numeroContacto = @NumeroContacto
+                    numeroContacto = @NumeroContacto,
+                    estado = @Estado
                     WHERE id = @Id";
-                
+
                 await connection.ExecuteAsync(query, employee);
+                _logger.LogInformation("Empleado actualizado con ID: {Id}", employee.Id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al actualizar empleado");
+                _logger.LogError(ex, "Error al actualizar empleado. Datos: {@Employee}", employee);
                 throw;
             }
         }
 
-        public async Task DeleteEmployeeAsync(Guid id)
+        public async Task DeleteEmployeeAsync(long id)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync();
                 var query = $"DELETE FROM {tableName} WHERE id = @Id";
                 await connection.ExecuteAsync(query, new { Id = id });
+                _logger.LogInformation("Empleado eliminado con ID: {Id}", id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al eliminar empleado");
+                _logger.LogError(ex, "Error al eliminar empleado con ID: {Id}", id);
                 throw;
             }
         }

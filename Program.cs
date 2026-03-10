@@ -6,6 +6,7 @@ using Mercadito.database.interfaces;
 using Mercadito.src.products.data.repository;
 using Mercadito.src.products.domain.repository;
 using Mercadito.src.products.domain.usecases;
+using Mercadito;
 
 using System.Globalization;
 
@@ -25,6 +26,10 @@ builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>(
 builder.Services.AddScoped<IRegisterNewProductWithCategoryUseCase, RegisterNewProductWithCategoryUseCase>();
 builder.Services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
 builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();
+
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<RegisterEmployeeUseCase>();
+builder.Services.AddScoped<UpdateEmployeeUseCase>();
 
 var app = builder.Build();
 

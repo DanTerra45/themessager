@@ -16,7 +16,7 @@ namespace Mercadito
             _logger = logger;
         }
 
-        public async Task<Guid> ExecuteAsync(CreateEmployeeDto employee)
+        public async Task<long> ExecuteAsync(CreateEmployeeDto employee) 
         {
             try
             {

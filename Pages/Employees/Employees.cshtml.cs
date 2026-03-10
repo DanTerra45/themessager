@@ -49,13 +49,12 @@ namespace Mercadito.Pages.Employees
             try
             {
                 var allEmployees = (await _employeeRepository.GetAllEmployeesAsync()).ToList();
-
                 TotalPages = (int)Math.Ceiling(allEmployees.Count / (double)PageSize);
-                if (TotalPages == 0)
-                    TotalPages = 1;
+                if (TotalPages == 0) TotalPages = 1;
 
                 var paged = await _employeeRepository.GetEmployeesByPages(CurrentPage, PageSize);
                 Employees = paged?.ToList() ?? new List<Employee>();
+                _logger.LogInformation("Empleados cargados: {Count} en página {Page}", Employees.Count, CurrentPage);
             }
             catch (Exception ex)
             {
@@ -66,42 +65,25 @@ namespace Mercadito.Pages.Employees
 
         public async Task<IActionResult> OnPostCreateAsync()
         {
-            _logger.LogWarning("=== ONSOLICITUD POST CREATE RECIBIDA ===");
+            _logger.LogWarning("=== INICIO CREAR EMPLEADO ===");
+    _logger.LogWarning("Datos recibidos: Ci={Ci}, Nombres={Nombres}, PrimerApellido={PrimerApellido}, Rol={Rol}, Contacto={NumeroContacto}, Complemento={Complemento}, SegundoApellido={SegundoApellido}", 
+        NewEmployee.Ci, NewEmployee.Nombres, NewEmployee.PrimerApellido, NewEmployee.Rol, NewEmployee.NumeroContacto, NewEmployee.Complemento, NewEmployee.SegundoApellido);
+            foreach (var key in ModelState.Keys.Where(k => k.StartsWith("EditEmployee.")).ToList())
+                ModelState.Remove(key);
 
-            // Limpiar ModelState para evitar conflictos con EditEmployee
-            ModelState.Clear();
-
-            // Validar SOLO el modelo de creación
-            TryValidateModel(NewEmployee, nameof(NewEmployee));
-
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage);
-
-                _logger.LogWarning("Errores de validación CREATE: {Errors}", string.Join(", ", errors));
-
-                await LoadEmployeesAsync();
-                return Page();
-            }
+            
 
             try
             {
                 var id = await _registerEmployeeUseCase.ExecuteAsync(NewEmployee);
-
-                _logger.LogWarning("Empleado creado con ID: {Id}", id);
-
+                _logger.LogInformation("Empleado creado con ID: {Id}", id);
                 TempData["SuccessMessage"] = "Empleado agregado exitosamente.";
-
                 return RedirectToPage();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al crear empleado");
-
-                ModelState.AddModelError(string.Empty, "Error al guardar el empleado.");
-
+                _logger.LogError(ex, "Error al crear empleado. Datos: {@NewEmployee}", NewEmployee);
+                ModelState.AddModelError(string.Empty, "Error al guardar el empleado: " + ex.Message);
                 await LoadEmployeesAsync();
                 return Page();
             }
@@ -109,45 +91,21 @@ namespace Mercadito.Pages.Employees
 
         public async Task<IActionResult> OnPostEditAsync()
         {
-            // Eliminar validaciones de Create
-            ModelState.Remove("NewEmployee");
-            ModelState.Remove("NewEmployee.Ci");
-            ModelState.Remove("NewEmployee.Nombres");
-            ModelState.Remove("NewEmployee.PrimerApellido");
-            ModelState.Remove("NewEmployee.SegundoApellido");
-            ModelState.Remove("NewEmployee.Rol");
-            ModelState.Remove("NewEmployee.NumeroContacto");
+            foreach (var key in ModelState.Keys.Where(k => k.StartsWith("NewEmployee.")).ToList())
+                ModelState.Remove(key);
 
-            ModelState.Clear();
-
-            // Validar SOLO EditEmployee
-            TryValidateModel(EditEmployee, nameof(EditEmployee));
-
-            _logger.LogWarning("=== ONSOLICITUD POST EDIT RECIBIDA ===");
-            _logger.LogWarning("Id: {Id}", EditEmployee.Id);
-            _logger.LogWarning("Nombres: {Nombres}", EditEmployee.Nombres);
-            _logger.LogWarning("Rol: {Rol}", EditEmployee.Rol);
-            _logger.LogWarning("NumeroContacto: {NumeroContacto}", EditEmployee.NumeroContacto);
-            _logger.LogWarning("ModelState.IsValid: {IsValid}", ModelState.IsValid);
-
-            if (!ModelState.IsValid)
+            if (!TryValidateModel(EditEmployee, nameof(EditEmployee)))
             {
-                var errors = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage);
-
-                _logger.LogWarning("Errores de validación EDIT: {Errors}", string.Join(", ", errors));
-
+                _logger.LogWarning("Validación fallida al editar empleado. Errores: {Errors}",
+                    string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
                 await LoadEmployeesAsync();
                 TempData["ShowEditModal"] = "true";
-
                 return Page();
             }
 
             try
             {
                 var existing = await _employeeRepository.GetEmployeeByIdAsync(EditEmployee.Id);
-
                 if (existing == null)
                 {
                     ModelState.AddModelError(string.Empty, "Empleado no encontrado.");
@@ -164,43 +122,35 @@ namespace Mercadito.Pages.Employees
                     PrimerApellido = EditEmployee.PrimerApellido,
                     SegundoApellido = EditEmployee.SegundoApellido,
                     Rol = EditEmployee.Rol,
-                    NumeroContacto = EditEmployee.NumeroContacto
+                    NumeroContacto = EditEmployee.NumeroContacto,
+                    Estado = EditEmployee.Estado ?? existing.Estado
                 };
 
                 await _updateEmployeeUseCase.ExecuteAsync(updated);
-
-                _logger.LogWarning("Empleado actualizado con ID: {Id}", EditEmployee.Id);
-
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
-
                 return RedirectToPage();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al actualizar empleado");
-
-                ModelState.AddModelError(string.Empty, "Error al actualizar el empleado.");
-
+                _logger.LogError(ex, "Error al actualizar empleado. Datos: {@EditEmployee}", EditEmployee);
+                ModelState.AddModelError(string.Empty, "Error al actualizar el empleado: " + ex.Message);
                 await LoadEmployeesAsync();
                 return Page();
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(Guid id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id)
         {
             try
             {
                 await _employeeRepository.DeleteEmployeeAsync(id);
-
                 TempData["SuccessMessage"] = "Empleado eliminado.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al eliminar empleado");
-
+                _logger.LogError(ex, "Error al eliminar empleado con ID: {Id}", id);
                 TempData["ErrorMessage"] = "No se pudo eliminar el empleado.";
             }
-
             return RedirectToPage();
         }
     }
