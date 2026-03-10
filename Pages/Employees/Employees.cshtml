@@ -59,8 +59,8 @@
                                 }
                             </td>
                             <td>
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary edit-employee-btn"
+                                <div class="d-inline-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-outline-primary edit-employee-btn"
                                             data-id="@emp.Id"
                                             data-ci="@emp.Ci"
                                             data-complemento="@emp.Complemento"
@@ -77,9 +77,8 @@
                                     <form method="post" asp-page-handler="Delete" class="d-inline">
                                         <input type="hidden" name="id" value="@emp.Id" />
                                         <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Eliminar empleado?')">
-                                            <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
-                                        </button>
+                                        <button type="submit" class="btn btn-outline-primary btn-outline-danger" onclick="return confirm('¿Eliminar empleado?')">
+                                            <i class="bi bi-trash" aria-hidden="true"></i> Eliminar</button>
                                     </form>
                                 </div>
                             </td>

@@ -112,7 +112,7 @@
                                 </td>
 
                                 <td class="text-center">
-                                    <div class="btn-group btn-group-sm">
+                                    <div class="d-inline-flex align-items-center gap-2">
                                         <a asp-page="./Products"
                                            asp-route-pageNumber="@Model.CurrentPage"
                                            asp-route-categoryFilter="@Model.CategoryFilter"
@@ -121,7 +121,7 @@
                                             <i class="bi bi-pencil" aria-hidden="true"></i> Editar
                                         </a>
 
-                                        <form method="post" asp-page-handler="Delete" class="d-inline">
+                                        <form method="post" asp-page-handler="Delete" class="d-inline m-0">
                                             <input type="hidden" name="id" value="@product.Id" />
                                             <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                                             <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />

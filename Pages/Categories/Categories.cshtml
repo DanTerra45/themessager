@@ -94,22 +94,25 @@
                             </td>
 
                             <td class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    <a asp-page="./Categories"
-                                       asp-route-pageNumber="@Model.CurrentPage"
-                                       asp-route-editId="@category.Id"
-                                       class="btn btn-outline-primary">
-                                        <i class="bi bi-pencil" aria-hidden="true"></i> Editar
-                                    </a>
-
-                                    <form method="post" asp-page-handler="Delete" class="d-inline">
-                                        <input type="hidden" name="id" value="@category.Id" />
-                                        <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                                        <button type="submit" class="btn btn-outline-danger" 
+                                <div class="btn-toolbar justify-content-center" role="toolbar">
+                                    <div class="btn-group me-2" role="group">
+                                        <a asp-page="./Categories"
+                                        asp-route-pageNumber="@Model.CurrentPage"
+                                        asp-route-editId="@category.Id"
+                                        class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i> Editar
+                                        </a>
+                                    </div>
+                                    <div class="btn-group" role="group">
+                                        <form method="post" asp-page-handler="Delete" class="d-inline m-0">
+                                            <input type="hidden" name="id" value="@category.Id" />
+                                            <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                                            <button type="submit" class="btn btn-outline-primary btn-outline-danger" 
                                                     onclick="return confirm('Eliminar categoría?')">
-                                            <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
-                                        </button>
-                                    </form>
+                                                <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
