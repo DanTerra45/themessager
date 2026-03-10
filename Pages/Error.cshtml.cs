@@ -5,11 +5,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Mercadito.Pages;
 
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-[IgnoreAntiforgeryToken]
 public class ErrorModel : PageModel
 {
-    public string? RequestId { get; set; }
-    public string Message { get; set; } = "Ocurrio un error al procesar tu solicitud.";
+    public string RequestId { get; set; } = string.Empty;
 
     public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
@@ -22,10 +20,10 @@ public class ErrorModel : PageModel
 
     public void OnGet()
     {
-
-        if (Activity.Current is not null && !string.IsNullOrWhiteSpace(Activity.Current.Id))
+        var currentActivity = Activity.Current;
+        if (currentActivity != null && !string.IsNullOrEmpty(currentActivity.Id))
         {
-            RequestId = Activity.Current.Id;
+            RequestId = currentActivity.Id;
         }
         else
         {

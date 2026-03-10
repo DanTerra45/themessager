@@ -1,4 +1,4 @@
-﻿@page "/Categories"
+@page "/Categories"
 @model Mercadito.Pages.Categories.CategoriesModel
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
 @{
@@ -6,20 +6,22 @@
     var showIdColumn = HostEnvironment.IsDevelopment();
 }
 
-<h1>@ViewData["Title"]</h1>
-
-<div class="mb-3">
-    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-        <i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar Nueva Categoría
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Organización del catálogo</p>
+    </section>
+    <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="bi bi-plus-circle"></i> Nueva Categoría
     </button>
-</div>
+</header>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-
-        <div class="table-responsive">
+<section>
+    @if (Model.Categories != null && Model.Categories.Count > 0)
+    {
+        <section class="table-responsive">
             <table class="table table-hover align-middle">
-                <thead class="table-light text-center">
+                <thead class="text-center">
                     <tr>
                         @if (showIdColumn)
                         {
@@ -29,121 +31,92 @@
                         <th>Nombre</th>
                         <th>Descripción</th>
                         <th>Productos Asociados</th>
-                        <th>Acciones</th>
+                        <th class="text-center" style="width: 170px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-
-                @if (Model.Categories != null && Model.Categories.Count > 0)
-                {
                     @foreach (var category in Model.Categories)
                     {
                         <tr>
                             @if (showIdColumn)
                             {
-                                <td class="small text-muted">
+                                <td class="small text-muted" style="font-family: var(--font-mono);">
                                     @category.Id
                                 </td>
                             }
-
-                            <td>
-                                <span class="badge bg-secondary">
-                                    @category.Code
-                                </span>
-                            </td>
-
-                            <td class="fw-semibold">
-                                @category.Name
-                            </td>
-
-                            <td class="text-truncate" style="max-width: 250px;">
-                                @category.Description
-                            </td>
-
                             <td class="text-center">
-                                @if(category.ProductCount == 0)
+                                <mark class="badge bg-secondary" style="font-family: var(--font-mono); font-size: 0.9rem;">@category.Code</mark>
+                            </td>
+                            <td class="fw-bold" style="font-family: var(--font-display); font-size: 1.1rem;">@category.Name</td>
+                            <td class="text-truncate truncate-description-category" style="max-width: 250px;">@category.Description</td>
+                            <td class="text-center">
+                                @if (category.ProductCount == 0)
                                 {
-                                    <span class="badge bg-danger">0</span>
+                                    <mark class="status-badge" data-status="danger">0</mark>
                                 }
-                                else if(category.ProductCount <= 5)
+                                else if (category.ProductCount <= 5)
                                 {
-                                    <span class="badge bg-warning text-dark">
-                                        @category.ProductCount
-                                    </span>
+                                    <mark class="status-badge" data-status="warning">@category.ProductCount</mark>
                                     <a asp-page="/Products/Products"
                                        asp-route-categoryFilter="@category.Id"
-                                       class="btn btn-sm btn-link p-0 ms-1"
+                                       class="b-btn ms-2" style="background-color: white; color: #0d6efd; border-color: #0d6efd; box-shadow: 2px 2px 0 #0d6efd; padding: 0.1rem 0.4rem; font-size: 0.85rem; vertical-align: middle;"
                                        title="Ver productos de esta categoría">
                                         <i class="bi bi-eye-fill" aria-hidden="true"></i>
-                                        ver productos
                                     </a>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-success">
-                                        @category.ProductCount
-                                    </span>
+                                    <mark class="status-badge" data-status="good">@category.ProductCount</mark>
                                     <a asp-page="/Products/Products"
                                        asp-route-categoryFilter="@category.Id"
-                                       class="btn btn-sm btn-link p-0 ms-1"
+                                       class="b-btn ms-2" style="background-color: white; color: #0d6efd; border-color: #0d6efd; box-shadow: 2px 2px 0 #0d6efd; padding: 0.1rem 0.4rem; font-size: 0.85rem; vertical-align: middle;"
                                        title="Ver productos de esta categoría">
                                         <i class="bi bi-eye-fill" aria-hidden="true"></i>
-                                        ver productos
                                     </a>
                                 }
                             </td>
-
                             <td class="text-center">
-                                <div class="btn-toolbar justify-content-center" role="toolbar">
-                                    <div class="btn-group me-2" role="group">
-                                        <a asp-page="./Categories"
-                                        asp-route-pageNumber="@Model.CurrentPage"
-                                        asp-route-editId="@category.Id"
-                                        class="btn btn-outline-primary">
-                                            <i class="bi bi-pencil" aria-hidden="true"></i> Editar
-                                        </a>
-                                    </div>
-                                    <div class="btn-group" role="group">
-                                        <form method="post" asp-page-handler="Delete" class="d-inline m-0">
-                                            <input type="hidden" name="id" value="@category.Id" />
-                                            <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                                            <button type="submit" class="btn btn-outline-primary btn-outline-danger" 
-                                                    onclick="return confirm('Eliminar categoría?')">
-                                                <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
+                                    <button class="b-btn b-btn-secondary edit-category-btn" style="padding: 0.25rem 0.5rem;"
+                                            title="Editar"
+                                            aria-label="Editar"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editCategoryModal"
+                                            data-id="@category.Id"
+                                            data-code="@category.Code"
+                                            data-name="@category.Name"
+                                            data-description="@category.Description">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    
+                                    <form method="post" asp-page-handler="Delete" class="d-inline">
+                                        <input type="hidden" name="id" value="@category.Id" />
+                                        <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                                        <button type="submit" class="b-btn b-btn-danger" style="padding: 0.25rem 0.5rem;"
+                                                title="Eliminar"
+                                                onclick="return confirm('¿Eliminar categoría?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </menu>
                             </td>
                         </tr>
                     }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="@(showIdColumn ? 6 : 5)" class="text-center text-muted py-4">
-                            No se encontraron categorías.
-                        </td>
-                    </tr>
-                }
-
                 </tbody>
             </table>
-        </div>
+        </section>
 
-        <div class="d-flex justify-content-center mt-3">
-            <nav>
-                <ul class="pagination pagination-sm">
-
+        <!-- Paginación -->
+        <section class="d-flex justify-content-center mt-4">
+            <nav aria-label="Paginación de categorías">
+                <ul class="pagination">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                         <a class="page-link"
                            asp-page="./Categories"
                            asp-route-pageNumber="@(Model.CurrentPage - 1)">
-                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
-                            <span class="visually-hidden">Anterior</span>
+                            <i class="bi bi-chevron-left me-1"></i>Anterior
                         </a>
                     </li>
-
                     @for (int i = 1; i <= Model.TotalPages; i++)
                     {
                         <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
@@ -154,212 +127,155 @@
                             </a>
                         </li>
                     }
-
                     <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                         <a class="page-link"
                            asp-page="./Categories"
                            asp-route-pageNumber="@(Model.CurrentPage + 1)">
-                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                            <span class="visually-hidden">Siguiente</span>
+                            Siguiente<i class="bi bi-chevron-right ms-1"></i>
                         </a>
                     </li>
-
                 </ul>
             </nav>
-        </div>
+        </section>
+    }
+    else
+    {
+        <aside class="text-center text-muted py-5" style="font-family: var(--font-mono); border: 2px dashed var(--mrc-ink); border-radius: var(--radius-md);">
+            No hay categorías registradas en el sistema.
+        </aside>
+    }
+</section>
 
-    </div>
-</div>
-
-<div class="modal fade" id="addCategoryModal" tabindex="-1"
-     aria-labelledby="addCategoryModalLabel"
-     aria-hidden="true">
-
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow">
-
-            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
+<!-- Modals -->
+<section class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate id="createCategoryForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
 
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title fw-semibold" id="addCategoryModalLabel">
-                        <i class="bi bi-tags me-2" aria-hidden="true"></i>
-                        Nueva Categoría
+                <header class="modal-header">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="addCategoryModalLabel">
+                        <i class="bi bi-tags me-2"></i> Nueva Categoría
                     </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
 
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Cerrar">
+                <section class="modal-body p-4">
+                    <aside asp-validation-summary="ModelOnly" class="text-danger small mb-3"></aside>
+
+                    <section class="form-floating mb-3">
+                        <input asp-for="NewCategory.Code" class="form-control fw-bold" placeholder="Código" required />
+                        <label asp-for="NewCategory.Code" class="fw-bold">Código</label>
+                        <small asp-validation-for="NewCategory.Code" class="text-danger"></small>
+                    </section>
+
+                    <section class="form-floating mb-3">
+                        <input asp-for="NewCategory.Name" class="form-control fw-bold" placeholder="Nombre" required />
+                        <label asp-for="NewCategory.Name" class="fw-bold">Nombre</label>
+                        <small asp-validation-for="NewCategory.Name" class="text-danger"></small>
+                    </section>
+
+                    <section class="form-floating">
+                        <textarea asp-for="NewCategory.Description" class="form-control category-description-textarea" placeholder="Descripción" rows="5"></textarea>
+                        <label asp-for="NewCategory.Description" class="fw-bold">Descripción</label>
+                        <small asp-validation-for="NewCategory.Description" class="text-danger"></small>
+                    </section>
+                </section>
+
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn" id="confirmCreateCategoryButton">
+                        <i class="bi bi-check-lg me-1"></i> Guardar
                     </button>
-                </div>
-
-                <div class="modal-body">
-
-                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
-
-                    <div class="form-floating mb-3">
-                        <input asp-for="NewCategory.Code"
-                               class="form-control"
-                               placeholder="Código"
-                               required />
-                        <label asp-for="NewCategory.Code">Código</label>
-                        <span asp-validation-for="NewCategory.Code"
-                              class="text-danger small"></span>
-                    </div>
-
-                    <div class="form-floating mb-3">
-                        <input asp-for="NewCategory.Name"
-                               class="form-control"
-                               placeholder="Nombre"
-                               required />
-                        <label asp-for="NewCategory.Name">Nombre</label>
-                        <span asp-validation-for="NewCategory.Name"
-                              class="text-danger small"></span>
-                    </div>
-
-                    <div class="form-floating">
-                        <textarea asp-for="NewCategory.Description"
-                                  class="form-control"
-                                  placeholder="Descripción"
-                                  rows="5"
-                                  style="height: 100px;
-                                    resize: none;"></textarea>
-                        <label asp-for="NewCategory.Description">Descripción</label>
-                        <span asp-validation-for="NewCategory.Description"
-                              class="text-danger small"></span>
-                    </div>
-
-                </div>
-
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button"
-                            class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">
-                        Cancelar
-                    </button>
-
-                    <button type="submit"
-                            class="btn btn-success">
-                        <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
-                        Guardar
-                    </button>
-                </div>
-
+                </footer>
             </form>
-        </div>
-    </div>
-</div>
+        </article>
+    </section>
+</section>
 
-<div class="modal fade"
-    id="editCategoryModal"
-    tabindex="-1"
-    aria-labelledby="editCategoryModalLabel"
-    aria-hidden="true">
-
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow">
-
-            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+<section class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="updateCategoryForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" asp-for="EditCategory.Id" />
 
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title fw-semibold" id="editCategoryModalLabel">
-                        <i class="bi bi-pencil-square me-2" aria-hidden="true"></i>
-                        Editar Categoría
+                <header class="modal-header">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="editCategoryModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i> Editar Categoría
                     </h5>
-                        <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal"
-                            aria-label="Cerrar">
-                        </button>
-                </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
 
-                <div class="modal-body">
-                    <input type="hidden" asp-for="EditCategory.Id" />
+                <section class="modal-body p-4">
+                    <aside asp-validation-summary="ModelOnly" class="text-danger small mb-3"></aside>
 
-                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                    <section class="form-floating mb-3">
+                        <input asp-for="EditCategory.Code" class="form-control fw-bold" placeholder="Código" required />
+                        <label asp-for="EditCategory.Code" class="fw-bold">Código</label>
+                        <small asp-validation-for="EditCategory.Code" class="text-danger"></small>
+                    </section>
 
-                    <div class="form-floating mb-3">
-                        <input asp-for="EditCategory.Code"
-                               class="form-control"
-                               placeholder="Código"
-                               required />
-                        <label asp-for="EditCategory.Code">Código</label>
-                        <span asp-validation-for="EditCategory.Code" class="text-danger small"></span>
-                    </div>
+                    <section class="form-floating mb-3">
+                        <input asp-for="EditCategory.Name" class="form-control fw-bold" placeholder="Nombre" required />
+                        <label asp-for="EditCategory.Name" class="fw-bold">Nombre</label>
+                        <small asp-validation-for="EditCategory.Name" class="text-danger"></small>
+                    </section>
 
-                    <div class="form-floating mb-3">
-                        <input asp-for="EditCategory.Name"
-                               class="form-control"
-                               placeholder="Nombre"
-                               required />
-                        <label asp-for="EditCategory.Name">Nombre</label>
-                        <span asp-validation-for="EditCategory.Name" class="text-danger small"></span>
-                    </div>
+                    <section class="form-floating">
+                        <textarea asp-for="EditCategory.Description" class="form-control category-description-textarea" placeholder="Descripción" rows="5"></textarea>
+                        <label asp-for="EditCategory.Description" class="fw-bold">Descripción</label>
+                        <small asp-validation-for="EditCategory.Description" class="text-danger"></small>
+                    </section>
+                </section>
 
-                    <div class="form-floating">
-                        <textarea asp-for="EditCategory.Description"
-                                  class="form-control"
-                                  placeholder="Descripción"
-                                  rows="5"
-                                  style="height: 100px; resize: none;"></textarea>
-                        <label asp-for="EditCategory.Description">Descripción</label>
-                    </div>
-                </div>
-
-                <div class="modal-footer border-0 pt-0">
-                    <a asp-page="./Categories" asp-route-pageNumber="@Model.CurrentPage" class="btn btn-outline-secondary">
-                        Cancelar
-                    </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
-                        Actualizar
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn" id="confirmUpdateCategoryButton">
+                        <i class="bi bi-check-lg me-1"></i> Actualizar
                     </button>
-                </div>
-
+                </footer>
             </form>
-        </div>
-    </div>
-</div>
+        </article>
+    </section>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
-    @if (Model.ShowCreateCategoryModal)
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var createModalElement = document.getElementById('addCategoryModal');
-                if (!createModalElement || typeof bootstrap === 'undefined') {
-                    return;
-                }
-
-                var createModal = new bootstrap.Modal(createModalElement);
-                createModal.show();
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.edit-category-btn').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    document.getElementById('EditCategory_Id').value = button.getAttribute('data-id') || '';
+                    document.getElementById('EditCategory_Code').value = button.getAttribute('data-code') || '';
+                    document.getElementById('EditCategory_Name').value = button.getAttribute('data-name') || '';
+                    document.getElementById('EditCategory_Description').value = button.getAttribute('data-description') || '';
+                });
             });
-        </script>
-    }
 
-    @if (Model.ShowEditCategoryModal)
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
+            @if (Model.ShowCreateCategoryModal)
+            {
+                <text>
+                var createModal = new bootstrap.Modal(document.getElementById('addCategoryModal'));
+                createModal.show();
+                </text>
+            }
+
+            @if (Model.ShowEditCategoryModal)
+            {
+                <text>
                 var editModalElement = document.getElementById('editCategoryModal');
-                if (!editModalElement || typeof bootstrap === 'undefined') {
-                    return;
-                }
-
                 var editModal = new bootstrap.Modal(editModalElement);
                 editModalElement.addEventListener('hidden.bs.modal', function () {
                     var url = new URL(window.location.href);
                     if (url.searchParams.has('editId')) {
                         url.searchParams.delete('editId');
-                        window.location.href = url.toString();
+                        window.history.replaceState({}, document.title, url.toString());
                     }
                 }, { once: true });
                 editModal.show();
-            });
-        </script>
-    }
+                </text>
+            }
+        });
+    </script>
 }

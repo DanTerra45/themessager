@@ -1,16 +1,15 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Mercadito</title>
-    <link rel="icon" type="image/svg+xml" href="~/favicon.svg"/>
-
-    <!-- Tipografia Google Fonts-->
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
-
+    
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -21,15 +20,15 @@
         <nav class="navbar navbar-expand-sm navbar-light mb-4 py-2">
             <section class="container d-flex align-items-center">
                 <a class="navbar-brand d-inline-flex align-items-center gap-2 m-0 p-0" asp-area="" asp-page="/Index">
-                    <img src="~/favicon.svg" alt="" class="app-brand-logo"/>
+                    <img src="~/favicon.svg" alt="" class="app-brand-logo" />
                     Mercadito
                 </a>
-                <button class="navbar-toggler btn-menu-only ms-auto"  style="padding: 0; border: none;" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                <button class="navbar-toggler btn-menu-only ms-auto" style="padding: 0; border: none;" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <i class="bi bi-list" style="font-size: 2rem; line-height: 1; color: var(--mrc-ink);"></i>
                 </button>
-                <section class="navbar-collapse collapse d-sm-inline-flex">
-                    <menu class="navbar-nav ms-auto me-5 gap-3 align-items-center mb-0">
+                <section class="navbar-collapse collapse d-sm-inline-flex justify-content-start align-items-center flex-grow-1">
+                    <menu class="navbar-nav m-0 ps-4 gap-2 align-items-center w-100 p-0">
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-page="/Index">Inicio</a>
                         </li>
@@ -47,29 +46,30 @@
             </section>
         </nav>
     </header>
-    <main role="main" class="container pb-4 flex-grow-1 d-flex flex-column"
-        <div id="alert-container">
-            @if (TempData[key: "SuccessMessage"] is string successMessage)
+    
+    <main role="main" class="container pb-4 flex-grow-1 d-flex flex-column">
+        <aside id="alert-container">
+            @if (TempData["SuccessMessage"] is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
             {
                 <aside class="alert alert-success alert-dismissible fade show b-card auto-close-alert" style="background-color: var(--mrc-success); color: var(--mrc-ink); border-color: var(--mrc-ink);" role="alert">
-                    <strong>Exito!</strong> @successMessage
+                    <strong>¡Éxito!</strong> @successMessage
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                 </aside>
             }
 
             @if (TempData["ErrorMessage"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
             {
-                <aside class="alert alert-danger alert-dismissible fade show b-card mb-4" style="backgorud-color: var(--mrc-danger); color:white; border-color: var(--mrc-ink);" role="alert">
+                <aside class="alert alert-danger alert-dismissible fade show b-card mb-4" style="background-color: var(--mrc-danger); color: white; border-color: var(--mrc-ink);" role="alert">
                     <strong>Error:</strong> @errorMessage
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                 </aside>
             }
-        </div>
+        </aside>
 
         @RenderBody()
     </main>
 
-    <footer class="footer py-3 mt-auto" style="border-top: 2px solid var(--mrc-ink); background-color: var(--mrc-surface); position: relative; z-idenx: 10; margin-top: auto;">
+    <footer class="footer py-3 mt-auto" style="border-top: 2px solid var(--mrc-ink); background-color: var(--mrc-surface); position: relative; z-index: 10; margin-top: auto;">
         <section class="container text-center">
             <p style="font-family: var(--font-mono); font-size: 0.9rem; margin: 0;">&copy; @DateTime.Now.Year - <strong>Mercadito</strong> <a asp-area="" asp-page="/Privacy" style="color: var(--mrc-ink); font-weight: bold;">Privacidad</a></p>
         </section>
