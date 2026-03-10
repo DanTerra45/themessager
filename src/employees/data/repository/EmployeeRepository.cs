@@ -149,14 +149,57 @@ namespace Mercadito.src.employees.data.repository
 
         public async Task UpdateEmployeeAsync(Employee employee)
         {
-            throw new NotImplementedException("Pending external upload.");
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $@"UPDATE {TableName} SET
+      ci = @Ci,
+      complemento = @Complemento,
+      nombres = @Nombres,
+      primerApellido = @PrimerApellido,
+      segundoApellido = @SegundoApellido,
+      rol = @Rol,
+      numeroContacto = @NumeroContacto,
+      estado = CASE WHEN @IsActive THEN 'A' ELSE 'I' END
+      WHERE id = @Id";
+
+                await connection.ExecuteAsync(query, new
+                {
+                    employee.Id,
+                    employee.Ci,
+                    employee.Complemento,
+                    employee.Nombres,
+                    employee.PrimerApellido,
+                    employee.SegundoApellido,
+                    employee.Rol,
+                    employee.NumeroContacto,
+                    employee.IsActive
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar empleado");
+                throw;
+            }
+
         }
 
         public async Task DeleteEmployeeAsync(long id)
         {
-            throw new NotImplementedException("Pending external upload.");
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync();
+                var query = $"UPDATE {TableName} SET estado = 'I' WHERE id = @Id AND estado = 'A'";
+                await connection.ExecuteAsync(query, new { Id = id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al eliminar empleado");
+                throw;
+            }
+
         }
-        #pragma warning restore S2325
+#pragma warning restore S2325
     }
     #pragma warning restore S2139
 }

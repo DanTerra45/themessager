@@ -22,7 +22,15 @@ namespace Mercadito.src.employees.domain.usecases
 
         public async Task<bool> DeleteAsync(long employeeId)
         {
-            throw new NotImplementedException("Pending external upload.");
+            var employee = await _employeeRepository.GetEmployeeByIdAsync(employeeId);
+            if (employee is null)
+            {
+                return false;
+            }
+
+            await _employeeRepository.DeleteEmployeeAsync(employeeId);
+            return true;
+
         }
 
         private static int CalculateTotalPages(int totalItems, int pageSize)
