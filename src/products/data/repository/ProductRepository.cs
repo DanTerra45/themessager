@@ -10,6 +10,16 @@ namespace Mercadito.src.products.data.repository
     {
         private readonly IDataBaseConnection _dbConnection = dbConnection;
 
+        private static DateOnly ToDateOnly(DateTime value)
+        {
+            return DateOnly.FromDateTime(value);
+        }
+
+        private static DateTime ToDateTime(DateOnly value)
+        {
+            return value.ToDateTime(TimeOnly.MinValue);
+        }
+
         private static ProductWithCategoriesModel ToProductWithCategoriesModel((
             long Id,
             string Name,
@@ -26,8 +36,8 @@ namespace Mercadito.src.products.data.repository
                 Name = row.Name,
                 Description = row.Description,
                 Stock = row.Stock,
-                Batch = row.Batch,
-                ExpirationDate = row.ExpirationDate,
+                Batch = ToDateOnly(row.Batch),
+                ExpirationDate = ToDateOnly(row.ExpirationDate),
                 Price = row.Price,
                 Categories = !string.IsNullOrWhiteSpace(row.CategoriesString)
                     ? [.. row.CategoriesString.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)]
@@ -35,20 +45,67 @@ namespace Mercadito.src.products.data.repository
             };
         }
 
-        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize)
+        private static List<long> NormalizeCategoryIds(IReadOnlyList<long> categoryIds)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
+            var normalizedCategoryIds = new List<long>();
+            var uniqueCategoryIds = new HashSet<long>();
+
+            foreach (var categoryId in categoryIds)
+            {
+                if (categoryId <= 0)
+                {
+                    continue;
+                }
+
+                if (uniqueCategoryIds.Add(categoryId))
+                {
+                    normalizedCategoryIds.Add(categoryId);
+                }
+            }
+
+            return normalizedCategoryIds;
+        }
+
+        private static List<long> ParseCategoryIds(string categoryIdsString)
+        {
+            if (string.IsNullOrWhiteSpace(categoryIdsString))
+            {
+                return [];
+            }
+
+            var categoryIds = new List<long>();
+            var uniqueCategoryIds = new HashSet<long>();
+
+            foreach (var rawCategoryId in categoryIdsString.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!long.TryParse(rawCategoryId, out var categoryId) || categoryId <= 0)
+                {
+                    continue;
+                }
+
+                if (uniqueCategoryIds.Add(categoryId))
+                {
+                    categoryIds.Add(categoryId);
+                }
+            }
+
+            return categoryIds;
+        }
+
+        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize, CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
 
-            var query = $@"
+            const string query = @"
                 SELECT 
                     p.id as Id,
-                    COALESCE(p.nombre, '') as Name,
-                    COALESCE(p.descripcion, '') as Description,
-                    COALESCE(p.stock, 0) as Stock,
+                    p.nombre as Name,
+                    p.descripcion as Description,
+                    p.stock as Stock,
                     p.lote as Batch,
                     p.fechaCaducidad as ExpirationDate,
-                    COALESCE(p.precio, 0.00) as Price,
+                    p.precio as Price,
                     COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
                 FROM products p
                 LEFT JOIN categoriaDeProducto pc ON p.id = pc.productId
@@ -64,19 +121,19 @@ namespace Mercadito.src.products.data.repository
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
-        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize)
+        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
-            var query = $@"
+            const string query = @"
                 SELECT 
                     p.id as Id,
-                    COALESCE(p.nombre, '') as Name,
-                    COALESCE(p.descripcion, '') as Description,
-                    COALESCE(p.stock, 0) as Stock,
+                    p.nombre as Name,
+                    p.descripcion as Description,
+                    p.stock as Stock,
                     p.lote as Batch,
                     p.fechaCaducidad as ExpirationDate,
-                    COALESCE(p.precio, 0.00) as Price,
+                    p.precio as Price,
                     COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
                 FROM products p
                 INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
@@ -91,44 +148,85 @@ namespace Mercadito.src.products.data.repository
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
-        public async Task<Product?> GetProductByIdAsync(long id)
+        public async Task<Product?> GetProductByIdAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-                        const string query = @"SELECT 
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            const string query = @"SELECT 
                             id AS Id,
-                            COALESCE(nombre, '') AS Name,
-                            COALESCE(descripcion, '') AS Description,
-                            COALESCE(stock, 0) AS Stock,
+                            nombre AS Name,
+                            descripcion AS Description,
+                            stock AS Stock,
                             lote AS Batch,
                             fechaCaducidad AS ExpirationDate,
-                            COALESCE(precio, 0.00) AS Price
-                                                    FROM products 
-                          WHERE id = @Id AND estado = 'A'";
-            return await connection.QueryFirstOrDefaultAsync<Product>(query, new { Id = id });
+                            precio AS Price
+                        FROM products 
+                        WHERE id = @Id AND estado = 'A'";
+
+            var row = await connection.QueryFirstOrDefaultAsync<(long Id, string Name, string Description, int Stock, DateTime Batch, DateTime ExpirationDate, decimal Price)>(query, new { Id = id });
+            if (row == default)
+            {
+                return null;
+            }
+
+            return new Product
+            {
+                Id = row.Id,
+                Name = row.Name,
+                Description = row.Description,
+                Stock = row.Stock,
+                Batch = ToDateOnly(row.Batch),
+                ExpirationDate = ToDateOnly(row.ExpirationDate),
+                Price = row.Price
+            };
         }
 
-        public async Task<ProductForEditModel?> GetProductForEditAsync(long id)
+        public async Task<ProductForEditModel?> GetProductForEditAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-                        const string query = @"SELECT 
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            const string query = @"SELECT 
                             p.id AS Id,
-                            COALESCE(p.nombre, '') AS Name,
-                            COALESCE(p.descripcion, '') AS Description,
-                            COALESCE(p.stock, 0) AS Stock,
+                            p.nombre AS Name,
+                            p.descripcion AS Description,
+                            p.stock AS Stock,
                             p.lote AS Batch,
                             p.fechaCaducidad AS ExpirationDate,
-                            COALESCE(p.precio, 0.00) AS Price,
-                            COALESCE(cp.categoriaId, 0) AS CategoryId
-                                                    FROM products p
-                                                    LEFT JOIN categoriaDeProducto cp ON p.id = cp.productId
-                          WHERE p.id = @Id AND p.estado = 'A'
-                          LIMIT 1";
-            return await connection.QueryFirstOrDefaultAsync<ProductForEditModel>(query, new { Id = id });
+                            p.precio AS Price,
+                            COALESCE(GROUP_CONCAT(DISTINCT cp.categoriaId ORDER BY cp.categoriaId SEPARATOR ','), '') AS CategoryIdsString
+                        FROM products p
+                        LEFT JOIN categoriaDeProducto cp ON p.id = cp.productId
+                        WHERE p.id = @Id AND p.estado = 'A'
+                        GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio";
+
+            var productForEditRow = await connection.QueryFirstOrDefaultAsync<(
+                long Id,
+                string Name,
+                string Description,
+                int Stock,
+                DateTime Batch,
+                DateTime ExpirationDate,
+                decimal Price,
+                string CategoryIdsString)>(query, new { Id = id });
+            if (productForEditRow == default)
+            {
+                return null;
+            }
+
+            return new ProductForEditModel
+            {
+                Id = productForEditRow.Id,
+                Name = productForEditRow.Name,
+                Description = productForEditRow.Description,
+                Stock = productForEditRow.Stock,
+                Batch = ToDateOnly(productForEditRow.Batch),
+                ExpirationDate = ToDateOnly(productForEditRow.ExpirationDate),
+                Price = productForEditRow.Price,
+                CategoryIds = ParseCategoryIds(productForEditRow.CategoryIdsString)
+            };
         }
 
-        public async Task<long> AddProductWithCategoryAsync(Product product, long categoryId)
+        public async Task<long> AddProductWithCategoriesAsync(Product product, IReadOnlyList<long> categoryIds, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             using var transaction = connection.BeginTransaction();
 
             try
@@ -139,16 +237,21 @@ namespace Mercadito.src.products.data.repository
                     product.Name,
                     product.Description,
                     product.Stock,
-                    product.Batch,
-                    product.ExpirationDate,
+                    Batch = ToDateTime(product.Batch),
+                    ExpirationDate = ToDateTime(product.ExpirationDate),
                     product.Price
                 }, transaction);
 
-                if (categoryId > 0)
+                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
+                if (normalizedCategoryIds.Count > 0)
                 {
                     const string insertRelationQuery = @"INSERT INTO categoriaDeProducto (productId, categoriaId)
                                              VALUES (@ProductId, @CategoryId)";
-                    await connection.ExecuteAsync(insertRelationQuery, new { ProductId = createdProductId, CategoryId = categoryId }, transaction);
+
+                    foreach (var categoryId in normalizedCategoryIds)
+                    {
+                        await connection.ExecuteAsync(insertRelationQuery, new { ProductId = createdProductId, CategoryId = categoryId }, transaction);
+                    }
                 }
 
                 transaction.Commit();
@@ -161,22 +264,21 @@ namespace Mercadito.src.products.data.repository
             }
         }
 
-        public async Task UpdateProductWithCategoryAsync(Product product, long categoryId)
+        public async Task<int> UpdateProductWithCategoriesAsync(Product product, IReadOnlyList<long> categoryIds, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             using var transaction = connection.BeginTransaction();
 
             try
             {
                 const string updateProductQuery = @"UPDATE products
-                                            SET nombre = @Name,
-                                                descripcion = @Description,
-                                                stock = @Stock,
-                                                lote = @Batch,
-                                                fechaCaducidad = @ExpirationDate,
-                                                precio = @Price
-                                            WHERE id = @Id
-                                            AND estado = 'A'";
+                    SET nombre = @Name,
+                        descripcion = @Description,
+                        stock = @Stock,
+                        lote = @Batch,
+                        fechaCaducidad = @ExpirationDate,
+                        precio = @Price
+                    WHERE id = @Id AND estado = 'A'";
 
                 var affectedRows = await connection.ExecuteAsync(updateProductQuery, new
                 {
@@ -184,29 +286,35 @@ namespace Mercadito.src.products.data.repository
                     product.Name,
                     product.Description,
                     product.Stock,
-                    product.Batch,
-                    product.ExpirationDate,
+                    Batch = ToDateTime(product.Batch),
+                    ExpirationDate = ToDateTime(product.ExpirationDate),
                     product.Price
                 }, transaction);
 
                 if (affectedRows == 0)
                 {
-                    throw new InvalidOperationException("No se pudo actualizar el producto solicitado.");
+                    transaction.Rollback();
+                    return 0;
                 }
 
-                const string deleteRelationQuery = @"DELETE FROM categoriaDeProducto
-                                             WHERE productId = @ProductId";
-                await connection.ExecuteAsync(deleteRelationQuery, new { ProductId = product.Id }, transaction);
+                const string deleteRelationsQuery = @"DELETE FROM categoriaDeProducto
+                    WHERE productId = @ProductId";
+                await connection.ExecuteAsync(deleteRelationsQuery, new { ProductId = product.Id }, transaction);
 
-                if (categoryId > 0)
+                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
+                if (normalizedCategoryIds.Count > 0)
                 {
-                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto
-                                                 (productId, categoriaId)
-                                                 VALUES (@ProductId, @CategoryId)";
-                    await connection.ExecuteAsync(insertRelationQuery, new { ProductId = product.Id, CategoryId = categoryId }, transaction);
+                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto (productId, categoriaId)
+                        VALUES (@ProductId, @CategoryId)";
+
+                    foreach (var categoryId in normalizedCategoryIds)
+                    {
+                        await connection.ExecuteAsync(insertRelationQuery, new { ProductId = product.Id, CategoryId = categoryId }, transaction);
+                    }
                 }
 
                 transaction.Commit();
+                return affectedRows;
             }
             catch
             {
@@ -215,24 +323,26 @@ namespace Mercadito.src.products.data.repository
             }
         }
 
-        public async Task<int> DeleteProductAsync(long id)
+        public async Task<int> DeleteProductAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-            const string query = "UPDATE products SET estado = 'I' WHERE id = @Id AND estado = 'A'";
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            const string query = @"UPDATE products
+                SET estado = 'I'
+                WHERE id = @Id AND estado = 'A'";
             return await connection.ExecuteAsync(query, new { Id = id });
         }
 
-        public async Task<int> GetTotalProductsCountAsync()
+        public async Task<int> GetTotalProductsCountAsync(CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = "SELECT COUNT(*) FROM products WHERE estado = 'A'";
             return await connection.ExecuteScalarAsync<int>(query);
         }
 
-        public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId)
+        public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync();
-                 const string query = @"SELECT COUNT(DISTINCT p.id) 
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            const string query = @"SELECT COUNT(DISTINCT p.id) 
                      FROM products p
                      INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
                     WHERE pc.categoriaId = @CategoryId AND p.estado = 'A'";

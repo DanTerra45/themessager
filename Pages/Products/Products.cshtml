@@ -1,8 +1,9 @@
 @page "/Products"
-@using System.Data
 @model Mercadito.Pages.Products.ProductsModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
 @{
     ViewData["Title"] = "Productos";
+    var showIdColumn = HostEnvironment.IsDevelopment();
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -36,7 +37,10 @@
                 <table class="table table-hover align-middle">
                     <thead class="table-light text-center">
                         <tr>
-                            <th>ID</th>
+                            @if (showIdColumn)
+                            {
+                                <th>ID</th>
+                            }
                             <th>Nombre</th>
                             <th>Descripción</th>
                             <th>Categorías</th>
@@ -53,9 +57,12 @@
                         @foreach (var product in Model.Products)
                         {
                             <tr>
-                                <td class="small text-muted">
-                                    @product.Id
-                                </td>
+                                @if (showIdColumn)
+                                {
+                                    <td class="small text-muted">
+                                        @product.Id
+                                    </td>
+                                }
 
                                 <td class="fw-semibold">@product.Name</td>
 
@@ -106,13 +113,18 @@
 
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm">
-                                                     <a href="/Products?editId=@product.Id"
-                                                         class="btn btn-outline-primary">
+                                        <a asp-page="./Products"
+                                           asp-route-pageNumber="@Model.CurrentPage"
+                                           asp-route-categoryFilter="@Model.CategoryFilter"
+                                           asp-route-editId="@product.Id"
+                                           class="btn btn-outline-primary">
                                             <i class="bi bi-pencil" aria-hidden="true"></i> Editar
                                         </a>
 
                                         <form method="post" asp-page-handler="Delete" class="d-inline">
                                             <input type="hidden" name="id" value="@product.Id" />
+                                            <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                                            <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                                             <button type="submit" class="btn btn-outline-danger" 
                                                     onclick="return confirm('¿Eliminar producto?')">
                                                 <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
@@ -126,7 +138,7 @@
                     else
                     {
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="@(showIdColumn ? 9 : 8)" class="text-center text-muted py-4">
                                 No se encontraron productos.
                             </td>
                         </tr>
@@ -140,42 +152,52 @@
     <div class="d-flex justify-content-center mt-3">
         <nav>
             <ul class="pagination">
-                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                    @{
-                        var prevPage = Model.CurrentPage - 1;
-                        var prevUrl = Model.CategoryFilter != 0 
-                            ? $"/Products?page={prevPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                            : $"/Products?page={prevPage}&t={DateTime.Now.Ticks}";
-                    }
-                    <a class="page-link" href="@prevUrl">
-                        Anterior
-                    </a>
-                </li>
-                
-                @for (int i = 1; i <= Model.TotalPages; i++)
+                @if (Model.CategoryFilter != 0)
                 {
-                    var pageUrl = Model.CategoryFilter != 0 
-                        ? $"/Products?page={i}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                        : $"/Products?page={i}&t={DateTime.Now.Ticks}";
-                    
-                    <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                        <a class="page-link" href="@pageUrl">
-                            @i
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage - 1)" asp-route-categoryFilter="@Model.CategoryFilter">
+                            Anterior
+                        </a>
+                    </li>
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-page="./Products" asp-route-pageNumber="@i" asp-route-categoryFilter="@Model.CategoryFilter">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage + 1)" asp-route-categoryFilter="@Model.CategoryFilter">
+                            Siguiente
                         </a>
                     </li>
                 }
-                
-                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                    @{
-                        var nextPage = Model.CurrentPage + 1;
-                        var nextUrl = Model.CategoryFilter != 0 
-                            ? $"/Products?page={nextPage}&categoryFilter={Model.CategoryFilter}&t={DateTime.Now.Ticks}"
-                            : $"/Products?page={nextPage}&t={DateTime.Now.Ticks}";
+                else
+                {
+                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage - 1)">
+                            Anterior
+                        </a>
+                    </li>
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
+                            <a class="page-link" asp-page="./Products" asp-route-pageNumber="@i">
+                                @i
+                            </a>
+                        </li>
                     }
-                    <a class="page-link" href="@nextUrl">
-                        Siguiente
-                    </a>
-                </li>
+
+                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-page="./Products" asp-route-pageNumber="@(Model.CurrentPage + 1)">
+                            Siguiente
+                        </a>
+                    </li>
+                }
             </ul>
         </nav>
     </div>
@@ -188,6 +210,8 @@
         <div class="modal-content shadow">
 
             <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
+                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
 
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="addProductModalLabel">
@@ -203,6 +227,8 @@
                 </div>
 
                 <div class="modal-body">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
                     <h6 class="text-muted mb-3">Información General</h6>
 
                     <div class="row">
@@ -213,15 +239,15 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label asp-for="NewProduct.CategoryId" class="form-label">Categoría</label>
-                            <select asp-for="NewProduct.CategoryId" class="form-select">
-                                <option value="0">Sin categoría</option>
+                            <label asp-for="NewProduct.CategoryIds" class="form-label">Categorías</label>
+                            <select asp-for="NewProduct.CategoryIds" class="form-select" multiple size="6">
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
                                 }
                             </select>
-                            <span asp-validation-for="NewProduct.CategoryId" class="text-danger small"></span>
+                            <div class="form-text">Puede seleccionar una o varias categorías.</div>
+                            <span asp-validation-for="NewProduct.CategoryIds" class="text-danger small"></span>
                         </div>
                     </div>
 
@@ -252,7 +278,6 @@
                             <input asp-for="NewProduct.Batch"
                                     type="date"
                                     max="@DateTime.Now.ToString("yyyy-MM-dd")"
-                                    value="@DateTime.Now.ToString("yyyy-MM-dd")"
                                    class="form-control"
                                    required />
                             <span asp-validation-for="NewProduct.Batch" class="text-danger small"></span>
@@ -264,7 +289,6 @@
                             </label>
                             <input asp-for="NewProduct.ExpirationDate"
                                    type="date"
-                                      value="@DateTime.Now.AddMonths(3).ToString("yyyy-MM-dd")"
                                       min="@DateTime.Now.ToString("yyyy-MM-dd")"
                                    class="form-control"
                                    required />
@@ -322,6 +346,8 @@
         <div class="modal-content shadow">
 
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
 
                 <div class="modal-header bg-light">
                     <h5 class="modal-title fw-semibold" id="editProductModalLabel">
@@ -338,6 +364,8 @@
                 <div class="modal-body">
                     <input type="hidden" asp-for="EditProduct.Id" />
 
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
                     <h6 class="text-muted mb-3">Información General</h6>
 
                     <div class="row">
@@ -348,15 +376,15 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label asp-for="EditProduct.CategoryId" class="form-label">Categoría</label>
-                            <select asp-for="EditProduct.CategoryId" class="form-select">
-                                <option value="0">Sin categoría</option>
+                            <label asp-for="EditProduct.CategoryIds" class="form-label">Categorías</label>
+                            <select asp-for="EditProduct.CategoryIds" class="form-select" multiple size="6">
                                 @foreach (var category in Model.Categories)
                                 {
                                     <option value="@category.Id">@category.Name</option>
                                 }
                             </select>
-                            <span asp-validation-for="EditProduct.CategoryId" class="text-danger small"></span>
+                            <div class="form-text">Puede seleccionar una o varias categorías.</div>
+                            <span asp-validation-for="EditProduct.CategoryIds" class="text-danger small"></span>
                         </div>
                     </div>
 
@@ -388,7 +416,6 @@
                                    type="date"
                                    class="form-control"
                                    max="@DateTime.Now.ToString("yyyy-MM-dd")"
-                                value="@(Model.EditProduct != null ? Model.EditProduct.Batch.ToString("yyyy-MM-dd") : string.Empty)"
                                    required />
                             <span asp-validation-for="EditProduct.Batch" class="text-danger small"></span>
                         </div>
@@ -399,7 +426,6 @@
                             </label>
                             <input asp-for="EditProduct.ExpirationDate"
                                    type="date"
-                                          value="@(Model.EditProduct != null ? Model.EditProduct.ExpirationDate.ToString("yyyy-MM-dd") : string.Empty)"
                                    class="form-control"
                                    required />
                             <span asp-validation-for="EditProduct.ExpirationDate" class="text-danger small"></span>
@@ -427,8 +453,7 @@
                 </div>
 
                 <div class="modal-footer border-0 pt-0">
-                          <a href="/Products"
-                              class="btn btn-outline-secondary">
+                    <a asp-page="./Products" class="btn btn-outline-secondary">
                         Cancelar
                     </a>
                     <button type="submit"
@@ -450,25 +475,35 @@
     @if (Model.ShowModal)
     {
         <script>
-            var myModal = new bootstrap.Modal(document.getElementById('addProductModal'));
-            myModal.show();
+            document.addEventListener('DOMContentLoaded', function () {
+                var createModalElement = document.getElementById('addProductModal');
+                if (!createModalElement || typeof bootstrap === 'undefined') {
+                    return;
+                }
+
+                var createModal = new bootstrap.Modal(createModalElement);
+                createModal.show();
+            });
         </script>
     }
 
     @if (Model.EditProduct != null && Model.EditProduct.Id != 0)
     {
         <script>
-            var editModalElement = document.getElementById('editProductModal');
-            if (editModalElement && typeof bootstrap !== 'undefined') {
-                var editModal = new bootstrap.Modal(editModalElement);
-                editModalElement.addEventListener('hidden.bs.modal', function () {
-                    var url = new URL(window.location.href);
-                    if (url.searchParams.has('editId')) {
-                        window.location.href = '/Products';
-                    }
-                }, { once: true });
-                editModal.show();
-            }
+            document.addEventListener('DOMContentLoaded', function () {
+                var editModalElement = document.getElementById('editProductModal');
+                if (editModalElement && typeof bootstrap !== 'undefined') {
+                    var editModal = new bootstrap.Modal(editModalElement);
+                    editModalElement.addEventListener('hidden.bs.modal', function () {
+                        var url = new URL(window.location.href);
+                        if (url.searchParams.has('editId')) {
+                            url.searchParams.delete('editId');
+                            window.location.href = url.toString();
+                        }
+                    }, { once: true });
+                    editModal.show();
+                }
+            });
         </script>
     }
     

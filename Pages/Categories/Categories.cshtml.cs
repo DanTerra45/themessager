@@ -37,13 +37,13 @@ namespace Mercadito.Pages.Categories
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
 
-        public async Task OnGetAsync(int page = 1, long editId = 0)
+        public async Task OnGetAsync(int pageNumber = 1, long editId = 0)
         {
-            CurrentPage = page > 0 ? page : 1;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
             await LoadCategoriesAsync();
             if (editId > 0)
             {
-                var category = await _categoryManagementUseCase.GetForEditAsync(editId);
+                var category = await _categoryManagementUseCase.GetForEditAsync(editId, HttpContext.RequestAborted);
                 if (category != null)
                 {
                     EditCategory = category;
@@ -56,13 +56,14 @@ namespace Mercadito.Pages.Categories
         {
             try
             {
-                var result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                var cancellationToken = HttpContext.RequestAborted;
+                var result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
                 TotalPages = result.TotalPages;
 
                 if (CurrentPage > TotalPages)
                 {
                     CurrentPage = TotalPages;
-                    result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize);
+                    result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
                 }
 
                 Categories = [.. result.Categories];
@@ -74,9 +75,10 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewCategory")] CreateCategoryDto newCategory)
+        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewCategory")] CreateCategoryDto newCategory, int pageNumber = 1)
         {
             NewCategory = newCategory;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
 
             if (!ModelState.IsValid)
             {
@@ -87,11 +89,19 @@ namespace Mercadito.Pages.Categories
 
             try
             {
-                await _categoryManagementUseCase.CreateAsync(NewCategory);
+                await _categoryManagementUseCase.CreateAsync(NewCategory, HttpContext.RequestAborted);
                 _logger.LogInformation("Categoría creada: {Name}", NewCategory.Name);
 
                 TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
-                return RedirectToPage();
+                return RedirectToPage(new { pageNumber = CurrentPage });
+            }
+            catch (ValidationException validationException)
+            {
+                _logger.LogWarning(validationException, "Business validation while creating category");
+                ModelState.AddModelError(string.Empty, validationException.Message);
+                ShowCreateCategoryModal = true;
+                await LoadCategoriesAsync();
+                return Page();
             }
             catch (Exception exception)
             {
@@ -103,9 +113,10 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditCategory")] UpdateCategoryDto editCategory)
+        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditCategory")] UpdateCategoryDto editCategory, int pageNumber = 1)
         {
             EditCategory = editCategory;
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
 
             _logger.LogInformation("ModelState válido: {IsValid}", ModelState.IsValid);
             _logger.LogInformation("Datos recibidos: Id={Id} Code={Code}, Name={Name}, Description={Description}",
@@ -120,10 +131,10 @@ namespace Mercadito.Pages.Categories
 
             try
             {
-                await _categoryManagementUseCase.UpdateAsync(EditCategory);
+                await _categoryManagementUseCase.UpdateAsync(EditCategory, HttpContext.RequestAborted);
                 _logger.LogInformation("Categoría actualizada: {Id}", EditCategory.Id);
                 TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
-                return RedirectToPage();
+                return RedirectToPage(new { pageNumber = CurrentPage });
             }
             catch (ValidationException validationException)
             {
@@ -143,11 +154,13 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(long id)
+        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1)
         {
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+
             try
             {
-                var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id);
+                var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
                 if (wasDeleted)
                 {
                     TempData["SuccessMessage"] = "Categoría desactivada.";
@@ -162,7 +175,7 @@ namespace Mercadito.Pages.Categories
                 _logger.LogError(exception, "Error al eliminar la categoría");
                 TempData["ErrorMessage"] = "No se pudo eliminar la categoría.";
             }
-            return RedirectToPage();
+            return RedirectToPage(new { pageNumber = CurrentPage });
         }
 
     }

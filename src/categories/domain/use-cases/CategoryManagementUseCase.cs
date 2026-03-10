@@ -12,11 +12,11 @@ namespace Mercadito.src.categories.domain.usecases
 
         private readonly ICategoryRepository _categoryRepository = categoryRepository;
 
-        public async Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(int currentPage, int pageSize)
+        public async Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(int currentPage, int pageSize, CancellationToken cancellationToken = default)
         {
-            var totalCount = await _categoryRepository.GetTotalCategoriesCountAsync();
+            var totalCount = await _categoryRepository.GetTotalCategoriesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var pagedCategories = (await _categoryRepository.GetCategoryByPages(currentPage, pageSize)).ToList();
+            var pagedCategories = (await _categoryRepository.GetCategoryByPages(currentPage, pageSize, cancellationToken)).ToList();
             return (pagedCategories, totalPages);
         }
 
@@ -26,9 +26,9 @@ namespace Mercadito.src.categories.domain.usecases
             return (totalItems + pageSize - 1) / pageSize;
         }
 
-        public async Task<UpdateCategoryDto?> GetForEditAsync(long categoryId)
+        public async Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default)
         {
-            var category = await _categoryRepository.GetCategoryByIdAsync(categoryId);
+            var category = await _categoryRepository.GetCategoryByIdAsync(categoryId, cancellationToken);
             if (category == null)
             {
                 return null;
@@ -43,7 +43,7 @@ namespace Mercadito.src.categories.domain.usecases
             };
         }
 
-        public async Task CreateAsync(CreateCategoryDto newCategory)
+        public async Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default)
         {
             var category = new Category
             {
@@ -52,17 +52,11 @@ namespace Mercadito.src.categories.domain.usecases
                 Description = newCategory.Description
             };
 
-            await _categoryRepository.AddCategoryAsync(category);
+            await _categoryRepository.AddCategoryAsync(category, cancellationToken);
         }
 
-        public async Task UpdateAsync(UpdateCategoryDto editCategory)
+        public async Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default)
         {
-            var categoryExists = await _categoryRepository.GetCategoryByIdAsync(editCategory.Id);
-            if (categoryExists == null)
-            {
-                throw new ValidationException("Categoría no encontrada.");
-            }
-
             var category = new Category
             {
                 Id = editCategory.Id,
@@ -71,13 +65,17 @@ namespace Mercadito.src.categories.domain.usecases
                 Description = editCategory.Description
             };
 
-            await _categoryRepository.UpdateCategoryAsync(category);
+            var affectedRows = await _categoryRepository.UpdateCategoryAsync(category, cancellationToken);
+            if (affectedRows == 0)
+            {
+                throw new ValidationException("Categoría no encontrada.");
+            }
         }
 
-        public async Task<bool> DeleteAsync(long categoryId)
+        public async Task<bool> DeleteAsync(long categoryId, CancellationToken cancellationToken = default)
         {
-            var deletedRows = await _categoryRepository.DeleteCategoryAsync(categoryId);
-            return deletedRows > 0;
+            var affectedRows = await _categoryRepository.DeleteCategoryAsync(categoryId, cancellationToken);
+            return affectedRows > 0;
         }
     }
 }

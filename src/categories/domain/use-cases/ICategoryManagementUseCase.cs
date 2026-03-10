@@ -5,10 +5,10 @@ namespace Mercadito.src.categories.domain.usecases
 {
     public interface ICategoryManagementUseCase
     {
-        Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(int currentPage, int pageSize);
-        Task<UpdateCategoryDto?> GetForEditAsync(long categoryId);
-        Task CreateAsync(CreateCategoryDto newCategory);
-        Task UpdateAsync(UpdateCategoryDto editCategory);
-        Task<bool> DeleteAsync(long categoryId);
+        Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(int currentPage, int pageSize, CancellationToken cancellationToken = default);
+        Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default);
+        Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default);
+        Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default);
+        Task<bool> DeleteAsync(long categoryId, CancellationToken cancellationToken = default);
     }
 }
