@@ -6,106 +6,105 @@
     var showIdColumn = HostEnvironment.IsDevelopment();
 }
 
-<h1>@ViewData["Title"]</h1>
-
-<div class="mb-3">
-    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-        <i class="bi bi-plus-circle" aria-hidden="true"></i> Agregar Nuevo Empleado
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Administración de personal</p>
+    </section>
+    <button class="b-btn" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+        <i class="bi bi-person-plus-fill"></i> Registrar Empleado
     </button>
-</div>
+</header>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div class="table-responsive">
+<section>
+    @if (Model.Employees != null && Model.Employees.Any())
+    {
+        <section class="table-responsive">
             <table class="table table-hover align-middle">
-                <thead class="table-light">
+                <thead class="text-center">
                     <tr>
                         @if (showIdColumn)
                         {
                             <th>ID</th>
                         }
                         <th>CI</th>
-                        <th>Nombres</th>
+                        <th>Nombre</th>
                         <th>Apellidos</th>
-                        <th>Rol</th>
                         <th>Contacto</th>
+                        <th>Rol</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th class="text-center" style="width: 170px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                @if (Model.Employees != null && Model.Employees.Any())
-                {
                     @foreach (var emp in Model.Employees)
                     {
                         <tr>
                             @if (showIdColumn)
                             {
-                                <td class="small text-muted">@emp.Id</td>
+                                <td class="small text-muted" style="font-family: var(--font-mono);">@emp.Id</td>
                             }
-                            <td>@emp.Ci @if (!string.IsNullOrWhiteSpace(emp.Complemento)) { <span>- @emp.Complemento</span> }</td>
-                            <td>@emp.Nombres</td>
+                            <td class="fw-bold" style="font-family: var(--font-mono); text-align: center;">
+                                @emp.Ci @if (!string.IsNullOrWhiteSpace(emp.Complemento)) { <strong>- @emp.Complemento</strong> }
+                            </td>
+                            <td class="fw-bold" style="font-family: var(--font-display); font-size: 1.1rem;">@emp.Nombres</td>
                             <td>@emp.PrimerApellido @emp.SegundoApellido</td>
-                            <td>@emp.Rol</td>
-                            <td>@emp.NumeroContacto</td>
-                            <td>
+                            <td style="font-family: var(--font-mono); text-align: center;">@emp.NumeroContacto</td>
+                            <td class="text-center">
+                                <mark class="status-badge" data-status="good">@emp.Rol</mark>
+                            </td>
+                            <td class="text-center">
                                 @if (emp.IsActive)
                                 {
-                                    <span class="badge bg-success">Activo</span>
+                                    <mark class="badge bg-success">Activo</mark>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-secondary">Inactivo</span>
+                                    <mark class="badge bg-secondary">Inactivo</mark>
                                 }
                             </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary edit-employee-btn"
-                                            data-id="@emp.Id"
-                                            data-ci="@emp.Ci"
-                                            data-complemento="@emp.Complemento"
-                                            data-nombres="@emp.Nombres"
-                                            data-primerapellido="@emp.PrimerApellido"
-                                            data-segundoapellido="@emp.SegundoApellido"
-                                            data-rol="@emp.Rol"
-                                            data-numerocontacto="@emp.NumeroContacto"
-                                            data-isactive="@emp.IsActive"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editEmployeeModal">
-                                        <i class="bi bi-pencil" aria-hidden="true"></i> Editar
+                            <td class="text-center">
+                                <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
+                                    <button
+                                        class="b-btn b-btn-secondary edit-employee-btn" style="padding: 0.25rem 0.5rem;"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editEmployeeModal"
+                                        data-id="@emp.Id"
+                                        data-ci="@emp.Ci"
+                                        data-complemento="@emp.Complemento"
+                                        data-nombres="@emp.Nombres"
+                                        data-primerapellido="@emp.PrimerApellido"
+                                        data-segundoapellido="@emp.SegundoApellido"
+                                        data-numerocontacto="@emp.NumeroContacto"
+                                        data-rol="@emp.Rol"
+                                        data-isactive="@emp.IsActive"
+                                        title="Editar">
+                                        <i class="bi bi-pencil"></i>
                                     </button>
                                     <form method="post" asp-page-handler="Delete" class="d-inline">
                                         <input type="hidden" name="id" value="@emp.Id" />
                                         <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Eliminar empleado?')">
-                                            <i class="bi bi-trash" aria-hidden="true"></i> Eliminar
+                                        <button type="submit" class="b-btn b-btn-danger" style="padding: 0.25rem 0.5rem;"
+                                                title="Eliminar"
+                                                onclick="return confirm('¿Eliminar empleado?')">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
-                                </div>
+                                </menu>
                             </td>
                         </tr>
                     }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="@(showIdColumn ? 8 : 7)" class="text-center text-muted py-4">
-                            No se encontraron empleados.
-                        </td>
-                    </tr>
-                }
                 </tbody>
             </table>
-        </div>
+        </section>
 
         <!-- Paginación -->
-        <div class="d-flex justify-content-center mt-3">
-            <nav>
-                <ul class="pagination pagination-sm">
+        <section class="d-flex justify-content-center mt-4">
+            <nav aria-label="Paginación de empleados">
+                <ul class="pagination">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage - 1)" aria-label="Página anterior">
-                            <i class="bi bi-chevron-left" aria-hidden="true"></i>
-                            <span class="visually-hidden">Anterior</span>
+                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage - 1)">
+                            <i class="bi bi-chevron-left me-1"></i>Anterior
                         </a>
                     </li>
                     @for (int i = 1; i <= Model.TotalPages; i++)
@@ -115,213 +114,228 @@
                         </li>
                     }
                     <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage + 1)" aria-label="Página siguiente">
-                            <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                            <span class="visually-hidden">Siguiente</span>
+                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage + 1)">
+                            Siguiente<i class="bi bi-chevron-right ms-1"></i>
                         </a>
                     </li>
                 </ul>
             </nav>
-        </div>
-    </div>
-</div>
+        </section>
+    }
+    else
+    {
+        <aside class="text-center text-muted py-5" style="font-family: var(--font-mono); border: 2px dashed var(--mrc-ink); border-radius: var(--radius-md);">
+            No hay empleados registrados en el sistema.
+        </aside>
+    }
+</section>
 
-<!-- Modal Agregar Empleado -->
-<div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content shadow">
-            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate>
+<!-- Modals -->
+<section class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-lg modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate id="createEmployeeForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title fw-semibold" id="addEmployeeModalLabel">
-                        <i class="bi bi-person-plus me-2" aria-hidden="true"></i> Nuevo Empleado
+                <header class="modal-header">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="addEmployeeModalLabel">
+                        <i class="bi bi-person-badge me-2"></i> Registrar Empleado
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Ci)" class="form-label">CI</label>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <aside asp-validation-summary="ModelOnly" class="text-danger small mb-3"></aside>
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
+                    <section class="row g-3 mb-4">
+                        <section class="col-md-5">
+                            <label asp-for="NewEmployee.Ci" class="form-label fw-bold">CI</label>
                             <input asp-for="NewEmployee.Ci" type="number" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.Ci" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Complemento)" class="form-label">Complemento</label>
+                            <small asp-validation-for="NewEmployee.Ci" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-2">
+                            <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">Complemento</label>
                             <input asp-for="NewEmployee.Complemento" class="form-control" />
-                            <span asp-validation-for="NewEmployee.Complemento" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Nombres)" class="form-label">Nombres</label>
-                            <input asp-for="NewEmployee.Nombres" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.Nombres" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.PrimerApellido)" class="form-label">Primer Apellido</label>
-                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" required />
-                            <span asp-validation-for="NewEmployee.PrimerApellido" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.SegundoApellido)" class="form-label">Segundo Apellido</label>
-                            <input asp-for="NewEmployee.SegundoApellido" class="form-control" />
-                            <span asp-validation-for="NewEmployee.SegundoApellido" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.NewEmployee.Rol)" class="form-label">Rol</label>
+                            <small asp-validation-for="NewEmployee.Complemento" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-5">
+                            <label asp-for="NewEmployee.Rol" class="form-label fw-bold">Rol</label>
                             <select asp-for="NewEmployee.Rol" class="form-select" required>
                                 <option value="Cajero">Cajero</option>
                                 <option value="Inventario">Inventario</option>
                             </select>
-                            <span asp-validation-for="NewEmployee.Rol" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="@Html.IdFor(m => m.NewEmployee.NumeroContacto)" class="form-label">Número de Contacto</label>
-                        <input asp-for="NewEmployee.NumeroContacto" class="form-control" required />
-                        <span asp-validation-for="NewEmployee.NumeroContacto" class="text-danger small"></span>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i> Guardar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+                            <small asp-validation-for="NewEmployee.Rol" class="text-danger"></small>
+                        </section>
+                    </section>
 
-<!-- Modal Editar Empleado -->
-<div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content shadow">
-            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate>
+                    <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Datos Personales</h6>
+                    <section class="row g-3">
+                        <section class="col-md-4">
+                            <label asp-for="NewEmployee.Nombres" class="form-label fw-bold">Nombres</label>
+                            <input asp-for="NewEmployee.Nombres" class="form-control" required />
+                            <small asp-validation-for="NewEmployee.Nombres" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-4">
+                            <label asp-for="NewEmployee.PrimerApellido" class="form-label fw-bold">Primer Apellido</label>
+                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" required />
+                            <small asp-validation-for="NewEmployee.PrimerApellido" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-4">
+                            <label asp-for="NewEmployee.SegundoApellido" class="form-label fw-bold">Segundo Apellido</label>
+                            <input asp-for="NewEmployee.SegundoApellido" class="form-control" />
+                            <small asp-validation-for="NewEmployee.SegundoApellido" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-6 mt-4">
+                            <label asp-for="NewEmployee.NumeroContacto" class="form-label fw-bold">Número de Contacto</label>
+                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" required />
+                            <small asp-validation-for="NewEmployee.NumeroContacto" class="text-danger"></small>
+                        </section>
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn js-submit-lock" data-busy-text="<i class='bi bi-hourglass-split me-1'></i> Registrando...">
+                        <i class="bi bi-check-lg me-1"></i> Guardar
+                    </button>
+                </footer>
+            </form>
+        </article>
+    </section>
+</section>
+
+<section class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-lg modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="editEmployeeForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title fw-semibold" id="editEmployeeModalLabel">
-                        <i class="bi bi-pencil me-2" aria-hidden="true"></i> Editar Empleado
+                <input asp-for="EditEmployee.Id" type="hidden" id="EditEmployee_Id" />
+                <header class="modal-header">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="editEmployeeModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i> Actualizar Empleado
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input asp-for="EditEmployee.Id" type="hidden" />
-                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Ci)" class="form-label">CI</label>
-                            <input asp-for="EditEmployee.Ci" type="number" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.Ci" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Complemento)" class="form-label">Complemento</label>
-                            <input asp-for="EditEmployee.Complemento" class="form-control" />
-                            <span asp-validation-for="EditEmployee.Complemento" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Nombres)" class="form-label">Nombres</label>
-                            <input asp-for="EditEmployee.Nombres" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.Nombres" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.PrimerApellido)" class="form-label">Primer Apellido</label>
-                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" required />
-                            <span asp-validation-for="EditEmployee.PrimerApellido" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.SegundoApellido)" class="form-label">Segundo Apellido</label>
-                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" />
-                            <span asp-validation-for="EditEmployee.SegundoApellido" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="@Html.IdFor(m => m.EditEmployee.Rol)" class="form-label">Rol</label>
-                            <select asp-for="EditEmployee.Rol" class="form-select" required>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <aside asp-validation-summary="ModelOnly" class="text-danger small mb-3"></aside>
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
+                    <section class="row g-3 mb-4">
+                        <section class="col-md-5">
+                            <label asp-for="EditEmployee.Ci" class="form-label fw-bold">CI</label>
+                            <input asp-for="EditEmployee.Ci" type="number" class="form-control" id="EditEmployee_Ci" required />
+                            <small asp-validation-for="EditEmployee.Ci" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-2">
+                            <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">Complemento</label>
+                            <input asp-for="EditEmployee.Complemento" class="form-control" id="EditEmployee_Complemento" />
+                            <small asp-validation-for="EditEmployee.Complemento" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-5">
+                            <label asp-for="EditEmployee.Rol" class="form-label fw-bold">Rol</label>
+                            <select asp-for="EditEmployee.Rol" class="form-select" id="EditEmployee_Rol" required>
                                 <option value="Cajero">Cajero</option>
                                 <option value="Inventario">Inventario</option>
                             </select>
-                            <span asp-validation-for="EditEmployee.Rol" class="text-danger small"></span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="@Html.IdFor(m => m.EditEmployee.NumeroContacto)" class="form-label">Número de Contacto</label>
-                        <input asp-for="EditEmployee.NumeroContacto" class="form-control" required />
-                        <span asp-validation-for="EditEmployee.NumeroContacto" class="text-danger small"></span>
-                    </div>
-                    <div class="form-check mt-1">
-                        <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" />
-                        <label for="@Html.IdFor(m => m.EditEmployee.IsActive)" class="form-check-label">Activo</label>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1" aria-hidden="true"></i> Guardar Cambios</button>
-                </div>
+                            <small asp-validation-for="EditEmployee.Rol" class="text-danger"></small>
+                        </section>
+                    </section>
+
+                    <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Datos Personales</h6>
+                    <section class="row g-3">
+                        <section class="col-md-4">
+                            <label asp-for="EditEmployee.Nombres" class="form-label fw-bold">Nombres</label>
+                            <input asp-for="EditEmployee.Nombres" class="form-control" id="EditEmployee_Nombres" required />
+                            <small asp-validation-for="EditEmployee.Nombres" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-4">
+                            <label asp-for="EditEmployee.PrimerApellido" class="form-label fw-bold">Primer Apellido</label>
+                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" id="EditEmployee_PrimerApellido" required />
+                            <small asp-validation-for="EditEmployee.PrimerApellido" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-4">
+                            <label asp-for="EditEmployee.SegundoApellido" class="form-label fw-bold">Segundo Apellido</label>
+                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" id="EditEmployee_SegundoApellido" />
+                            <small asp-validation-for="EditEmployee.SegundoApellido" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-6 mt-4">
+                            <label asp-for="EditEmployee.NumeroContacto" class="form-label fw-bold">Número de Contacto</label>
+                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" id="EditEmployee_NumeroContacto" required />
+                            <small asp-validation-for="EditEmployee.NumeroContacto" class="text-danger"></small>
+                        </section>
+                        <section class="col-md-6 mt-4 d-flex align-items-end">
+                            <section class="form-check form-switch mb-2">
+                                <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" id="EditEmployee_IsActive" style="border-color: var(--mrc-ink); border-width: 2px;" />
+                                <label for="EditEmployee_IsActive" class="form-check-label fw-bold ms-2">Empleado Activo</label>
+                            </section>
+                        </section>
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn js-submit-lock" data-busy-text="<i class='bi bi-hourglass-split me-1'></i> Actualizando...">
+                        <i class="bi bi-check-lg me-1"></i> Actualizar
+                    </button>
+                </footer>
             </form>
-        </div>
-    </div>
-</div>
+        </article>
+    </section>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
-    @if (Model.ShowCreateEmployeeModal)
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var addEmployeeModalElement = document.getElementById('addEmployeeModal');
-                if (addEmployeeModalElement && typeof bootstrap !== 'undefined') {
-                    var addEmployeeModal = new bootstrap.Modal(addEmployeeModalElement);
-                    addEmployeeModal.show();
-                }
-            });
-        </script>
-    }
-
-    @if (Model.ShowEditEmployeeModal)
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var editEmployeeModalElement = document.getElementById('editEmployeeModal');
-                if (editEmployeeModalElement && typeof bootstrap !== 'undefined') {
-                    var editEmployeeModal = new bootstrap.Modal(editEmployeeModalElement);
-                    editEmployeeModal.show();
-                }
-            });
-        </script>
-    }
-
     <script>
-        // Poblar el modal de edición con los datos del botón
         document.addEventListener('DOMContentLoaded', function () {
             var editBtns = document.querySelectorAll('.edit-employee-btn');
             editBtns.forEach(function (btn) {
                 btn.addEventListener('click', function () {
-                    var id = btn.getAttribute('data-id');
-                    var ci = btn.getAttribute('data-ci') || '';
-                    var complemento = btn.getAttribute('data-complemento') || '';
-                    var nombres = btn.getAttribute('data-nombres') || '';
-                    var primerApellido = btn.getAttribute('data-primerapellido') || '';
-                    var segundoApellido = btn.getAttribute('data-segundoapellido') || '';
+                    document.getElementById('EditEmployee_Id').value = btn.getAttribute('data-id') || '';
+                    document.getElementById('EditEmployee_Ci').value = btn.getAttribute('data-ci') || '';
+                    document.getElementById('EditEmployee_Complemento').value = btn.getAttribute('data-complemento') || '';
+                    document.getElementById('EditEmployee_Nombres').value = btn.getAttribute('data-nombres') || '';
+                    document.getElementById('EditEmployee_PrimerApellido').value = btn.getAttribute('data-primerapellido') || '';
+                    document.getElementById('EditEmployee_SegundoApellido').value = btn.getAttribute('data-segundoapellido') || '';
+                    document.getElementById('EditEmployee_NumeroContacto').value = btn.getAttribute('data-numerocontacto') || '';
+                    
                     var rol = btn.getAttribute('data-rol') || 'Cajero';
-                    var numeroContacto = btn.getAttribute('data-numerocontacto') || '';
-                    var isActive = btn.getAttribute('data-isactive') === 'True';
+                    document.getElementById('EditEmployee_Rol').value = rol;
 
-                    var modal = document.getElementById('editEmployeeModal');
-                    modal.querySelector('[name="EditEmployee.Id"]').value = id;
-                    modal.querySelector('[name="EditEmployee.Ci"]').value = ci;
-                    modal.querySelector('[name="EditEmployee.Complemento"]').value = complemento;
-                    modal.querySelector('[name="EditEmployee.Nombres"]').value = nombres;
-                    modal.querySelector('[name="EditEmployee.PrimerApellido"]').value = primerApellido;
-                    modal.querySelector('[name="EditEmployee.SegundoApellido"]').value = segundoApellido;
-                    modal.querySelector('[name="EditEmployee.Rol"]').value = rol;
-                    modal.querySelector('[name="EditEmployee.NumeroContacto"]').value = numeroContacto;
-                    modal.querySelector('[name="EditEmployee.IsActive"]').checked = isActive;
+                    var isActive = btn.getAttribute('data-isactive') === 'True';
+                    document.getElementById('EditEmployee_IsActive').checked = isActive;
+                });
+            });
+
+            @if (Model.ShowCreateEmployeeModal)
+            {
+                <text>
+                var addModal = new bootstrap.Modal(document.getElementById('addEmployeeModal'));
+                addModal.show();
+                </text>
+            }
+
+            @if (Model.ShowEditEmployeeModal)
+            {
+                <text>
+                var editModal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
+                editModal.show();
+                </text>
+            }
+
+            document.querySelectorAll('.js-submit-lock').forEach(function (button) {
+                button.addEventListener('click', function (e) {
+                    const form = button.closest('form');
+                    if (form && form.checkValidity()) {
+                        setTimeout(() => {
+                            button.disabled = true;
+                            const busyText = button.getAttribute('data-busy-text');
+                            if (busyText) {
+                                button.innerHTML = busyText;
+                            }
+                        }, 10);
+                    }
                 });
             });
         });
