@@ -16,41 +16,29 @@ namespace Mercadito.src.products.domain.usecases
             var productToUpdate = new Product
             {
                 Id = updateProduct.Id,
-                Name = updateProduct.Name,
-                Description = updateProduct.Description,
+                Name = NormalizeRequired(updateProduct.Name),
+                Description = NormalizeRequired(updateProduct.Description),
                 Stock = updateProduct.Stock,
-                Batch = updateProduct.Batch,
+                Batch = NormalizeRequired(updateProduct.Batch),
                 ExpirationDate = updateProduct.ExpirationDate,
                 Price = updateProduct.Price
             };
 
-            var categoryIds = GetDistinctCategoryIds(updateProduct.CategoryIds);
-            var affectedRows = await _productRepository.UpdateProductWithCategoriesAsync(productToUpdate, categoryIds, cancellationToken);
+            var affectedRows = await _productRepository.UpdateProductWithCategoriesAsync(productToUpdate, updateProduct.CategoryIds, cancellationToken);
             if (affectedRows == 0)
             {
                 throw new ValidationException("Producto no encontrado.");
             }
         }
 
-        private static List<long> GetDistinctCategoryIds(IReadOnlyList<long> categoryIds)
+        private static string NormalizeRequired(string value)
         {
-            var distinctCategoryIds = new List<long>();
-            var uniqueCategoryIds = new HashSet<long>();
-
-            foreach (var categoryId in categoryIds)
+            if (value == null)
             {
-                if (categoryId <= 0)
-                {
-                    continue;
-                }
-
-                if (uniqueCategoryIds.Add(categoryId))
-                {
-                    distinctCategoryIds.Add(categoryId);
-                }
+                return string.Empty;
             }
 
-            return distinctCategoryIds;
+            return value.Trim();
         }
     }
 }

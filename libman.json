@@ -44,6 +44,16 @@
         "font/fonts/bootstrap-icons.woff",
         "LICENSE"
       ]
+    },
+    {
+      "provider": "unpkg",
+      "library": "air-datepicker@3.6.0",
+      "destination": "wwwroot/lib/air-datepicker",
+      "files": [
+        "air-datepicker.js",
+        "air-datepicker.css",
+        "locale/es.js"
+      ]
     }
   ]
 }

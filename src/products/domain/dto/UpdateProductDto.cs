@@ -25,8 +25,8 @@ namespace Mercadito.src.products.domain.dto
         public int Stock { get; set; }
 
         [Required(ErrorMessage = "Lote es obligatorio")]
-        [DataType(DataType.Date)]
-        public DateOnly Batch { get; set; }
+        [StringLength(40, ErrorMessage = "Lote no puede exceder 40 caracteres")]
+        public string Batch { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Fecha de vencimiento es obligatoria")]
         [DataType(DataType.Date)]
@@ -38,7 +38,7 @@ namespace Mercadito.src.products.domain.dto
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (Batch == default)
+            if (string.IsNullOrWhiteSpace(Batch))
             {
                 yield return new ValidationResult("Lote es obligatorio", [nameof(Batch)]);
             }
@@ -46,11 +46,6 @@ namespace Mercadito.src.products.domain.dto
             if (ExpirationDate == default)
             {
                 yield return new ValidationResult("Fecha de vencimiento es obligatoria", [nameof(ExpirationDate)]);
-            }
-
-            if (Batch != default && ExpirationDate != default && ExpirationDate <= Batch)
-            {
-                yield return new ValidationResult("La fecha de caducidad debe ser posterior a la fecha del lote", [nameof(ExpirationDate)]);
             }
 
             var distinctCategoryIds = new HashSet<long>();

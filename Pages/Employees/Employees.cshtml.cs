@@ -1,15 +1,26 @@
 using Mercadito.src.employees.data.entity;
 using Mercadito.src.employees.domain.dto;
 using Mercadito.src.employees.domain.usecases;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Text.Json;
 
 namespace Mercadito.Pages.Employees
 {
     public class EmployeesModel : PageModel
     {
+        private const string CurrentPageSessionKey = "Employees.CurrentPage";
+        private const string EditEmployeeSessionKey = "Employees.EditEmployeeId";
+        private const string PendingCreateModalSessionKey = "Employees.PendingCreateModal";
+        private const string PendingCreateDraftSessionKey = "Employees.PendingCreateDraft";
+        private const string PendingCreateErrorsSessionKey = "Employees.PendingCreateErrors";
+        private const string PendingEditModalSessionKey = "Employees.PendingEditModal";
+        private const string PendingEditDraftSessionKey = "Employees.PendingEditDraft";
+        private const string PendingEditErrorsSessionKey = "Employees.PendingEditErrors";
+
         private readonly ILogger<EmployeesModel> _logger;
         private readonly IEmployeeManagementUseCase _employeeManagementUseCase;
         private readonly IRegisterEmployeeUseCase _registerEmployeeUseCase;
@@ -17,16 +28,11 @@ namespace Mercadito.Pages.Employees
         private readonly int _defaultPageSize;
 
         public List<Employee> Employees { get; set; } = [];
-        [BindProperty(SupportsGet = true)]
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
 
-        [BindProperty]
-        [ValidateNever]
         public CreateEmployeeDto NewEmployee { get; set; } = new CreateEmployeeDto();
 
-        [BindProperty]
-        [ValidateNever]
         public UpdateEmployeeDto EditEmployee { get; set; } = new UpdateEmployeeDto();
 
         public bool ShowCreateEmployeeModal { get; set; }
@@ -48,10 +54,66 @@ namespace Mercadito.Pages.Employees
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
 
-        public async Task OnGetAsync(int pageNumber = 1)
+        public async Task OnGetAsync()
         {
-            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+            LoadCurrentPageFromSession();
             await LoadEmployeesAsync();
+            SaveCurrentPageInSession();
+            RestorePendingPostbackState();
+            RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
+            RestorePendingValidationErrors(PendingEditErrorsSessionKey);
+
+            if (ShowCreateEmployeeModal || ShowEditEmployeeModal)
+            {
+                return;
+            }
+
+            var editEmployeeId = PopPendingEditEmployeeId();
+            if (editEmployeeId <= 0)
+            {
+                return;
+            }
+
+            var employeeForEdit = await _employeeManagementUseCase.GetForEditAsync(editEmployeeId, HttpContext.RequestAborted);
+            if (employeeForEdit != null)
+            {
+                EditEmployee = new UpdateEmployeeDto
+                {
+                    Id = employeeForEdit.Id,
+                    Ci = employeeForEdit.Ci,
+                    Complemento = employeeForEdit.Complemento,
+                    Nombres = employeeForEdit.Nombres,
+                    PrimerApellido = employeeForEdit.PrimerApellido,
+                    SegundoApellido = employeeForEdit.SegundoApellido,
+                    NumeroContacto = employeeForEdit.NumeroContacto,
+                    Rol = employeeForEdit.Rol,
+                    IsActive = employeeForEdit.IsActive
+                };
+
+                ShowEditEmployeeModal = true;
+            }
+        }
+
+        public IActionResult OnPostNavigateAsync(int pageNumber = 1)
+        {
+            SetCurrentPage(pageNumber);
+
+            ClearPendingEditEmployeeId();
+            SaveCurrentPageInSession();
+            return RedirectToPage();
+        }
+
+        public IActionResult OnPostStartEditAsync(long id, int pageNumber = 1)
+        {
+            SetCurrentPage(pageNumber);
+            SaveCurrentPageInSession();
+
+            if (id > 0)
+            {
+                SetPendingEditEmployeeId(id);
+            }
+
+            return RedirectToPage();
         }
 
         private async Task LoadEmployeesAsync()
@@ -60,102 +122,106 @@ namespace Mercadito.Pages.Employees
             {
                 var cancellationToken = HttpContext.RequestAborted;
                 var result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
-                TotalPages = result.TotalPages;
+                var maxPage = Math.Max(result.TotalPages, 1);
 
-                if (CurrentPage > TotalPages)
+                if (CurrentPage > maxPage)
                 {
-                    CurrentPage = TotalPages;
+                    CurrentPage = maxPage;
                     result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
                 }
 
+                TotalPages = Math.Max(result.TotalPages, 1);
                 Employees = [.. result.Employees];
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al cargar empleados");
                 ModelState.AddModelError(string.Empty, "Error al cargar los empleados.");
+                Employees = [];
+                TotalPages = 1;
             }
         }
 
-        public async Task<IActionResult> OnPostCreateAsync(int pageNumber = 1)
+        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewEmployee")] CreateEmployeeDto newEmployee, int pageNumber = 1)
         {
-            CurrentPage = pageNumber > 0 ? pageNumber : 1;
-            ModelState.Clear();
-            ModelState.ClearValidationState(nameof(NewEmployee));
-            var isValid = TryValidateModel(NewEmployee, nameof(NewEmployee));
+            NewEmployee = newEmployee;
+            SetCurrentPage(pageNumber);
 
-            if (!isValid)
+            ClearPendingEditEmployeeId();
+            SaveCurrentPageInSession();
+
+            if (!ModelState.IsValid)
             {
-                ShowCreateEmployeeModal = true;
-                await LoadEmployeesAsync();
-                return Page();
+                TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
+                StorePendingCreateModal(NewEmployee);
+                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
+                return RedirectToCurrentState();
             }
 
             try
             {
                 await _registerEmployeeUseCase.ExecuteAsync(NewEmployee, HttpContext.RequestAborted);
                 TempData["SuccessMessage"] = "Empleado agregado exitosamente.";
-                return RedirectToPage(new { pageNumber = CurrentPage });
+                return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
                 _logger.LogWarning(validationException, "Validacion de negocio al crear empleado");
-                ModelState.AddModelError(string.Empty, validationException.Message);
-                ShowCreateEmployeeModal = true;
-                await LoadEmployeesAsync();
-                return Page();
+                TempData["ErrorMessage"] = validationException.Message;
+                StorePendingCreateModal(NewEmployee);
+                return RedirectToCurrentState();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear empleado");
-                ModelState.AddModelError(string.Empty, "Error al guardar el empleado.");
-                ShowCreateEmployeeModal = true;
-                await LoadEmployeesAsync();
-                return Page();
+                TempData["ErrorMessage"] = "Error al guardar el empleado.";
+                StorePendingCreateModal(NewEmployee);
+                return RedirectToCurrentState();
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync(int pageNumber = 1)
+        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditEmployee")] UpdateEmployeeDto editEmployee, int pageNumber = 1)
         {
-            CurrentPage = pageNumber > 0 ? pageNumber : 1;
-            ModelState.Clear();
-            ModelState.ClearValidationState(nameof(EditEmployee));
-            var isValid = TryValidateModel(EditEmployee, nameof(EditEmployee));
+            EditEmployee = editEmployee;
+            SetCurrentPage(pageNumber);
+            SaveCurrentPageInSession();
 
-            if (!isValid)
+            if (!ModelState.IsValid)
             {
-                await LoadEmployeesAsync();
-                ShowEditEmployeeModal = true;
-                return Page();
+                TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
+                StorePendingEditModal(EditEmployee);
+                StorePendingValidationErrors(PendingEditErrorsSessionKey);
+                return RedirectToCurrentState();
             }
 
             try
             {
                 await _updateEmployeeUseCase.ExecuteAsync(EditEmployee, HttpContext.RequestAborted);
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
-                return RedirectToPage(new { pageNumber = CurrentPage });
+                return RedirectToCurrentState();
             }
             catch (InvalidOperationException invalidOperationException)
             {
                 _logger.LogWarning(invalidOperationException, "Empleado no encontrado al actualizar");
-                ModelState.AddModelError(string.Empty, invalidOperationException.Message);
-                await LoadEmployeesAsync();
-                ShowEditEmployeeModal = true;
-                return Page();
+                TempData["ErrorMessage"] = invalidOperationException.Message;
+                StorePendingEditModal(EditEmployee);
+                return RedirectToCurrentState();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al actualizar empleado");
-                ModelState.AddModelError(string.Empty, "Error al actualizar el empleado.");
-                await LoadEmployeesAsync();
-                ShowEditEmployeeModal = true;
-                return Page();
+                TempData["ErrorMessage"] = "Error al actualizar el empleado.";
+                StorePendingEditModal(EditEmployee);
+                return RedirectToCurrentState();
             }
         }
 
         public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1)
         {
-            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+            SetCurrentPage(pageNumber);
+
+            ClearPendingEditEmployeeId();
+            SaveCurrentPageInSession();
 
             try
             {
@@ -169,7 +235,188 @@ namespace Mercadito.Pages.Employees
                 _logger.LogError(ex, "Error al eliminar empleado");
                 TempData["ErrorMessage"] = "No se pudo eliminar el empleado.";
             }
-            return RedirectToPage(new { pageNumber = CurrentPage });
+
+            return RedirectToCurrentState();
+        }
+
+        private RedirectToPageResult RedirectToCurrentState()
+        {
+            ClearPendingEditEmployeeId();
+            SaveCurrentPageInSession();
+            return RedirectToPage();
+        }
+
+        private void StorePendingCreateModal(CreateEmployeeDto draft)
+        {
+            HttpContext.Session.SetString(PendingCreateModalSessionKey, bool.TrueString);
+            HttpContext.Session.SetString(PendingCreateDraftSessionKey, JsonSerializer.Serialize(draft));
+        }
+
+        private void StorePendingEditModal(UpdateEmployeeDto draft)
+        {
+            HttpContext.Session.SetString(PendingEditModalSessionKey, bool.TrueString);
+            HttpContext.Session.SetString(PendingEditDraftSessionKey, JsonSerializer.Serialize(draft));
+        }
+
+        private void RestorePendingPostbackState()
+        {
+            if (PopFlag(PendingCreateModalSessionKey))
+            {
+                ShowCreateEmployeeModal = true;
+                var pendingCreateDraft = PopDraft<CreateEmployeeDto>(PendingCreateDraftSessionKey);
+                if (pendingCreateDraft != null)
+                {
+                    NewEmployee = pendingCreateDraft;
+                }
+            }
+            else
+            {
+                HttpContext.Session.Remove(PendingCreateDraftSessionKey);
+            }
+
+            if (PopFlag(PendingEditModalSessionKey))
+            {
+                ShowEditEmployeeModal = true;
+                var pendingEditDraft = PopDraft<UpdateEmployeeDto>(PendingEditDraftSessionKey);
+                if (pendingEditDraft != null)
+                {
+                    EditEmployee = pendingEditDraft;
+                }
+            }
+            else
+            {
+                HttpContext.Session.Remove(PendingEditDraftSessionKey);
+            }
+        }
+
+        private bool PopFlag(string sessionKey)
+        {
+            var rawValue = HttpContext.Session.GetString(sessionKey);
+            HttpContext.Session.Remove(sessionKey);
+
+            return bool.TryParse(rawValue, out var parsedValue) && parsedValue;
+        }
+
+        private T? PopDraft<T>(string sessionKey) where T : class
+        {
+            var rawValue = HttpContext.Session.GetString(sessionKey);
+            HttpContext.Session.Remove(sessionKey);
+
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<T>(rawValue);
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
+                return null;
+            }
+        }
+
+        private void StorePendingValidationErrors(string sessionKey)
+        {
+            var errors = ModelState
+                .Where(entry => entry.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    entry => entry.Key,
+                    entry => entry.Value!.Errors
+                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
+                        .ToArray());
+
+            if (errors.Count == 0)
+            {
+                HttpContext.Session.Remove(sessionKey);
+                return;
+            }
+
+            HttpContext.Session.SetString(sessionKey, JsonSerializer.Serialize(errors));
+        }
+
+        private void RestorePendingValidationErrors(string sessionKey)
+        {
+            var rawValue = HttpContext.Session.GetString(sessionKey);
+            HttpContext.Session.Remove(sessionKey);
+
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return;
+            }
+
+            try
+            {
+                var errors = JsonSerializer.Deserialize<Dictionary<string, string[]>>(rawValue);
+                if (errors == null)
+                {
+                    return;
+                }
+
+                foreach (var (key, messages) in errors)
+                {
+                    if (messages == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var message in messages)
+                    {
+                        if (!string.IsNullOrWhiteSpace(message))
+                        {
+                            ModelState.AddModelError(key, message);
+                        }
+                    }
+                }
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
+            }
+        }
+
+        private void LoadCurrentPageFromSession()
+        {
+            var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
+            if (!currentPageInSession.HasValue || currentPageInSession.Value <= 0)
+            {
+                CurrentPage = 1;
+                return;
+            }
+
+            CurrentPage = currentPageInSession.Value;
+        }
+
+        private void SetCurrentPage(int pageNumber)
+        {
+            CurrentPage = pageNumber > 0 ? pageNumber : 1;
+        }
+
+        private void SaveCurrentPageInSession()
+        {
+            HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
+        }
+
+        private void SetPendingEditEmployeeId(long employeeId)
+        {
+            HttpContext.Session.SetString(EditEmployeeSessionKey, employeeId.ToString(CultureInfo.InvariantCulture));
+        }
+
+        private long PopPendingEditEmployeeId()
+        {
+            var rawEditEmployeeId = HttpContext.Session.GetString(EditEmployeeSessionKey);
+            HttpContext.Session.Remove(EditEmployeeSessionKey);
+
+            return long.TryParse(rawEditEmployeeId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var editEmployeeId)
+                ? editEmployeeId
+                : 0;
+        }
+
+        private void ClearPendingEditEmployeeId()
+        {
+            HttpContext.Session.Remove(EditEmployeeSessionKey);
         }
     }
 }

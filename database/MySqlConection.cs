@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using Mercadito.database.interfaces;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace Mercadito.database;
 
@@ -21,17 +21,25 @@ public class MySqlConnectionFactory : IDataBaseConnection
 
     public async Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var connection = new MySqlConnection(_connectionString);
+
         try
         {
-            var connection = new MySqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             return connection;
         }
         catch (MySqlException exception)
         {
+            connection.Dispose();
             throw new InvalidOperationException(
-                "No se pudo abrir una conexion a MySQL. Verifique la configuracion de acceso y la disponibilidad del servidor.",
+                "No se pudo abrir una conexión con la base de datos. Inténtelo nuevamente más tarde.",
                 exception);
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
         }
     }
 }

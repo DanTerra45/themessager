@@ -11,7 +11,8 @@ namespace Mercadito.src.employees.domain.dto
         [Range(1, long.MaxValue, ErrorMessage = "El CI debe ser mayor a cero")]
         public long Ci { get; set; }
 
-        [StringLength(20, ErrorMessage = "Maximo 20 caracteres")]
+        [StringLength(2, MinimumLength = 2, ErrorMessage = "El complemento debe tener exactamente 2 caracteres")]
+        [RegularExpression("^[0-9][A-Za-z]$", ErrorMessage = "El complemento debe tener formato numero+letra (ejemplo: 1A)")]
         public string? Complemento { get; set; }
 
         [Required(ErrorMessage = "Los nombres son requeridos")]

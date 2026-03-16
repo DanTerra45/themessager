@@ -11,7 +11,7 @@ namespace Mercadito.src.employees.domain.usecases
         {
             var totalCount = await _employeeRepository.GetTotalEmployeesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var employees = (await _employeeRepository.GetEmployeesByPages(currentPage, pageSize, cancellationToken)).ToList();
+            var employees = await _employeeRepository.GetEmployeesByPages(currentPage, pageSize, cancellationToken);
             return (employees, totalPages);
         }
 

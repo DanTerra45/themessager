@@ -4,6 +4,11 @@
 ## Get latest from `dotnet new gitignore`
 
 # Sonarcube
+.agents/
+.gemini/
+.claude/
+
+# Sonarcube
 .sonarqube/
 
 # Config

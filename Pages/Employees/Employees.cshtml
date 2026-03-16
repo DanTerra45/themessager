@@ -1,9 +1,9 @@
 @page "/Employees"
 @model Mercadito.Pages.Employees.EmployeesModel
-@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnvironment
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     ViewData["Title"] = "Empleados";
-    var showIdColumn = HostEnvironment.IsDevelopment();
+    var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -11,13 +11,13 @@
         <h1>@ViewData["Title"]</h1>
         <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Administración de personal</p>
     </section>
-    <button class="b-btn" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+    <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
         <i class="bi bi-person-plus-fill"></i> Registrar Empleado
     </button>
 </header>
 
 <section>
-    @if (Model.Employees != null && Model.Employees.Any())
+    @if (Model.Employees.Count > 0)
     {
         <section class="table-responsive">
             <table class="table table-hover align-middle">
@@ -25,14 +25,38 @@
                     <tr>
                         @if (showIdColumn)
                         {
-                            <th>ID</th>
+                            <th class="sortable-header" title="Ordenar por ID">
+                                <section class="d-flex align-items-center justify-content-center gap-1">
+                                    ID <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
+                                </section>
+                            </th>
                         }
-                        <th>CI</th>
-                        <th>Nombre</th>
-                        <th>Apellidos</th>
+                        <th class="sortable-header" title="Ordenar por CI">
+                            <section class="d-flex align-items-center justify-content-center gap-1">
+                                CI <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
+                            </section>
+                        </th>
+                        <th class="sortable-header" title="Ordenar por Nombre">
+                            <section class="d-flex align-items-center justify-content-center gap-1">
+                                Nombre <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
+                            </section>
+                        </th>
+                        <th class="sortable-header" title="Ordenar por Apellidos">
+                            <section class="d-flex align-items-center justify-content-center gap-1">
+                                Apellidos <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
+                            </section>
+                        </th>
                         <th>Contacto</th>
-                        <th>Rol</th>
-                        <th>Estado</th>
+                        <th class="sortable-header" title="Ordenar por Rol">
+                            <section class="d-flex align-items-center justify-content-center gap-1">
+                                Rol <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
+                            </section>
+                        </th>
+                        <th class="sortable-header" title="Ordenar por Estado">
+                            <section class="d-flex align-items-center justify-content-center gap-1">
+                                Estado <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
+                            </section>
+                        </th>
                         <th class="text-center" style="width: 170px;">Acciones</th>
                     </tr>
                 </thead>
@@ -65,31 +89,24 @@
                             </td>
                             <td class="text-center">
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
-                                    <button
-                                        class="b-btn b-btn-secondary edit-employee-btn" style="padding: 0.25rem 0.5rem;"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editEmployeeModal"
-                                        data-id="@emp.Id"
-                                        data-ci="@emp.Ci"
-                                        data-complemento="@emp.Complemento"
-                                        data-nombres="@emp.Nombres"
-                                        data-primerapellido="@emp.PrimerApellido"
-                                        data-segundoapellido="@emp.SegundoApellido"
-                                        data-numerocontacto="@emp.NumeroContacto"
-                                        data-rol="@emp.Rol"
-                                        data-isactive="@emp.IsActive"
-                                        title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <form method="post" asp-page-handler="Delete" class="d-inline">
+                                    <form method="post" asp-page-handler="StartEdit" class="d-inline">
                                         <input type="hidden" name="id" value="@emp.Id" />
                                         <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                                        <button type="submit" class="b-btn b-btn-danger" style="padding: 0.25rem 0.5rem;"
-                                                title="Eliminar"
-                                                onclick="return confirm('¿Eliminar empleado?')">
-                                            <i class="bi bi-trash"></i>
+                                        <button type="submit" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
                                         </button>
                                     </form>
+                                    <button class="b-btn b-btn-danger" style="padding: 0.25rem 0.5rem;"
+                                            title="Eliminar"
+                                            aria-label="Eliminar"
+                                            type="button"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteEmployeeModal"
+                                            data-id="@emp.Id"
+                                            data-name="@($"{emp.Nombres} {emp.PrimerApellido} {emp.SegundoApellido}".Trim())">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </menu>
                             </td>
                         </tr>
@@ -103,20 +120,29 @@
             <nav aria-label="Paginación de empleados">
                 <ul class="pagination">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
-                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage - 1)">
-                            <i class="bi bi-chevron-left me-1"></i>Anterior
-                        </a>
+                        <form method="post" asp-page-handler="Navigate" class="d-inline">
+                            <input type="hidden" name="pageNumber" value="@(Model.CurrentPage - 1)" />
+                            <button type="submit" class="page-link" disabled="@(Model.CurrentPage == 1)">
+                                <i class="bi bi-chevron-left me-1"></i>Anterior
+                            </button>
+                        </form>
                     </li>
                     @for (int i = 1; i <= Model.TotalPages; i++)
                     {
                         <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                            <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@i">@i</a>
+                            <form method="post" asp-page-handler="Navigate" class="d-inline">
+                                <input type="hidden" name="pageNumber" value="@i" />
+                                <button type="submit" class="page-link">@i</button>
+                            </form>
                         </li>
                     }
                     <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
-                        <a class="page-link" asp-page="./Employees" asp-route-pageNumber="@(Model.CurrentPage + 1)">
-                            Siguiente<i class="bi bi-chevron-right ms-1"></i>
-                        </a>
+                        <form method="post" asp-page-handler="Navigate" class="d-inline">
+                            <input type="hidden" name="pageNumber" value="@(Model.CurrentPage + 1)" />
+                            <button type="submit" class="page-link" disabled="@(Model.CurrentPage == Model.TotalPages)">
+                                Siguiente<i class="bi bi-chevron-right ms-1"></i>
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </nav>
@@ -131,6 +157,38 @@
 </section>
 
 <!-- Modals -->
+<section class="modal fade" id="deleteEmployeeModal" tabindex="-1" aria-labelledby="deleteEmployeeModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Delete" id="deleteEmployeeForm">
+                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" name="id" id="DeleteEmployeeId" />
+
+                <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; color: white;" id="deleteEmployeeModalLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Confirmar eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+
+                <section class="modal-body p-4">
+                    <p class="mb-3" style="font-size: 1.1rem;">¿Está seguro de eliminar al empleado seleccionado?</p>
+                    <p class="mb-0" style="font-family: var(--font-mono); padding: 1rem; background-color: var(--mrc-surface-alt); border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm);">
+                        Empleado: <strong id="deleteEmployeeName" style="font-size: 1.2rem;">-</strong>
+                    </p>
+                </section>
+
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn b-btn-danger">
+                        <i class="bi bi-trash me-1"></i> Eliminar
+                    </button>
+                </footer>
+            </form>
+        </article>
+    </section>
+</section>
+
 <section class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
@@ -143,19 +201,18 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
                 <section class="modal-body p-4">
-                    <aside asp-validation-summary="ModelOnly" class="text-danger small mb-3"></aside>
 
                     <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
                     <section class="row g-3 mb-4">
                         <section class="col-md-5">
                             <label asp-for="NewEmployee.Ci" class="form-label fw-bold">CI</label>
                             <input asp-for="NewEmployee.Ci" type="number" class="form-control" required />
-                            <small asp-validation-for="NewEmployee.Ci" class="text-danger"></small>
+                            <span asp-validation-for="NewEmployee.Ci" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-2">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">Complemento</label>
-                            <input asp-for="NewEmployee.Complemento" class="form-control" />
-                            <small asp-validation-for="NewEmployee.Complemento" class="text-danger"></small>
+                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" title="Debe tener 2 caracteres: número y letra (ej. 1A)" oninput="this.value = this.value.toUpperCase();" />
+                            <span asp-validation-for="NewEmployee.Complemento" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-5">
                             <label asp-for="NewEmployee.Rol" class="form-label fw-bold">Rol</label>
@@ -163,7 +220,7 @@
                                 <option value="Cajero">Cajero</option>
                                 <option value="Inventario">Inventario</option>
                             </select>
-                            <small asp-validation-for="NewEmployee.Rol" class="text-danger"></small>
+                            <span asp-validation-for="NewEmployee.Rol" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                     </section>
 
@@ -174,28 +231,28 @@
                         <section class="col-md-4">
                             <label asp-for="NewEmployee.Nombres" class="form-label fw-bold">Nombres</label>
                             <input asp-for="NewEmployee.Nombres" class="form-control" required />
-                            <small asp-validation-for="NewEmployee.Nombres" class="text-danger"></small>
+                            <span asp-validation-for="NewEmployee.Nombres" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-4">
                             <label asp-for="NewEmployee.PrimerApellido" class="form-label fw-bold">Primer Apellido</label>
                             <input asp-for="NewEmployee.PrimerApellido" class="form-control" required />
-                            <small asp-validation-for="NewEmployee.PrimerApellido" class="text-danger"></small>
+                            <span asp-validation-for="NewEmployee.PrimerApellido" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-4">
                             <label asp-for="NewEmployee.SegundoApellido" class="form-label fw-bold">Segundo Apellido</label>
                             <input asp-for="NewEmployee.SegundoApellido" class="form-control" />
-                            <small asp-validation-for="NewEmployee.SegundoApellido" class="text-danger"></small>
+                            <span asp-validation-for="NewEmployee.SegundoApellido" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-6 mt-4">
                             <label asp-for="NewEmployee.NumeroContacto" class="form-label fw-bold">Número de Contacto</label>
                             <input asp-for="NewEmployee.NumeroContacto" class="form-control" required />
-                            <small asp-validation-for="NewEmployee.NumeroContacto" class="text-danger"></small>
+                            <span asp-validation-for="NewEmployee.NumeroContacto" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                     </section>
                 </section>
                 <footer class="modal-footer">
                     <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="b-btn js-submit-lock" data-busy-text="<i class='bi bi-hourglass-split me-1'></i> Registrando...">
+                    <button type="submit" class="b-btn">
                         <i class="bi bi-check-lg me-1"></i> Guardar
                     </button>
                 </footer>
@@ -209,7 +266,7 @@
         <article class="modal-content">
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="editEmployeeForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
-                <input asp-for="EditEmployee.Id" type="hidden" id="EditEmployee_Id" />
+                <input asp-for="EditEmployee.Id" type="hidden" />
                 <header class="modal-header">
                     <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="editEmployeeModalLabel">
                         <i class="bi bi-pencil-square me-2"></i> Actualizar Empleado
@@ -217,27 +274,26 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
                 <section class="modal-body p-4">
-                    <aside asp-validation-summary="ModelOnly" class="text-danger small mb-3"></aside>
 
                     <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
                     <section class="row g-3 mb-4">
                         <section class="col-md-5">
                             <label asp-for="EditEmployee.Ci" class="form-label fw-bold">CI</label>
-                            <input asp-for="EditEmployee.Ci" type="number" class="form-control" id="EditEmployee_Ci" required />
-                            <small asp-validation-for="EditEmployee.Ci" class="text-danger"></small>
+                            <input asp-for="EditEmployee.Ci" type="number" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.Ci" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-2">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">Complemento</label>
-                            <input asp-for="EditEmployee.Complemento" class="form-control" id="EditEmployee_Complemento" />
-                            <small asp-validation-for="EditEmployee.Complemento" class="text-danger"></small>
+                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" title="Debe tener 2 caracteres: número y letra (ej. 1A)" oninput="this.value = this.value.toUpperCase();" />
+                            <span asp-validation-for="EditEmployee.Complemento" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-5">
                             <label asp-for="EditEmployee.Rol" class="form-label fw-bold">Rol</label>
-                            <select asp-for="EditEmployee.Rol" class="form-select" id="EditEmployee_Rol" required>
+                            <select asp-for="EditEmployee.Rol" class="form-select" required>
                                 <option value="Cajero">Cajero</option>
                                 <option value="Inventario">Inventario</option>
                             </select>
-                            <small asp-validation-for="EditEmployee.Rol" class="text-danger"></small>
+                            <span asp-validation-for="EditEmployee.Rol" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                     </section>
 
@@ -247,35 +303,35 @@
                     <section class="row g-3">
                         <section class="col-md-4">
                             <label asp-for="EditEmployee.Nombres" class="form-label fw-bold">Nombres</label>
-                            <input asp-for="EditEmployee.Nombres" class="form-control" id="EditEmployee_Nombres" required />
-                            <small asp-validation-for="EditEmployee.Nombres" class="text-danger"></small>
+                            <input asp-for="EditEmployee.Nombres" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.Nombres" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-4">
                             <label asp-for="EditEmployee.PrimerApellido" class="form-label fw-bold">Primer Apellido</label>
-                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" id="EditEmployee_PrimerApellido" required />
-                            <small asp-validation-for="EditEmployee.PrimerApellido" class="text-danger"></small>
+                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.PrimerApellido" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-4">
                             <label asp-for="EditEmployee.SegundoApellido" class="form-label fw-bold">Segundo Apellido</label>
-                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" id="EditEmployee_SegundoApellido" />
-                            <small asp-validation-for="EditEmployee.SegundoApellido" class="text-danger"></small>
+                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" />
+                            <span asp-validation-for="EditEmployee.SegundoApellido" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-6 mt-4">
                             <label asp-for="EditEmployee.NumeroContacto" class="form-label fw-bold">Número de Contacto</label>
-                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" id="EditEmployee_NumeroContacto" required />
-                            <small asp-validation-for="EditEmployee.NumeroContacto" class="text-danger"></small>
+                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" required />
+                            <span asp-validation-for="EditEmployee.NumeroContacto" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-6 mt-4 d-flex align-items-end">
                             <section class="form-check form-switch mb-2">
-                                <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" id="EditEmployee_IsActive" style="border-color: var(--mrc-ink); border-width: 2px;" />
-                                <label for="EditEmployee_IsActive" class="form-check-label fw-bold ms-2">Empleado Activo</label>
+                                <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" style="border-color: var(--mrc-ink); border-width: 2px;" />
+                                <label asp-for="EditEmployee.IsActive" class="form-check-label fw-bold ms-2">Empleado Activo</label>
                             </section>
                         </section>
                     </section>
                 </section>
                 <footer class="modal-footer">
                     <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="b-btn js-submit-lock" data-busy-text="<i class='bi bi-hourglass-split me-1'></i> Actualizando...">
+                    <button type="submit" class="b-btn">
                         <i class="bi bi-check-lg me-1"></i> Actualizar
                     </button>
                 </footer>
@@ -289,24 +345,32 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            var editBtns = document.querySelectorAll('.edit-employee-btn');
-            editBtns.forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    document.getElementById('EditEmployee_Id').value = btn.getAttribute('data-id') || '';
-                    document.getElementById('EditEmployee_Ci').value = btn.getAttribute('data-ci') || '';
-                    document.getElementById('EditEmployee_Complemento').value = btn.getAttribute('data-complemento') || '';
-                    document.getElementById('EditEmployee_Nombres').value = btn.getAttribute('data-nombres') || '';
-                    document.getElementById('EditEmployee_PrimerApellido').value = btn.getAttribute('data-primerapellido') || '';
-                    document.getElementById('EditEmployee_SegundoApellido').value = btn.getAttribute('data-segundoapellido') || '';
-                    document.getElementById('EditEmployee_NumeroContacto').value = btn.getAttribute('data-numerocontacto') || '';
-                    
-                    var rol = btn.getAttribute('data-rol') || 'Cajero';
-                    document.getElementById('EditEmployee_Rol').value = rol;
+            if (typeof bootstrap === 'undefined') {
+                return;
+            }
 
-                    var isActive = btn.getAttribute('data-isactive') === 'True';
-                    document.getElementById('EditEmployee_IsActive').checked = isActive;
+            var deleteEmployeeModal = document.getElementById('deleteEmployeeModal');
+            if (deleteEmployeeModal) {
+                deleteEmployeeModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    if (!button) {
+                        return;
+                    }
+
+                    var employeeId = button.getAttribute('data-id') || '';
+                    var employeeName = button.getAttribute('data-name') || '-';
+
+                    var deleteIdInput = document.getElementById('DeleteEmployeeId');
+                    var deleteNameLabel = document.getElementById('deleteEmployeeName');
+
+                    if (deleteIdInput) {
+                        deleteIdInput.value = employeeId;
+                    }
+                    if (deleteNameLabel) {
+                        deleteNameLabel.textContent = employeeName;
+                    }
                 });
-            });
+            }
 
             @if (Model.ShowCreateEmployeeModal)
             {
@@ -324,20 +388,6 @@
                 </text>
             }
 
-            document.querySelectorAll('.js-submit-lock').forEach(function (button) {
-                button.addEventListener('click', function (e) {
-                    const form = button.closest('form');
-                    if (form && form.checkValidity()) {
-                        setTimeout(() => {
-                            button.disabled = true;
-                            const busyText = button.getAttribute('data-busy-text');
-                            if (busyText) {
-                                button.innerHTML = busyText;
-                            }
-                        }, 10);
-                    }
-                });
-            });
         });
     </script>
 }
