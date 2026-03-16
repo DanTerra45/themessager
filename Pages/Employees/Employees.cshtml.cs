@@ -1,4 +1,4 @@
-﻿using Mercadito.src.employees.data.entity;
+using Mercadito.src.employees.data.entity;
 using Mercadito.src.employees.domain.dto;
 using Mercadito.src.employees.domain.usecases;
 using Microsoft.AspNetCore.Http;
@@ -16,8 +16,10 @@ namespace Mercadito.Pages.Employees
         private const string EditEmployeeSessionKey = "Employees.EditEmployeeId";
         private const string PendingCreateModalSessionKey = "Employees.PendingCreateModal";
         private const string PendingCreateDraftSessionKey = "Employees.PendingCreateDraft";
+        private const string PendingCreateErrorsSessionKey = "Employees.PendingCreateErrors";
         private const string PendingEditModalSessionKey = "Employees.PendingEditModal";
         private const string PendingEditDraftSessionKey = "Employees.PendingEditDraft";
+        private const string PendingEditErrorsSessionKey = "Employees.PendingEditErrors";
 
         private readonly ILogger<EmployeesModel> _logger;
         private readonly IEmployeeManagementUseCase _employeeManagementUseCase;
@@ -58,6 +60,8 @@ namespace Mercadito.Pages.Employees
             await LoadEmployeesAsync();
             SaveCurrentPageInSession();
             RestorePendingPostbackState();
+            RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
+            RestorePendingValidationErrors(PendingEditErrorsSessionKey);
 
             if (ShowCreateEmployeeModal || ShowEditEmployeeModal)
             {
@@ -150,6 +154,7 @@ namespace Mercadito.Pages.Employees
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
                 StorePendingCreateModal(NewEmployee);
+                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
@@ -185,6 +190,7 @@ namespace Mercadito.Pages.Employees
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
                 StorePendingEditModal(EditEmployee);
+                StorePendingValidationErrors(PendingEditErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
@@ -309,6 +315,65 @@ namespace Mercadito.Pages.Employees
             {
                 _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
                 return null;
+            }
+        }
+
+        private void StorePendingValidationErrors(string sessionKey)
+        {
+            var errors = ModelState
+                .Where(entry => entry.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    entry => entry.Key,
+                    entry => entry.Value!.Errors
+                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
+                        .ToArray());
+
+            if (errors.Count == 0)
+            {
+                HttpContext.Session.Remove(sessionKey);
+                return;
+            }
+
+            HttpContext.Session.SetString(sessionKey, JsonSerializer.Serialize(errors));
+        }
+
+        private void RestorePendingValidationErrors(string sessionKey)
+        {
+            var rawValue = HttpContext.Session.GetString(sessionKey);
+            HttpContext.Session.Remove(sessionKey);
+
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return;
+            }
+
+            try
+            {
+                var errors = JsonSerializer.Deserialize<Dictionary<string, string[]>>(rawValue);
+                if (errors == null)
+                {
+                    return;
+                }
+
+                foreach (var (key, messages) in errors)
+                {
+                    if (messages == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var message in messages)
+                    {
+                        if (!string.IsNullOrWhiteSpace(message))
+                        {
+                            ModelState.AddModelError(key, message);
+                        }
+                    }
+                }
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
             }
         }
 

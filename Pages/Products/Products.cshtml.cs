@@ -18,8 +18,10 @@ namespace Mercadito.Pages.Products
         private const string EditProductSessionKey = "Products.EditProductId";
         private const string PendingCreateModalSessionKey = "Products.PendingCreateModal";
         private const string PendingCreateDraftSessionKey = "Products.PendingCreateDraft";
+        private const string PendingCreateErrorsSessionKey = "Products.PendingCreateErrors";
         private const string PendingEditModalSessionKey = "Products.PendingEditModal";
         private const string PendingEditDraftSessionKey = "Products.PendingEditDraft";
+        private const string PendingEditErrorsSessionKey = "Products.PendingEditErrors";
 
         private readonly ILogger<ProductsModel> _logger;
         private readonly IProductManagementUseCase _productManagementUseCase;
@@ -40,7 +42,8 @@ namespace Mercadito.Pages.Products
             Name = string.Empty,
             Description = string.Empty,
             Batch = string.Empty,
-            ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3))
+            ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
+            Price = 0.01m
         };
 
         public UpdateProductDto EditProduct { get; set; } = new UpdateProductDto { Name = string.Empty, Description = string.Empty };
@@ -76,6 +79,8 @@ namespace Mercadito.Pages.Products
             SaveStateInSession();
             EnsureDefaultNewProductDates();
             RestorePendingPostbackState();
+            RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
+            RestorePendingValidationErrors(PendingEditErrorsSessionKey);
 
             if (ShowModal || ShowEditModal)
             {
@@ -140,6 +145,7 @@ namespace Mercadito.Pages.Products
                 _logger.LogWarning("ModelState invalido al crear producto");
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
                 StorePendingCreateModal(NewProduct);
+                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
@@ -176,6 +182,7 @@ namespace Mercadito.Pages.Products
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
                 StorePendingEditModal(EditProduct);
+                StorePendingValidationErrors(PendingEditErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
@@ -305,6 +312,65 @@ namespace Mercadito.Pages.Products
             {
                 _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
                 return null;
+            }
+        }
+
+        private void StorePendingValidationErrors(string sessionKey)
+        {
+            var errors = ModelState
+                .Where(entry => entry.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    entry => entry.Key,
+                    entry => entry.Value!.Errors
+                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
+                        .ToArray());
+
+            if (errors.Count == 0)
+            {
+                HttpContext.Session.Remove(sessionKey);
+                return;
+            }
+
+            HttpContext.Session.SetString(sessionKey, JsonSerializer.Serialize(errors));
+        }
+
+        private void RestorePendingValidationErrors(string sessionKey)
+        {
+            var rawValue = HttpContext.Session.GetString(sessionKey);
+            HttpContext.Session.Remove(sessionKey);
+
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return;
+            }
+
+            try
+            {
+                var errors = JsonSerializer.Deserialize<Dictionary<string, string[]>>(rawValue);
+                if (errors == null)
+                {
+                    return;
+                }
+
+                foreach (var (key, messages) in errors)
+                {
+                    if (messages == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var message in messages)
+                    {
+                        if (!string.IsNullOrWhiteSpace(message))
+                        {
+                            ModelState.AddModelError(key, message);
+                        }
+                    }
+                }
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
             }
         }
 
