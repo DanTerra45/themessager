@@ -129,12 +129,41 @@ namespace Mercadito.src.products.data.repository
                 cancellationToken: cancellationToken);
         }
 
-        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize, CancellationToken cancellationToken = default)
+        private static string BuildOrderByClause(string sortBy, string sortDirection)
+        {
+            var direction = NormalizeSortDirection(sortDirection);
+            var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy)
+                ? "name"
+                : sortBy.Trim().ToLowerInvariant();
+
+            return normalizedSortBy switch
+            {
+                "id" => $"p.id {direction}",
+                "stock" => $"p.stock {direction}, p.id ASC",
+                "batch" => $"p.lote {direction}, p.id ASC",
+                "expirationdate" => $"p.fechaCaducidad {direction}, p.id ASC",
+                "price" => $"p.precio {direction}, p.id ASC",
+                _ => $"p.nombre {direction}, p.id ASC"
+            };
+        }
+
+        private static string NormalizeSortDirection(string sortDirection)
+        {
+            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
+        }
+
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(
+            int page,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
+            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
 
-            const string query = @"
+            var query = $@"
                 SELECT 
                     p.id as Id,
                     p.nombre as Name,
@@ -149,7 +178,7 @@ namespace Mercadito.src.products.data.repository
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
                 WHERE p.estado = @ActiveState
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
-                ORDER BY p.nombre
+                ORDER BY {orderByClause}
                 LIMIT @PageSize OFFSET @Offset";
 
             var command = new CommandDefinition(
@@ -163,11 +192,18 @@ namespace Mercadito.src.products.data.repository
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
-        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(
+            int page,
+            long categoryId,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
-            const string query = @"
+            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+            var query = $@"
                 SELECT 
                     p.id as Id,
                     p.nombre as Name,
@@ -182,7 +218,7 @@ namespace Mercadito.src.products.data.repository
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
                 WHERE pc.categoriaId = @CategoryId AND p.estado = @ActiveState
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
-                ORDER BY p.nombre
+                ORDER BY {orderByClause}
                 LIMIT @PageSize OFFSET @Offset";
 
             var command = new CommandDefinition(
@@ -194,43 +230,6 @@ namespace Mercadito.src.products.data.repository
                 command)).AsList();
 
             return [.. products.Select(ToProductWithCategoriesModel)];
-        }
-
-        public async Task<Product?> GetProductByIdAsync(long id, CancellationToken cancellationToken = default)
-        {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT 
-                            id AS Id,
-                            nombre AS Name,
-                            descripcion AS Description,
-                            stock AS Stock,
-                            lote AS Batch,
-                            fechaCaducidad AS ExpirationDate,
-                            precio AS Price
-                        FROM products 
-                        WHERE id = @Id AND estado = @ActiveState";
-
-            var command = new CommandDefinition(
-                query,
-                parameters: new { Id = id, ActiveState },
-                cancellationToken: cancellationToken);
-
-            var row = await connection.QueryFirstOrDefaultAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price)>(command);
-            if (row == default)
-            {
-                return null;
-            }
-
-            return new Product
-            {
-                Id = row.Id,
-                Name = row.Name,
-                Description = row.Description,
-                Stock = row.Stock,
-                Batch = row.Batch,
-                ExpirationDate = ToDateOnly(row.ExpirationDate),
-                Price = row.Price
-            };
         }
 
         public async Task<ProductForEditModel?> GetProductForEditAsync(long id, CancellationToken cancellationToken = default)

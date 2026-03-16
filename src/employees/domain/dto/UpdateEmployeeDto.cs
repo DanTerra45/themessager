@@ -33,7 +33,5 @@ namespace Mercadito.src.employees.domain.dto
         [Required(ErrorMessage = "El numero de contacto es requerido")]
         [StringLength(40, MinimumLength = 7, ErrorMessage = "El numero de contacto debe tener entre 7 y 40 caracteres")]
         public string NumeroContacto { get; set; } = string.Empty;
-
-        public bool IsActive { get; set; } = true;
     }
 }

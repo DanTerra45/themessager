@@ -1,0 +1,23 @@
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/lib/fonts/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Chivo Mono Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/lib/fonts/chivo-mono/files/chivo-mono-latin-wght-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'DM Sans Variable';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('/lib/fonts/dm-sans/files/dm-sans-latin-wght-normal.woff2') format('woff2');
+}

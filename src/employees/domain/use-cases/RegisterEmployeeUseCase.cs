@@ -4,14 +4,9 @@ using Mercadito.src.employees.domain.repository;
 
 namespace Mercadito.src.employees.domain.usecases
 {
-    public class RegisterEmployeeUseCase : IRegisterEmployeeUseCase
+    public class RegisterEmployeeUseCase(IEmployeeRepository employeeRepository) : IRegisterEmployeeUseCase
     {
-        private readonly IEmployeeRepository _employeeRepository;
-
-        public RegisterEmployeeUseCase(IEmployeeRepository employeeRepository)
-        {
-            _employeeRepository = employeeRepository;
-        }
+        private readonly IEmployeeRepository _employeeRepository = employeeRepository;
 
         public async Task<long> ExecuteAsync(CreateEmployeeDto employee, CancellationToken cancellationToken = default)
         {
@@ -23,8 +18,7 @@ namespace Mercadito.src.employees.domain.usecases
                 PrimerApellido = NormalizeRequired(employee.PrimerApellido),
                 SegundoApellido = NormalizeOptional(employee.SegundoApellido),
                 Rol = NormalizeRequired(employee.Rol),
-                NumeroContacto = NormalizeRequired(employee.NumeroContacto),
-                IsActive = true
+                NumeroContacto = NormalizeRequired(employee.NumeroContacto)
             };
 
             return await _employeeRepository.AddEmployeeAsync(employeeToCreate, cancellationToken);

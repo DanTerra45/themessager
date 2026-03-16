@@ -1,17 +1,13 @@
 using Mercadito.src.employees.data.entity;
 using Mercadito.src.employees.domain.dto;
 using Mercadito.src.employees.domain.repository;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.employees.domain.usecases
 {
-    public class UpdateEmployeeUseCase : IUpdateEmployeeUseCase
+    public class UpdateEmployeeUseCase(IEmployeeRepository employeeRepository) : IUpdateEmployeeUseCase
     {
-        private readonly IEmployeeRepository _employeeRepository;
-
-        public UpdateEmployeeUseCase(IEmployeeRepository employeeRepository)
-        {
-            _employeeRepository = employeeRepository;
-        }
+        private readonly IEmployeeRepository _employeeRepository = employeeRepository;
 
         public async Task ExecuteAsync(UpdateEmployeeDto employee, CancellationToken cancellationToken = default)
         {
@@ -24,14 +20,13 @@ namespace Mercadito.src.employees.domain.usecases
                 PrimerApellido = NormalizeRequired(employee.PrimerApellido),
                 SegundoApellido = NormalizeOptional(employee.SegundoApellido),
                 Rol = NormalizeRequired(employee.Rol),
-                NumeroContacto = NormalizeRequired(employee.NumeroContacto),
-                IsActive = employee.IsActive
+                NumeroContacto = NormalizeRequired(employee.NumeroContacto)
             };
 
             var affectedRows = await _employeeRepository.UpdateEmployeeAsync(employeeToUpdate, cancellationToken);
             if (affectedRows == 0)
             {
-                throw new InvalidOperationException("Empleado no encontrado.");
+                throw new ValidationException("Empleado no encontrado.");
             }
         }
 

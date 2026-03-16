@@ -40,11 +40,17 @@ namespace Mercadito.src.categories.data.repository
             return await connection.ExecuteScalarAsync<int>(command);
         }
 
-        public async Task<IReadOnlyList<CategoryModel>> GetCategoryByPages(int page, int pageSize, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<CategoryModel>> GetCategoryByPages(
+            int page,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            CancellationToken cancellationToken = default)
         {
             var offset = (page - 1) * pageSize;
+            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT c.id AS Id, 
+            var query = $@"SELECT c.id AS Id, 
                         c.codigo AS Code, 
                         c.nombre AS Name, 
                         c.descripcion AS Description, 
@@ -54,7 +60,7 @@ namespace Mercadito.src.categories.data.repository
                         LEFT JOIN products p ON cp.productId = p.id AND p.estado = @ActiveState
                         WHERE c.estado = @ActiveState
                         GROUP BY c.id, c.codigo, c.nombre, c.descripcion 
-                        ORDER BY c.id 
+                        ORDER BY {orderByClause}
                         LIMIT @PageSize OFFSET @Offset";
 
             var command = new CommandDefinition(
@@ -137,6 +143,27 @@ namespace Mercadito.src.categories.data.repository
 
             return await connection.ExecuteAsync(command);
 
+        }
+
+        private static string BuildOrderByClause(string sortBy, string sortDirection)
+        {
+            var direction = NormalizeSortDirection(sortDirection);
+            var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy)
+                ? "id"
+                : sortBy.Trim().ToLowerInvariant();
+
+            return normalizedSortBy switch
+            {
+                "code" => $"c.codigo {direction}, c.id ASC",
+                "name" => $"c.nombre {direction}, c.id ASC",
+                "productcount" => $"ProductCount {direction}, c.id ASC",
+                _ => $"c.id {direction}"
+            };
+        }
+
+        private static string NormalizeSortDirection(string sortDirection)
+        {
+            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
         }
     }
 }

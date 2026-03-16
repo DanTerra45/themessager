@@ -20,6 +20,10 @@ namespace Mercadito.Pages.Categories
         private const string PendingEditModalSessionKey = "Categories.PendingEditModal";
         private const string PendingEditDraftSessionKey = "Categories.PendingEditDraft";
         private const string PendingEditErrorsSessionKey = "Categories.PendingEditErrors";
+        private const string SortBySessionKey = "Categories.SortBy";
+        private const string SortDirectionSessionKey = "Categories.SortDirection";
+        private const string DefaultSortBy = "id";
+        private const string DefaultSortDirection = "asc";
 
         private readonly ILogger<CategoriesModel> _logger;
         private readonly ICategoryManagementUseCase _categoryManagementUseCase;
@@ -28,6 +32,8 @@ namespace Mercadito.Pages.Categories
         public List<CategoryModel> Categories { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
+        public string SortBy { get; set; } = DefaultSortBy;
+        public string SortDirection { get; set; } = DefaultSortDirection;
 
         public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
 
@@ -51,8 +57,10 @@ namespace Mercadito.Pages.Categories
         public async Task OnGetAsync()
         {
             LoadCurrentPageFromSession();
+            LoadSortStateFromSession();
             await LoadCategoriesAsync();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
             RestorePendingPostbackState();
             RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
             RestorePendingValidationErrors(PendingEditErrorsSessionKey);
@@ -76,19 +84,35 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public IActionResult OnPostNavigateAsync(int pageNumber = 1)
+        public IActionResult OnPostNavigate(int pageNumber = 1, string sortBy = "", string sortDirection = "")
         {
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostStartEditAsync(long id, int pageNumber = 1)
+        public IActionResult OnPostSort(string sortBy = "", string currentSortBy = "", string currentSortDirection = "")
+        {
+            SetCurrentPage(1);
+            SetSortState(currentSortBy, currentSortDirection);
+            ToggleSort(sortBy);
+
+            ClearPendingEditCategoryId();
+            SaveCurrentPageInSession();
+            SaveSortStateInSession();
+            return RedirectToPage();
+        }
+
+        public IActionResult OnPostStartEdit(long id, int pageNumber = 1, string sortBy = "", string sortDirection = "")
         {
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             if (id > 0)
             {
@@ -103,13 +127,13 @@ namespace Mercadito.Pages.Categories
             try
             {
                 var cancellationToken = HttpContext.RequestAborted;
-                var result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
+                var result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, SortBy, SortDirection, cancellationToken);
                 var maxPage = Math.Max(result.TotalPages, 1);
 
                 if (CurrentPage > maxPage)
                 {
                     CurrentPage = maxPage;
-                    result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
+                    result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, SortBy, SortDirection, cancellationToken);
                 }
 
                 TotalPages = Math.Max(result.TotalPages, 1);
@@ -124,13 +148,19 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewCategory")] CreateCategoryDto newCategory, int pageNumber = 1)
+        public async Task<IActionResult> OnPostCreateAsync(
+            [Bind(Prefix = "NewCategory")] CreateCategoryDto newCategory,
+            int pageNumber = 1,
+            string sortBy = "",
+            string sortDirection = "")
         {
             NewCategory = newCategory;
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             if (!ModelState.IsValid)
             {
@@ -164,11 +194,17 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditCategory")] UpdateCategoryDto editCategory, int pageNumber = 1)
+        public async Task<IActionResult> OnPostEditAsync(
+            [Bind(Prefix = "EditCategory")] UpdateCategoryDto editCategory,
+            int pageNumber = 1,
+            string sortBy = "",
+            string sortDirection = "")
         {
             EditCategory = editCategory;
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             if (!ModelState.IsValid)
             {
@@ -201,12 +237,14 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1)
+        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1, string sortBy = "", string sortDirection = "")
         {
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             try
             {
@@ -233,6 +271,7 @@ namespace Mercadito.Pages.Categories
         {
             ClearPendingEditCategoryId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
             return RedirectToPage();
         }
 
@@ -367,6 +406,19 @@ namespace Mercadito.Pages.Categories
             }
         }
 
+        public string GetSortIcon(string columnName)
+        {
+            var normalizedColumn = NormalizeSortBy(columnName);
+            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
+            {
+                return "bi-arrow-down-up";
+            }
+
+            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? "bi-sort-down"
+                : "bi-sort-up";
+        }
+
         private void LoadCurrentPageFromSession()
         {
             var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
@@ -384,9 +436,73 @@ namespace Mercadito.Pages.Categories
             CurrentPage = pageNumber > 0 ? pageNumber : 1;
         }
 
+        private void SetSortState(string sortBy, string sortDirection)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
+            {
+                LoadSortStateFromSession();
+                return;
+            }
+
+            SortBy = NormalizeSortBy(sortBy);
+            SortDirection = NormalizeSortDirection(sortDirection);
+        }
+
         private void SaveCurrentPageInSession()
         {
             HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
+        }
+
+        private void LoadSortStateFromSession()
+        {
+            var sortByInSession = HttpContext.Session.GetString(SortBySessionKey);
+            var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
+
+            SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
+            SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
+        }
+
+        private void SaveSortStateInSession()
+        {
+            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
+            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
+        }
+
+        private void ToggleSort(string sortBy)
+        {
+            var normalizedSortBy = NormalizeSortBy(sortBy);
+            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
+            {
+                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+                return;
+            }
+
+            SortBy = normalizedSortBy;
+            SortDirection = DefaultSortDirection;
+        }
+
+        private static string NormalizeSortBy(string sortBy)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy))
+            {
+                return DefaultSortBy;
+            }
+
+            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            return normalizedSortBy switch
+            {
+                "code" => "code",
+                "name" => "name",
+                "productcount" => "productcount",
+                _ => "id"
+            };
+        }
+
+        private static string NormalizeSortDirection(string sortDirection)
+        {
+            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? "desc"
+                : "asc";
         }
 
         private void SetPendingEditCategoryId(long categoryId)

@@ -11,11 +11,16 @@ namespace Mercadito.src.categories.domain.usecases
 
         private readonly ICategoryRepository _categoryRepository = categoryRepository;
 
-        public async Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(int currentPage, int pageSize, CancellationToken cancellationToken = default)
+        public async Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(
+            int currentPage,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            CancellationToken cancellationToken = default)
         {
             var totalCount = await _categoryRepository.GetTotalCategoriesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var pagedCategories = await _categoryRepository.GetCategoryByPages(currentPage, pageSize, cancellationToken);
+            var pagedCategories = await _categoryRepository.GetCategoryByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
             return (pagedCategories, totalPages);
         }
 

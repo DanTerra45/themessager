@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Mercadito</title>
     <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/lib/air-datepicker/air-datepicker.css" />
+    <link rel="stylesheet" href="~/css/fonts-local.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Mercadito.styles.css" asp-append-version="true" />
 </head>
@@ -131,7 +128,7 @@
             </section>
         </nav>
     </header>
-    
+
     <main role="main" class="container pb-4 flex-grow-1 d-flex flex-column">
         @if (ViewData["UseToasts"] as bool? != true)
         {
@@ -166,6 +163,19 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/lib/air-datepicker/air-datepicker.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof bootstrap === 'undefined') {
+                return;
+            }
+
+            var toastElements = document.querySelectorAll('.toast');
+            for (var index = 0; index < toastElements.length; index++) {
+                var toast = new bootstrap.Toast(toastElements[index]);
+                toast.show();
+            }
+        });
+    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
