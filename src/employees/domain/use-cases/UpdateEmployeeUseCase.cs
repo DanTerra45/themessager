@@ -19,12 +19,12 @@ namespace Mercadito.src.employees.domain.usecases
             {
                 Id = employee.Id,
                 Ci = employee.Ci,
-                Complemento = employee.Complemento,
-                Nombres = employee.Nombres,
-                PrimerApellido = employee.PrimerApellido,
-                SegundoApellido = employee.SegundoApellido,
-                Rol = employee.Rol,
-                NumeroContacto = employee.NumeroContacto,
+                Complemento = NormalizeCiExtension(employee.Complemento),
+                Nombres = NormalizeRequired(employee.Nombres),
+                PrimerApellido = NormalizeRequired(employee.PrimerApellido),
+                SegundoApellido = NormalizeOptional(employee.SegundoApellido),
+                Rol = NormalizeRequired(employee.Rol),
+                NumeroContacto = NormalizeRequired(employee.NumeroContacto),
                 IsActive = employee.IsActive
             };
 
@@ -33,6 +33,37 @@ namespace Mercadito.src.employees.domain.usecases
             {
                 throw new InvalidOperationException("Empleado no encontrado.");
             }
+        }
+
+        private static string NormalizeRequired(string value)
+        {
+            if (value == null)
+            {
+                return string.Empty;
+            }
+
+            return value.Trim();
+        }
+
+        private static string? NormalizeOptional(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return value.Trim();
+        }
+
+        private static string? NormalizeCiExtension(string? value)
+        {
+            var normalizedValue = NormalizeOptional(value);
+            if (string.IsNullOrEmpty(normalizedValue))
+            {
+                return null;
+            }
+
+            return normalizedValue.ToUpperInvariant();
         }
     }
 }

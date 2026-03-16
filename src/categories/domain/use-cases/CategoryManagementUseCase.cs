@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using Mercadito.src.categories.domain.dto;
 using Mercadito.src.categories.data.entity;
 using Mercadito.src.categories.domain.model;
@@ -16,7 +15,7 @@ namespace Mercadito.src.categories.domain.usecases
         {
             var totalCount = await _categoryRepository.GetTotalCategoriesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var pagedCategories = (await _categoryRepository.GetCategoryByPages(currentPage, pageSize, cancellationToken)).ToList();
+            var pagedCategories = await _categoryRepository.GetCategoryByPages(currentPage, pageSize, cancellationToken);
             return (pagedCategories, totalPages);
         }
 
@@ -47,9 +46,9 @@ namespace Mercadito.src.categories.domain.usecases
         {
             var category = new Category
             {
-                Code = newCategory.Code,
-                Name = newCategory.Name,
-                Description = newCategory.Description
+                Code = NormalizeRequired(newCategory.Code),
+                Name = NormalizeRequired(newCategory.Name),
+                Description = NormalizeRequired(newCategory.Description)
             };
 
             await _categoryRepository.AddCategoryAsync(category, cancellationToken);
@@ -60,9 +59,9 @@ namespace Mercadito.src.categories.domain.usecases
             var category = new Category
             {
                 Id = editCategory.Id,
-                Code = editCategory.Code,
-                Name = editCategory.Name,
-                Description = editCategory.Description
+                Code = NormalizeRequired(editCategory.Code),
+                Name = NormalizeRequired(editCategory.Name),
+                Description = NormalizeRequired(editCategory.Description)
             };
 
             var affectedRows = await _categoryRepository.UpdateCategoryAsync(category, cancellationToken);
@@ -70,6 +69,16 @@ namespace Mercadito.src.categories.domain.usecases
             {
                 throw new ValidationException("Categoría no encontrada.");
             }
+        }
+
+        private static string NormalizeRequired(string value)
+        {
+            if (value == null)
+            {
+                return string.Empty;
+            }
+
+            return value.Trim();
         }
 
         public async Task<bool> DeleteAsync(long categoryId, CancellationToken cancellationToken = default)

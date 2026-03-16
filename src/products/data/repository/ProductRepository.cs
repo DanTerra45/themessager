@@ -1,3 +1,5 @@
+using System.Data;
+using System.Text;
 using Dapper;
 using Mercadito.database.interfaces;
 using Mercadito.src.products.data.entity;
@@ -8,6 +10,9 @@ namespace Mercadito.src.products.data.repository
 {
     public class ProductRepository(IDataBaseConnection dbConnection) : IProductRepository
     {
+        private const string ActiveState = "A";
+        private const string InactiveState = "I";
+
         private readonly IDataBaseConnection _dbConnection = dbConnection;
 
         private static DateOnly ToDateOnly(DateTime value)
@@ -25,7 +30,7 @@ namespace Mercadito.src.products.data.repository
             string Name,
             string Description,
             int Stock,
-            DateTime Batch,
+            string Batch,
             DateTime ExpirationDate,
             decimal Price,
             string CategoriesString) row)
@@ -36,7 +41,7 @@ namespace Mercadito.src.products.data.repository
                 Name = row.Name,
                 Description = row.Description,
                 Stock = row.Stock,
-                Batch = ToDateOnly(row.Batch),
+                Batch = row.Batch,
                 ExpirationDate = ToDateOnly(row.ExpirationDate),
                 Price = row.Price,
                 Categories = !string.IsNullOrWhiteSpace(row.CategoriesString)
@@ -92,7 +97,39 @@ namespace Mercadito.src.products.data.repository
             return categoryIds;
         }
 
-        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize, CancellationToken cancellationToken = default)
+        private static CommandDefinition BuildInsertProductCategoriesCommand(
+            long productId,
+            IReadOnlyList<long> normalizedCategoryIds,
+            IDbTransaction transaction,
+            CancellationToken cancellationToken)
+        {
+            var queryBuilder = new StringBuilder("INSERT INTO categoriaDeProducto (productId, categoriaId) VALUES ");
+            var parameters = new DynamicParameters();
+            parameters.Add("ProductId", productId);
+
+            for (var index = 0; index < normalizedCategoryIds.Count; index++)
+            {
+                if (index > 0)
+                {
+                    queryBuilder.Append(", ");
+                }
+
+                var categoryParameterName = $"CategoryId{index}";
+                queryBuilder.Append("(@ProductId, @")
+                    .Append(categoryParameterName)
+                    .Append(')');
+
+                parameters.Add(categoryParameterName, normalizedCategoryIds[index]);
+            }
+
+            return new CommandDefinition(
+                queryBuilder.ToString(),
+                parameters: parameters,
+                transaction: transaction,
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
@@ -109,19 +146,24 @@ namespace Mercadito.src.products.data.repository
                     COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
                 FROM products p
                 LEFT JOIN categoriaDeProducto pc ON p.id = pc.productId
-                LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = 'A'
-                WHERE p.estado = 'A'
+                LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
+                WHERE p.estado = @ActiveState
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                 ORDER BY p.nombre
                 LIMIT @PageSize OFFSET @Offset";
 
-            var products = await connection.QueryAsync<(long Id, string Name, string Description, int Stock, DateTime Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+            var command = new CommandDefinition(
                 query,
-                new { Offset = offset, PageSize = pageSize });
+                parameters: new { ActiveState, Offset = offset, PageSize = pageSize },
+                cancellationToken: cancellationToken);
+
+            var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+                command)).AsList();
+
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
-        public async Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
@@ -137,14 +179,20 @@ namespace Mercadito.src.products.data.repository
                     COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
                 FROM products p
                 INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
-                LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = 'A'
-                WHERE pc.categoriaId = @CategoryId AND p.estado = 'A'
+                LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
+                WHERE pc.categoriaId = @CategoryId AND p.estado = @ActiveState
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                 ORDER BY p.nombre
                 LIMIT @PageSize OFFSET @Offset";
-            var products = await connection.QueryAsync<(long Id, string Name, string Description, int Stock, DateTime Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+
+            var command = new CommandDefinition(
                 query,
-                new { CategoryId = categoryId, Offset = offset, PageSize = pageSize });
+                parameters: new { ActiveState, CategoryId = categoryId, Offset = offset, PageSize = pageSize },
+                cancellationToken: cancellationToken);
+
+            var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+                command)).AsList();
+
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
@@ -160,9 +208,14 @@ namespace Mercadito.src.products.data.repository
                             fechaCaducidad AS ExpirationDate,
                             precio AS Price
                         FROM products 
-                        WHERE id = @Id AND estado = 'A'";
+                        WHERE id = @Id AND estado = @ActiveState";
 
-            var row = await connection.QueryFirstOrDefaultAsync<(long Id, string Name, string Description, int Stock, DateTime Batch, DateTime ExpirationDate, decimal Price)>(query, new { Id = id });
+            var command = new CommandDefinition(
+                query,
+                parameters: new { Id = id, ActiveState },
+                cancellationToken: cancellationToken);
+
+            var row = await connection.QueryFirstOrDefaultAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price)>(command);
             if (row == default)
             {
                 return null;
@@ -174,7 +227,7 @@ namespace Mercadito.src.products.data.repository
                 Name = row.Name,
                 Description = row.Description,
                 Stock = row.Stock,
-                Batch = ToDateOnly(row.Batch),
+                Batch = row.Batch,
                 ExpirationDate = ToDateOnly(row.ExpirationDate),
                 Price = row.Price
             };
@@ -194,18 +247,24 @@ namespace Mercadito.src.products.data.repository
                             COALESCE(GROUP_CONCAT(DISTINCT cp.categoriaId ORDER BY cp.categoriaId SEPARATOR ','), '') AS CategoryIdsString
                         FROM products p
                         LEFT JOIN categoriaDeProducto cp ON p.id = cp.productId
-                        WHERE p.id = @Id AND p.estado = 'A'
+                        WHERE p.id = @Id AND p.estado = @ActiveState
                         GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio";
+
+            var command = new CommandDefinition(
+                query,
+                parameters: new { Id = id, ActiveState },
+                cancellationToken: cancellationToken);
 
             var productForEditRow = await connection.QueryFirstOrDefaultAsync<(
                 long Id,
                 string Name,
                 string Description,
                 int Stock,
-                DateTime Batch,
+                string Batch,
                 DateTime ExpirationDate,
                 decimal Price,
-                string CategoryIdsString)>(query, new { Id = id });
+                string CategoryIdsString)>(command);
+
             if (productForEditRow == default)
             {
                 return null;
@@ -217,7 +276,7 @@ namespace Mercadito.src.products.data.repository
                 Name = productForEditRow.Name,
                 Description = productForEditRow.Description,
                 Stock = productForEditRow.Stock,
-                Batch = ToDateOnly(productForEditRow.Batch),
+                Batch = productForEditRow.Batch,
                 ExpirationDate = ToDateOnly(productForEditRow.ExpirationDate),
                 Price = productForEditRow.Price,
                 CategoryIds = ParseCategoryIds(productForEditRow.CategoryIdsString)
@@ -231,27 +290,34 @@ namespace Mercadito.src.products.data.repository
 
             try
             {
-                const string insertProductQuery = "INSERT INTO products (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, 'A'); SELECT LAST_INSERT_ID();";
-                var createdProductId = await connection.ExecuteScalarAsync<long>(insertProductQuery, new
-                {
-                    product.Name,
-                    product.Description,
-                    product.Stock,
-                    Batch = ToDateTime(product.Batch),
-                    ExpirationDate = ToDateTime(product.ExpirationDate),
-                    product.Price
-                }, transaction);
+                const string insertProductQuery = "INSERT INTO products (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, @ActiveState); SELECT LAST_INSERT_ID();";
+                var insertProductCommand = new CommandDefinition(
+                    insertProductQuery,
+                    parameters: new
+                    {
+                        product.Name,
+                        product.Description,
+                        product.Stock,
+                        Batch = product.Batch,
+                        ExpirationDate = ToDateTime(product.ExpirationDate),
+                        product.Price,
+                        ActiveState
+                    },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
+
+                var createdProductId = await connection.ExecuteScalarAsync<long>(insertProductCommand);
 
                 var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
                 if (normalizedCategoryIds.Count > 0)
                 {
-                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto (productId, categoriaId)
-                                             VALUES (@ProductId, @CategoryId)";
+                    var insertCategoriesCommand = BuildInsertProductCategoriesCommand(
+                        createdProductId,
+                        normalizedCategoryIds,
+                        transaction,
+                        cancellationToken);
 
-                    foreach (var categoryId in normalizedCategoryIds)
-                    {
-                        await connection.ExecuteAsync(insertRelationQuery, new { ProductId = createdProductId, CategoryId = categoryId }, transaction);
-                    }
+                    await connection.ExecuteAsync(insertCategoriesCommand);
                 }
 
                 transaction.Commit();
@@ -278,18 +344,25 @@ namespace Mercadito.src.products.data.repository
                         lote = @Batch,
                         fechaCaducidad = @ExpirationDate,
                         precio = @Price
-                    WHERE id = @Id AND estado = 'A'";
+                    WHERE id = @Id AND estado = @ActiveState";
 
-                var affectedRows = await connection.ExecuteAsync(updateProductQuery, new
-                {
-                    product.Id,
-                    product.Name,
-                    product.Description,
-                    product.Stock,
-                    Batch = ToDateTime(product.Batch),
-                    ExpirationDate = ToDateTime(product.ExpirationDate),
-                    product.Price
-                }, transaction);
+                var updateProductCommand = new CommandDefinition(
+                    updateProductQuery,
+                    parameters: new
+                    {
+                        product.Id,
+                        product.Name,
+                        product.Description,
+                        product.Stock,
+                        Batch = product.Batch,
+                        ExpirationDate = ToDateTime(product.ExpirationDate),
+                        product.Price,
+                        ActiveState
+                    },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
+
+                var affectedRows = await connection.ExecuteAsync(updateProductCommand);
 
                 if (affectedRows == 0)
                 {
@@ -299,18 +372,25 @@ namespace Mercadito.src.products.data.repository
 
                 const string deleteRelationsQuery = @"DELETE FROM categoriaDeProducto
                     WHERE productId = @ProductId";
-                await connection.ExecuteAsync(deleteRelationsQuery, new { ProductId = product.Id }, transaction);
+
+                var deleteRelationsCommand = new CommandDefinition(
+                    deleteRelationsQuery,
+                    parameters: new { ProductId = product.Id },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
+
+                await connection.ExecuteAsync(deleteRelationsCommand);
 
                 var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
                 if (normalizedCategoryIds.Count > 0)
                 {
-                    const string insertRelationQuery = @"INSERT INTO categoriaDeProducto (productId, categoriaId)
-                        VALUES (@ProductId, @CategoryId)";
+                    var insertCategoriesCommand = BuildInsertProductCategoriesCommand(
+                        product.Id,
+                        normalizedCategoryIds,
+                        transaction,
+                        cancellationToken);
 
-                    foreach (var categoryId in normalizedCategoryIds)
-                    {
-                        await connection.ExecuteAsync(insertRelationQuery, new { ProductId = product.Id, CategoryId = categoryId }, transaction);
-                    }
+                    await connection.ExecuteAsync(insertCategoriesCommand);
                 }
 
                 transaction.Commit();
@@ -327,26 +407,40 @@ namespace Mercadito.src.products.data.repository
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"UPDATE products
-                SET estado = 'I'
-                WHERE id = @Id AND estado = 'A'";
-            return await connection.ExecuteAsync(query, new { Id = id });
+                SET estado = @InactiveState
+                WHERE id = @Id AND estado = @ActiveState";
+
+            var command = new CommandDefinition(
+                query,
+                parameters: new { Id = id, ActiveState, InactiveState },
+                cancellationToken: cancellationToken);
+
+            return await connection.ExecuteAsync(command);
         }
 
         public async Task<int> GetTotalProductsCountAsync(CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = "SELECT COUNT(*) FROM products WHERE estado = 'A'";
-            return await connection.ExecuteScalarAsync<int>(query);
+            const string query = "SELECT COUNT(*) FROM products WHERE estado = @ActiveState";
+
+            var command = new CommandDefinition(query, parameters: new { ActiveState }, cancellationToken: cancellationToken);
+            return await connection.ExecuteScalarAsync<int>(command);
         }
 
         public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT COUNT(DISTINCT p.id) 
+            const string query = @"SELECT COUNT(DISTINCT p.id)
                      FROM products p
                      INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
-                    WHERE pc.categoriaId = @CategoryId AND p.estado = 'A'";
-            return await connection.ExecuteScalarAsync<int>(query, new { CategoryId = categoryId });
+                    WHERE pc.categoriaId = @CategoryId AND p.estado = @ActiveState";
+
+            var command = new CommandDefinition(
+                query,
+                parameters: new { CategoryId = categoryId, ActiveState },
+                cancellationToken: cancellationToken);
+
+            return await connection.ExecuteScalarAsync<int>(command);
         }
     }
 }

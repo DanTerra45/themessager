@@ -17,7 +17,7 @@ namespace Mercadito.src.products.domain.usecases
         public async Task<IReadOnlyList<CategoryModel>> GetCategoriesAsync(CancellationToken cancellationToken = default)
         {
             var categories = await _categoryRepository.GetAllCategoriesAsync(cancellationToken);
-            return [.. categories];
+            return categories;
         }
 
         public async Task<(IReadOnlyList<ProductWithCategoriesModel> Products, int TotalPages)> GetPageAsync(int currentPage, long categoryFilter, int pageSize, CancellationToken cancellationToken = default)
@@ -27,13 +27,13 @@ namespace Mercadito.src.products.domain.usecases
                 var totalCount = await _productRepository.GetTotalProductsCountAsync(cancellationToken);
                 var totalPages = CalculateTotalPages(totalCount, pageSize);
                 var products = await _productRepository.GetProductsWithCategoriesByPages(currentPage, pageSize, cancellationToken);
-                return ([.. products], totalPages);
+                return (products, totalPages);
             }
 
             var filteredTotalCount = await _productRepository.GetTotalProductsCountByCategoryAsync(categoryFilter, cancellationToken);
             var filteredTotalPages = CalculateTotalPages(filteredTotalCount, pageSize);
             var filteredProducts = await _productRepository.GetProductsWithCategoriesFilterByCategoryByPages(currentPage, categoryFilter, pageSize, cancellationToken);
-            return ([.. filteredProducts], filteredTotalPages);
+            return (filteredProducts, filteredTotalPages);
         }
 
         private static int CalculateTotalPages(int totalItems, int pageSize)

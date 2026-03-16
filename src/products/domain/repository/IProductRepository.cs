@@ -5,8 +5,8 @@ namespace Mercadito.src.products.domain.repository
 {
     public interface IProductRepository
     {
-        Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize, CancellationToken cancellationToken = default);
-        Task<IEnumerable<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(int page, int pageSize, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(int page, long categoryId, int pageSize, CancellationToken cancellationToken = default);
         Task<Product?> GetProductByIdAsync(long id, CancellationToken cancellationToken = default);
         Task<ProductForEditModel?> GetProductForEditAsync(long id, CancellationToken cancellationToken = default);
         Task<long> AddProductWithCategoriesAsync(Product product, IReadOnlyList<long> categoryIds, CancellationToken cancellationToken = default);

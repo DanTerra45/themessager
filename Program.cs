@@ -17,9 +17,21 @@ CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AddPageRoute("/Products/Products", "/Products/{handler?}");
+    options.Conventions.AddPageRoute("/Categories/Categories", "/Categories/{handler?}");
+    options.Conventions.AddPageRoute("/Employees/Employees", "/Employees/{handler?}");
+});
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+});
 
-builder.Services.AddScoped<IDataBaseConnection, MySqlConnectionFactory>();
+builder.Services.AddSingleton<IDataBaseConnection, MySqlConnectionFactory>();
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -28,7 +40,6 @@ builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
 builder.Services.AddScoped<IRegisterNewProductWithCategoryUseCase, RegisterNewProductWithCategoryUseCase>();
 builder.Services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
-builder.Services.AddScoped<IResolveProductPageStateUseCase, ResolveProductPageStateUseCase>();
 builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();
 
 builder.Services.AddScoped<IEmployeeManagementUseCase, EmployeeManagementUseCase>();
@@ -47,6 +58,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseSession();
 
 app.UseAuthorization();
 

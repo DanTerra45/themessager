@@ -16,7 +16,7 @@ CREATE TABLE `products` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `nombre` VARCHAR(150) NOT NULL,
   `descripcion` VARCHAR(150) NOT NULL,
-  `lote` DATE NOT NULL,
+  `lote` VARCHAR(40) NOT NULL,
   `fechaCaducidad` DATE NOT NULL,
   `precio` DECIMAL(10,2) NOT NULL,
   `stock` INT NOT NULL,
@@ -25,15 +25,15 @@ CREATE TABLE `products` (
   `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `chk_products_nombre_no_vacio` CHECK (`nombre` <> ''),
   CONSTRAINT `chk_products_descripcion_no_vacia` CHECK (`descripcion` <> ''),
+  CONSTRAINT `chk_products_lote_no_vacio` CHECK (`lote` <> ''),
   CONSTRAINT `chk_products_stock_positivo` CHECK (`stock` >= 0),
-  CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01),
-  CONSTRAINT `chk_products_fechas_consistentes` CHECK (`fechaCaducidad` > `lote`)
+  CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01)
 );
 
 CREATE TABLE `empleados` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `ci` BIGINT NOT NULL,
-  `complemento` VARCHAR(20),
+  `complemento` VARCHAR(2),
   `nombres` VARCHAR(40) NOT NULL,
   `primerApellido` VARCHAR(40) NOT NULL,
   `segundoApellido` VARCHAR(40),
@@ -45,7 +45,8 @@ CREATE TABLE `empleados` (
   CONSTRAINT `chk_empleados_ci_positivo` CHECK (`ci` > 0),
   CONSTRAINT `chk_empleados_nombres_no_vacios` CHECK (`nombres` <> ''),
   CONSTRAINT `chk_empleados_primer_apellido_no_vacio` CHECK (`primerApellido` <> ''),
-  CONSTRAINT `chk_empleados_contacto_no_vacio` CHECK (`numeroContacto` <> '')
+  CONSTRAINT `chk_empleados_contacto_no_vacio` CHECK (`numeroContacto` <> ''),
+  CONSTRAINT `chk_empleados_complemento_formato` CHECK (`complemento` IS NULL OR `complemento` REGEXP '^[0-9][A-Z]$')
 );
 
 CREATE TABLE `categoriaDeProducto` (
