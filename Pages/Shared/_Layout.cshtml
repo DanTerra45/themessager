@@ -133,23 +133,26 @@
     </header>
     
     <main role="main" class="container pb-4 flex-grow-1 d-flex flex-column">
-        <aside id="alert-container">
-            @if (TempData["SuccessMessage"] is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
-            {
-                <aside class="alert alert-success alert-dismissible fade show b-card auto-close-alert" style="background-color: var(--mrc-success); color: var(--mrc-ink); border-color: var(--mrc-ink);" role="alert">
-                    <strong>¡Éxito!</strong> @successMessage
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </aside>
-            }
+        @if (ViewData["UseToasts"] as bool? != true)
+        {
+            <aside id="alert-container">
+                @if (TempData["SuccessMessage"] is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
+                {
+                    <aside class="alert alert-success alert-dismissible fade show b-card auto-close-alert" style="background-color: var(--mrc-success); color: var(--mrc-ink); border-color: var(--mrc-ink);" role="alert">
+                        <strong>¡Éxito!</strong> @successMessage
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </aside>
+                }
 
-            @if (TempData["ErrorMessage"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <aside class="alert alert-danger alert-dismissible fade show b-card mb-4" style="background-color: var(--mrc-danger); color: white; border-color: var(--mrc-ink);" role="alert">
-                    <strong>Error:</strong> @errorMessage
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </aside>
-            }
-        </aside>
+                @if (TempData["ErrorMessage"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <aside class="alert alert-danger alert-dismissible fade show b-card mb-4" style="background-color: var(--mrc-danger); color: white; border-color: var(--mrc-ink);" role="alert">
+                        <strong>Error:</strong> @errorMessage
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </aside>
+                }
+            </aside>
+        }
 
         @RenderBody()
     </main>

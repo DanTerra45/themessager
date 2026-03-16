@@ -3,6 +3,7 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
     ViewData["Title"] = "Empleados";
+    ViewData["UseToasts"] = true;
     var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
 }
 
@@ -340,11 +341,49 @@
     </section>
 </section>
 
+<!-- Brutalist Toasts -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1060;">
+    @if (TempData["SuccessMessage"] is string successMsg && !string.IsNullOrWhiteSpace(successMsg))
+    {
+        <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000" style="background-color: white; border: 4px solid var(--mrc-ink) !important; border-radius: 0; box-shadow: 4px 4px 0 var(--mrc-ink); opacity: 1;">
+            <div class="d-flex position-relative">
+                <div class="toast-icon d-flex align-items-center justify-content-center" style="background-color: var(--mrc-success); width: 60px; border-right: 4px solid var(--mrc-ink);">
+                    <i class="bi bi-check-circle" style="font-size: 1.5rem; color: var(--mrc-ink);"></i>
+                </div>
+                <div class="toast-body d-flex align-items-center" style="font-family: var(--font-mono); font-weight: bold; flex-grow: 1; min-height: 60px;">
+                    @successMsg
+                </div>
+                <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2" data-bs-dismiss="toast" aria-label="Cerrar" style="background-size: 0.8em;"></button>
+            </div>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] is string errorMsg && !string.IsNullOrWhiteSpace(errorMsg))
+    {
+        <div class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000" style="background-color: white; border: 4px solid var(--mrc-ink) !important; border-radius: 0; box-shadow: 4px 4px 0 var(--mrc-ink); opacity: 1;">
+            <div class="d-flex position-relative">
+                <div class="toast-icon d-flex align-items-center justify-content-center" style="background-color: var(--mrc-danger); width: 60px; border-right: 4px solid var(--mrc-ink);">
+                    <i class="bi bi-x-circle" style="font-size: 1.5rem; color: white;"></i>
+                </div>
+                <div class="toast-body d-flex align-items-center" style="font-family: var(--font-mono); font-weight: bold; flex-grow: 1; min-height: 60px;">
+                    @errorMsg
+                </div>
+                <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2" data-bs-dismiss="toast" aria-label="Cerrar" style="background-size: 0.8em;"></button>
+            </div>
+        </div>
+    }
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // Auto-initialize toasts
+            const toastElList = document.querySelectorAll('.toast');
+            const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl));
+            toastList.forEach(toast => toast.show());
+            
             if (typeof bootstrap === 'undefined') {
                 return;
             }
