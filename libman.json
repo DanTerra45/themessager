@@ -46,13 +46,36 @@
       ]
     },
     {
-      "provider": "unpkg",
       "library": "air-datepicker@3.6.0",
       "destination": "wwwroot/lib/air-datepicker",
       "files": [
         "air-datepicker.js",
         "air-datepicker.css",
         "locale/es.js"
+      ]
+    },
+    {
+      "library": "@fontsource-variable/bricolage-grotesque@5.2.10",
+      "destination": "wwwroot/lib/fonts/bricolage-grotesque/",
+      "files": [
+        "files/bricolage-grotesque-latin-wght-normal.woff2",
+        "LICENSE"
+      ]
+    },
+    {
+      "library": "@fontsource-variable/chivo-mono@5.2.8",
+      "destination": "wwwroot/lib/fonts/chivo-mono/",
+      "files": [
+        "files/chivo-mono-latin-wght-normal.woff2",
+        "LICENSE"
+      ]
+    },
+    {
+      "library": "@fontsource-variable/dm-sans@5.2.8",
+      "destination": "wwwroot/lib/fonts/dm-sans/",
+      "files": [
+        "files/dm-sans-latin-wght-normal.woff2",
+        "LICENSE"
       ]
     }
   ]

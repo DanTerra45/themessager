@@ -7,11 +7,16 @@ namespace Mercadito.src.employees.domain.usecases
     {
         private readonly IEmployeeRepository _employeeRepository = employeeRepository;
 
-        public async Task<(IReadOnlyList<Employee> Employees, int TotalPages)> GetPageAsync(int currentPage, int pageSize, CancellationToken cancellationToken = default)
+        public async Task<(IReadOnlyList<Employee> Employees, int TotalPages)> GetPageAsync(
+            int currentPage,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            CancellationToken cancellationToken = default)
         {
             var totalCount = await _employeeRepository.GetTotalEmployeesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var employees = await _employeeRepository.GetEmployeesByPages(currentPage, pageSize, cancellationToken);
+            var employees = await _employeeRepository.GetEmployeesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
             return (employees, totalPages);
         }
 

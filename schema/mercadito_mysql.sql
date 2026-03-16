@@ -56,12 +56,19 @@ CREATE TABLE `categoriaDeProducto` (
 );
 
 CREATE INDEX `categorias_index_1` ON `categorias` (`estado`, `nombre`);
+CREATE INDEX `categorias_index_2` ON `categorias` (`estado`, `id`);
+CREATE INDEX `categorias_index_3` ON `categorias` (`estado`, `codigo`);
 CREATE INDEX `products_index_1` ON `products` (`estado`, `nombre`);
-CREATE INDEX `products_index_2` ON `products` (`lote`, `fechaCaducidad`);
-CREATE INDEX `products_index_3` ON `products` (`fechaCaducidad`);
+CREATE INDEX `products_index_2` ON `products` (`estado`, `lote`, `fechaCaducidad`);
+CREATE INDEX `products_index_3` ON `products` (`estado`, `fechaCaducidad`);
+CREATE INDEX `products_index_4` ON `products` (`estado`, `stock`);
+CREATE INDEX `products_index_5` ON `products` (`estado`, `precio`);
+CREATE INDEX `products_index_6` ON `products` (`estado`, `id`);
 CREATE INDEX `empleados_index_4` ON `empleados` (`estado`, `primerApellido`, `segundoApellido`, `nombres`);
-CREATE INDEX `empleados_index_5` ON `empleados` (`ci`);
-CREATE INDEX `empleados_index_6` ON `empleados` (`rol`);
+CREATE INDEX `empleados_index_5` ON `empleados` (`estado`, `ci`);
+CREATE INDEX `empleados_index_6` ON `empleados` (`estado`, `rol`);
+CREATE INDEX `empleados_index_7` ON `empleados` (`estado`, `id`);
+CREATE INDEX `empleados_index_8` ON `empleados` (`ci`, `complemento`);
 
 CREATE INDEX `categoriaDeProducto_idx_categoria` ON `categoriaDeProducto` (`categoriaId`);
 ALTER TABLE `categoriaDeProducto` ADD FOREIGN KEY (`categoriaId`) REFERENCES `categorias` (`id`) ON DELETE CASCADE;

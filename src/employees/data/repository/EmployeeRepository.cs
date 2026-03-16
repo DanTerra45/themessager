@@ -12,11 +12,17 @@ namespace Mercadito.src.employees.data.repository
 
         private readonly IDataBaseConnection _dbConnection = dbConnection;
 
-        public async Task<IReadOnlyList<Employee>> GetEmployeesByPages(int page, int pageSize = 10, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Employee>> GetEmployeesByPages(
+            int page,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            CancellationToken cancellationToken = default)
         {
             var offset = (page - 1) * pageSize;
+            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT
+            var query = $@"SELECT
                     id AS Id,
                     ci AS Ci,
                     complemento AS Complemento,
@@ -24,11 +30,10 @@ namespace Mercadito.src.employees.data.repository
                     primerApellido AS PrimerApellido,
                     segundoApellido AS SegundoApellido,
                     rol AS Rol,
-                    numeroContacto AS NumeroContacto,
-                    (estado = @ActiveState) AS IsActive
+                    numeroContacto AS NumeroContacto
                     FROM empleados
                     WHERE estado = @ActiveState
-                    ORDER BY primerApellido, segundoApellido, nombres
+                    ORDER BY {orderByClause}
                     LIMIT @PageSize OFFSET @Offset";
 
             var command = new CommandDefinition(
@@ -60,8 +65,7 @@ namespace Mercadito.src.employees.data.repository
                     primerApellido AS PrimerApellido,
                     segundoApellido AS SegundoApellido,
                     rol AS Rol,
-                    numeroContacto AS NumeroContacto,
-                    (estado = @ActiveState) AS IsActive
+                    numeroContacto AS NumeroContacto
                     FROM empleados
                     WHERE id = @Id AND estado = @ActiveState";
 
@@ -110,8 +114,7 @@ namespace Mercadito.src.employees.data.repository
                     primerApellido = @PrimerApellido,
                     segundoApellido = @SegundoApellido,
                     rol = @Rol,
-                    numeroContacto = @NumeroContacto,
-                    estado = CASE WHEN @IsActive THEN @ActiveState ELSE @InactiveState END
+                    numeroContacto = @NumeroContacto
                     WHERE id = @Id AND estado = @ActiveState";
 
             var command = new CommandDefinition(
@@ -126,9 +129,7 @@ namespace Mercadito.src.employees.data.repository
                     employee.SegundoApellido,
                     employee.Rol,
                     employee.NumeroContacto,
-                    employee.IsActive,
-                    ActiveState,
-                    InactiveState
+                    ActiveState
                 },
                 cancellationToken: cancellationToken);
 
@@ -146,6 +147,28 @@ namespace Mercadito.src.employees.data.repository
                 cancellationToken: cancellationToken);
 
             return await connection.ExecuteAsync(command);
+        }
+
+        private static string BuildOrderByClause(string sortBy, string sortDirection)
+        {
+            var direction = NormalizeSortDirection(sortDirection);
+            var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy)
+                ? "apellidos"
+                : sortBy.Trim().ToLowerInvariant();
+
+            return normalizedSortBy switch
+            {
+                "id" => $"id {direction}",
+                "ci" => $"ci {direction}, id ASC",
+                "nombres" => $"nombres {direction}, primerApellido {direction}, id ASC",
+                "rol" => $"rol {direction}, primerApellido ASC, nombres ASC, id ASC",
+                _ => $"primerApellido {direction}, segundoApellido {direction}, nombres {direction}, id ASC"
+            };
+        }
+
+        private static string NormalizeSortDirection(string sortDirection)
+        {
+            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
         }
     }
 }

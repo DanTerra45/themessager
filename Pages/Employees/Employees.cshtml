@@ -27,36 +27,56 @@
                         @if (showIdColumn)
                         {
                             <th class="sortable-header" title="Ordenar por ID">
-                                <section class="d-flex align-items-center justify-content-center gap-1">
-                                    ID <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
-                                </section>
+                                <form method="post" asp-page-handler="Sort" class="d-inline">
+                                    <input type="hidden" name="sortBy" value="id" />
+                                    <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                                    <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                                    <button type="submit" class="sort-button">
+                                        ID <i class="bi @Model.GetSortIcon("id")" style="font-size: 0.8em;"></i>
+                                    </button>
+                                </form>
                             </th>
                         }
                         <th class="sortable-header" title="Ordenar por CI">
-                            <section class="d-flex align-items-center justify-content-center gap-1">
-                                CI <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
-                            </section>
+                            <form method="post" asp-page-handler="Sort" class="d-inline">
+                                <input type="hidden" name="sortBy" value="ci" />
+                                <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                                <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                                <button type="submit" class="sort-button">
+                                    CI <i class="bi @Model.GetSortIcon("ci")" style="font-size: 0.8em;"></i>
+                                </button>
+                            </form>
                         </th>
                         <th class="sortable-header" title="Ordenar por Nombre">
-                            <section class="d-flex align-items-center justify-content-center gap-1">
-                                Nombre <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
-                            </section>
+                            <form method="post" asp-page-handler="Sort" class="d-inline">
+                                <input type="hidden" name="sortBy" value="nombres" />
+                                <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                                <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                                <button type="submit" class="sort-button">
+                                    Nombre <i class="bi @Model.GetSortIcon("nombres")" style="font-size: 0.8em;"></i>
+                                </button>
+                            </form>
                         </th>
                         <th class="sortable-header" title="Ordenar por Apellidos">
-                            <section class="d-flex align-items-center justify-content-center gap-1">
-                                Apellidos <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
-                            </section>
+                            <form method="post" asp-page-handler="Sort" class="d-inline">
+                                <input type="hidden" name="sortBy" value="apellidos" />
+                                <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                                <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                                <button type="submit" class="sort-button">
+                                    Apellidos <i class="bi @Model.GetSortIcon("apellidos")" style="font-size: 0.8em;"></i>
+                                </button>
+                            </form>
                         </th>
                         <th>Contacto</th>
                         <th class="sortable-header" title="Ordenar por Rol">
-                            <section class="d-flex align-items-center justify-content-center gap-1">
-                                Rol <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
-                            </section>
-                        </th>
-                        <th class="sortable-header" title="Ordenar por Estado">
-                            <section class="d-flex align-items-center justify-content-center gap-1">
-                                Estado <i class="bi bi-arrow-down-up" style="font-size: 0.8em;"></i>
-                            </section>
+                            <form method="post" asp-page-handler="Sort" class="d-inline">
+                                <input type="hidden" name="sortBy" value="rol" />
+                                <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                                <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                                <button type="submit" class="sort-button">
+                                    Rol <i class="bi @Model.GetSortIcon("rol")" style="font-size: 0.8em;"></i>
+                                </button>
+                            </form>
                         </th>
                         <th class="text-center" style="width: 170px;">Acciones</th>
                     </tr>
@@ -79,20 +99,12 @@
                                 <mark class="status-badge" data-status="good">@emp.Rol</mark>
                             </td>
                             <td class="text-center">
-                                @if (emp.IsActive)
-                                {
-                                    <mark class="badge bg-success">Activo</mark>
-                                }
-                                else
-                                {
-                                    <mark class="badge bg-secondary">Inactivo</mark>
-                                }
-                            </td>
-                            <td class="text-center">
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
                                     <form method="post" asp-page-handler="StartEdit" class="d-inline">
                                         <input type="hidden" name="id" value="@emp.Id" />
                                         <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                                        <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                                        <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                                         <button type="submit" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;"
                                                 title="Editar">
                                             <i class="bi bi-pencil"></i>
@@ -123,6 +135,8 @@
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
                             <input type="hidden" name="pageNumber" value="@(Model.CurrentPage - 1)" />
+                            <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                             <button type="submit" class="page-link" disabled="@(Model.CurrentPage == 1)">
                                 <i class="bi bi-chevron-left me-1"></i>Anterior
                             </button>
@@ -133,6 +147,8 @@
                         <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
                             <form method="post" asp-page-handler="Navigate" class="d-inline">
                                 <input type="hidden" name="pageNumber" value="@i" />
+                                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                                 <button type="submit" class="page-link">@i</button>
                             </form>
                         </li>
@@ -140,6 +156,8 @@
                     <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
                             <input type="hidden" name="pageNumber" value="@(Model.CurrentPage + 1)" />
+                            <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                             <button type="submit" class="page-link" disabled="@(Model.CurrentPage == Model.TotalPages)">
                                 Siguiente<i class="bi bi-chevron-right ms-1"></i>
                             </button>
@@ -163,6 +181,8 @@
         <article class="modal-content">
             <form method="post" asp-page-handler="Delete" id="deleteEmployeeForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <input type="hidden" name="id" id="DeleteEmployeeId" />
 
                 <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
@@ -195,6 +215,8 @@
         <article class="modal-content">
             <form method="post" asp-page-handler="Create" class="needs-validation" novalidate id="createEmployeeForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <header class="modal-header">
                     <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="addEmployeeModalLabel">
                         <i class="bi bi-person-badge me-2"></i> Registrar Empleado
@@ -212,7 +234,7 @@
                         </section>
                         <section class="col-md-2">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">Complemento</label>
-                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" title="Debe tener 2 caracteres: número y letra (ej. 1A)" oninput="this.value = this.value.toUpperCase();" />
+                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase js-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" title="Debe tener 2 caracteres: número y letra (ej. 1A)" />
                             <span asp-validation-for="NewEmployee.Complemento" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-5">
@@ -267,6 +289,8 @@
         <article class="modal-content">
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="editEmployeeForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <input asp-for="EditEmployee.Id" type="hidden" />
                 <header class="modal-header">
                     <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="editEmployeeModalLabel">
@@ -285,7 +309,7 @@
                         </section>
                         <section class="col-md-2">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">Complemento</label>
-                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" title="Debe tener 2 caracteres: número y letra (ej. 1A)" oninput="this.value = this.value.toUpperCase();" />
+                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase js-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" title="Debe tener 2 caracteres: número y letra (ej. 1A)" />
                             <span asp-validation-for="EditEmployee.Complemento" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                         <section class="col-md-5">
@@ -321,12 +345,6 @@
                             <label asp-for="EditEmployee.NumeroContacto" class="form-label fw-bold">Número de Contacto</label>
                             <input asp-for="EditEmployee.NumeroContacto" class="form-control" required />
                             <span asp-validation-for="EditEmployee.NumeroContacto" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
-                        </section>
-                        <section class="col-md-6 mt-4 d-flex align-items-end">
-                            <section class="form-check form-switch mb-2">
-                                <input asp-for="EditEmployee.IsActive" class="form-check-input" type="checkbox" style="border-color: var(--mrc-ink); border-width: 2px;" />
-                                <label asp-for="EditEmployee.IsActive" class="form-check-label fw-bold ms-2">Empleado Activo</label>
-                            </section>
                         </section>
                     </section>
                 </section>
@@ -379,11 +397,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Auto-initialize toasts
-            const toastElList = document.querySelectorAll('.toast');
-            const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl));
-            toastList.forEach(toast => toast.show());
-            
+            document.querySelectorAll('.js-uppercase').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    input.value = input.value.toUpperCase();
+                });
+            });
+
             if (typeof bootstrap === 'undefined') {
                 return;
             }

@@ -22,6 +22,10 @@ namespace Mercadito.Pages.Products
         private const string PendingEditModalSessionKey = "Products.PendingEditModal";
         private const string PendingEditDraftSessionKey = "Products.PendingEditDraft";
         private const string PendingEditErrorsSessionKey = "Products.PendingEditErrors";
+        private const string SortBySessionKey = "Products.SortBy";
+        private const string SortDirectionSessionKey = "Products.SortDirection";
+        private const string DefaultSortBy = "name";
+        private const string DefaultSortDirection = "asc";
 
         private readonly ILogger<ProductsModel> _logger;
         private readonly IProductManagementUseCase _productManagementUseCase;
@@ -36,6 +40,8 @@ namespace Mercadito.Pages.Products
 
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
+        public string SortBy { get; set; } = DefaultSortBy;
+        public string SortDirection { get; set; } = DefaultSortDirection;
 
         public CreateProductDto NewProduct { get; set; } = new CreateProductDto
         {
@@ -101,27 +107,46 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public IActionResult OnPostFilterAsync(long categoryFilter = 0)
+        public IActionResult OnPostFilter(long categoryFilter = 0, string sortBy = "", string sortDirection = "")
         {
-            SetPageAndFilter(1, categoryFilter);
+            SetPageAndFilter(1, categoryFilter, sortBy, sortDirection);
 
             ClearPendingEditProductId();
             SaveStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostNavigateAsync(int pageNumber = 1, long categoryFilter = 0)
+        public IActionResult OnPostNavigate(int pageNumber = 1, long categoryFilter = 0, string sortBy = "", string sortDirection = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
 
             ClearPendingEditProductId();
             SaveStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostStartEditAsync(long id, int pageNumber = 1, long categoryFilter = 0)
+        public IActionResult OnPostSort(
+            string sortBy = "",
+            long categoryFilter = 0,
+            string currentSortBy = "",
+            string currentSortDirection = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter);
+            SetPageAndFilter(1, categoryFilter, currentSortBy, currentSortDirection);
+            ToggleSort(sortBy);
+
+            ClearPendingEditProductId();
+            SaveStateInSession();
+            return RedirectToPage();
+        }
+
+        public IActionResult OnPostStartEdit(
+            long id,
+            int pageNumber = 1,
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "")
+        {
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
 
             SaveStateInSession();
             if (id > 0)
@@ -132,10 +157,15 @@ namespace Mercadito.Pages.Products
             return RedirectToPage();
         }
 
-        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewProduct")] CreateProductDto newProduct, int pageNumber = 1, long categoryFilter = 0)
+        public async Task<IActionResult> OnPostCreateAsync(
+            [Bind(Prefix = "NewProduct")] CreateProductDto newProduct,
+            int pageNumber = 1,
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "")
         {
             NewProduct = newProduct;
-            SetPageAndFilter(pageNumber, categoryFilter);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
 
             ClearPendingEditProductId();
             SaveStateInSession();
@@ -172,10 +202,15 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditProduct")] UpdateProductDto editProduct, int pageNumber = 1, long categoryFilter = 0)
+        public async Task<IActionResult> OnPostEditAsync(
+            [Bind(Prefix = "EditProduct")] UpdateProductDto editProduct,
+            int pageNumber = 1,
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "")
         {
             EditProduct = editProduct;
-            SetPageAndFilter(pageNumber, categoryFilter);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
             SaveStateInSession();
 
             if (!ModelState.IsValid)
@@ -209,9 +244,14 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1, long categoryFilter = 0)
+        public async Task<IActionResult> OnPostDeleteAsync(
+            long id,
+            int pageNumber = 1,
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
             SaveStateInSession();
 
             try
@@ -374,16 +414,27 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        private void SetPageAndFilter(int pageNumber, long categoryFilter)
+        private void SetPageAndFilter(int pageNumber, long categoryFilter, string sortBy, string sortDirection)
         {
             CurrentPage = pageNumber > 0 ? pageNumber : 1;
             CategoryFilter = categoryFilter >= 0 ? categoryFilter : 0;
+
+            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
+            {
+                LoadSortStateFromSession();
+                return;
+            }
+
+            SortBy = NormalizeSortBy(sortBy);
+            SortDirection = NormalizeSortDirection(sortDirection);
         }
 
         private void NormalizeCurrentState()
         {
             CurrentPage = CurrentPage > 0 ? CurrentPage : 1;
             CategoryFilter = CategoryFilter >= 0 ? CategoryFilter : 0;
+            SortBy = NormalizeSortBy(SortBy);
+            SortDirection = NormalizeSortDirection(SortDirection);
 
             if (CategoryFilter > 0 && Categories.Count > 0 && !Categories.Exists(category => category.Id == CategoryFilter))
             {
@@ -396,13 +447,25 @@ namespace Mercadito.Pages.Products
             try
             {
                 var cancellationToken = HttpContext.RequestAborted;
-                var result = await _productManagementUseCase.GetPageAsync(CurrentPage, CategoryFilter, _defaultPageSize, cancellationToken);
+                var result = await _productManagementUseCase.GetPageAsync(
+                    CurrentPage,
+                    CategoryFilter,
+                    _defaultPageSize,
+                    SortBy,
+                    SortDirection,
+                    cancellationToken);
                 var maxPage = Math.Max(result.TotalPages, 1);
 
                 if (CurrentPage > maxPage)
                 {
                     CurrentPage = maxPage;
-                    result = await _productManagementUseCase.GetPageAsync(CurrentPage, CategoryFilter, _defaultPageSize, cancellationToken);
+                    result = await _productManagementUseCase.GetPageAsync(
+                        CurrentPage,
+                        CategoryFilter,
+                        _defaultPageSize,
+                        SortBy,
+                        SortDirection,
+                        cancellationToken);
                 }
 
                 TotalPages = Math.Max(result.TotalPages, 1);
@@ -458,16 +521,81 @@ namespace Mercadito.Pages.Products
             if (!long.TryParse(rawCategoryFilter, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedCategoryFilter) || parsedCategoryFilter < 0)
             {
                 CategoryFilter = 0;
-                return;
+            }
+            else
+            {
+                CategoryFilter = parsedCategoryFilter;
             }
 
-            CategoryFilter = parsedCategoryFilter;
+            LoadSortStateFromSession();
         }
 
         private void SaveStateInSession()
         {
             HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
             HttpContext.Session.SetString(CategoryFilterSessionKey, Math.Max(CategoryFilter, 0).ToString(CultureInfo.InvariantCulture));
+            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
+            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
+        }
+
+        private void LoadSortStateFromSession()
+        {
+            var sortByInSession = HttpContext.Session.GetString(SortBySessionKey);
+            var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
+            SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
+            SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
+        }
+
+        public string GetSortIcon(string columnName)
+        {
+            var normalizedColumn = NormalizeSortBy(columnName);
+            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
+            {
+                return "bi-arrow-down-up";
+            }
+
+            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? "bi-sort-down"
+                : "bi-sort-up";
+        }
+
+        private void ToggleSort(string sortBy)
+        {
+            var normalizedSortBy = NormalizeSortBy(sortBy);
+            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
+            {
+                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+                return;
+            }
+
+            SortBy = normalizedSortBy;
+            SortDirection = DefaultSortDirection;
+        }
+
+        private static string NormalizeSortBy(string sortBy)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy))
+            {
+                return DefaultSortBy;
+            }
+
+            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            return normalizedSortBy switch
+            {
+                "id" => "id",
+                "stock" => "stock",
+                "batch" => "batch",
+                "expirationdate" => "expirationdate",
+                "price" => "price",
+                _ => "name"
+            };
+        }
+
+        private static string NormalizeSortDirection(string sortDirection)
+        {
+            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? "desc"
+                : "asc";
         }
 
         private void SetPendingEditProductId(long productId)

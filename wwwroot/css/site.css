@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
-
 :root {
   /* Brutalist Design */
   /* Utilitarian Fresh Palette */
@@ -15,9 +13,9 @@
   --mrc-success: #00e676;
   --mrc-border: #d2d0c6;
 
-  --font-display: 'Bricolage Grotesque', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --font-mono: 'Chivo Mono', monospace;
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', sans-serif;
+  --font-body: 'DM Sans Variable', 'DM Sans', sans-serif;
+  --font-mono: 'Chivo Mono Variable', 'Chivo Mono', monospace;
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -205,6 +203,31 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   cursor: pointer;
   user-select: none;
   transition: all 0.15s ease;
+  padding: 0 !important;
+}
+
+.sort-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 1rem;
+}
+
+.text-end.sortable-header .sort-button {
+  justify-content: flex-end;
+}
+
+.sort-button:focus-visible {
+  outline: 2px solid var(--mrc-ink);
+  outline-offset: -2px;
 }
 
 .sortable-header:hover {

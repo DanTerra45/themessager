@@ -20,6 +20,10 @@ namespace Mercadito.Pages.Employees
         private const string PendingEditModalSessionKey = "Employees.PendingEditModal";
         private const string PendingEditDraftSessionKey = "Employees.PendingEditDraft";
         private const string PendingEditErrorsSessionKey = "Employees.PendingEditErrors";
+        private const string SortBySessionKey = "Employees.SortBy";
+        private const string SortDirectionSessionKey = "Employees.SortDirection";
+        private const string DefaultSortBy = "apellidos";
+        private const string DefaultSortDirection = "asc";
 
         private readonly ILogger<EmployeesModel> _logger;
         private readonly IEmployeeManagementUseCase _employeeManagementUseCase;
@@ -30,6 +34,8 @@ namespace Mercadito.Pages.Employees
         public List<Employee> Employees { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
+        public string SortBy { get; set; } = DefaultSortBy;
+        public string SortDirection { get; set; } = DefaultSortDirection;
 
         public CreateEmployeeDto NewEmployee { get; set; } = new CreateEmployeeDto();
 
@@ -57,8 +63,10 @@ namespace Mercadito.Pages.Employees
         public async Task OnGetAsync()
         {
             LoadCurrentPageFromSession();
+            LoadSortStateFromSession();
             await LoadEmployeesAsync();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
             RestorePendingPostbackState();
             RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
             RestorePendingValidationErrors(PendingEditErrorsSessionKey);
@@ -86,27 +94,42 @@ namespace Mercadito.Pages.Employees
                     PrimerApellido = employeeForEdit.PrimerApellido,
                     SegundoApellido = employeeForEdit.SegundoApellido,
                     NumeroContacto = employeeForEdit.NumeroContacto,
-                    Rol = employeeForEdit.Rol,
-                    IsActive = employeeForEdit.IsActive
+                    Rol = employeeForEdit.Rol
                 };
 
                 ShowEditEmployeeModal = true;
             }
         }
 
-        public IActionResult OnPostNavigateAsync(int pageNumber = 1)
+        public IActionResult OnPostNavigate(int pageNumber = 1, string sortBy = "", string sortDirection = "")
         {
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostStartEditAsync(long id, int pageNumber = 1)
+        public IActionResult OnPostSort(string sortBy = "", string currentSortBy = "", string currentSortDirection = "")
+        {
+            SetCurrentPage(1);
+            SetSortState(currentSortBy, currentSortDirection);
+            ToggleSort(sortBy);
+
+            ClearPendingEditEmployeeId();
+            SaveCurrentPageInSession();
+            SaveSortStateInSession();
+            return RedirectToPage();
+        }
+
+        public IActionResult OnPostStartEdit(long id, int pageNumber = 1, string sortBy = "", string sortDirection = "")
         {
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             if (id > 0)
             {
@@ -121,13 +144,13 @@ namespace Mercadito.Pages.Employees
             try
             {
                 var cancellationToken = HttpContext.RequestAborted;
-                var result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
+                var result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, SortBy, SortDirection, cancellationToken);
                 var maxPage = Math.Max(result.TotalPages, 1);
 
                 if (CurrentPage > maxPage)
                 {
                     CurrentPage = maxPage;
-                    result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, cancellationToken);
+                    result = await _employeeManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, SortBy, SortDirection, cancellationToken);
                 }
 
                 TotalPages = Math.Max(result.TotalPages, 1);
@@ -142,13 +165,19 @@ namespace Mercadito.Pages.Employees
             }
         }
 
-        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewEmployee")] CreateEmployeeDto newEmployee, int pageNumber = 1)
+        public async Task<IActionResult> OnPostCreateAsync(
+            [Bind(Prefix = "NewEmployee")] CreateEmployeeDto newEmployee,
+            int pageNumber = 1,
+            string sortBy = "",
+            string sortDirection = "")
         {
             NewEmployee = newEmployee;
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             if (!ModelState.IsValid)
             {
@@ -180,11 +209,17 @@ namespace Mercadito.Pages.Employees
             }
         }
 
-        public async Task<IActionResult> OnPostEditAsync([Bind(Prefix = "EditEmployee")] UpdateEmployeeDto editEmployee, int pageNumber = 1)
+        public async Task<IActionResult> OnPostEditAsync(
+            [Bind(Prefix = "EditEmployee")] UpdateEmployeeDto editEmployee,
+            int pageNumber = 1,
+            string sortBy = "",
+            string sortDirection = "")
         {
             EditEmployee = editEmployee;
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             if (!ModelState.IsValid)
             {
@@ -200,10 +235,10 @@ namespace Mercadito.Pages.Employees
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
                 return RedirectToCurrentState();
             }
-            catch (InvalidOperationException invalidOperationException)
+            catch (ValidationException validationException)
             {
-                _logger.LogWarning(invalidOperationException, "Empleado no encontrado al actualizar");
-                TempData["ErrorMessage"] = invalidOperationException.Message;
+                _logger.LogWarning(validationException, "Validación de negocio al actualizar empleado");
+                TempData["ErrorMessage"] = validationException.Message;
                 StorePendingEditModal(EditEmployee);
                 return RedirectToCurrentState();
             }
@@ -216,19 +251,21 @@ namespace Mercadito.Pages.Employees
             }
         }
 
-        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1)
+        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1, string sortBy = "", string sortDirection = "")
         {
             SetCurrentPage(pageNumber);
+            SetSortState(sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
 
             try
             {
                 var deleted = await _employeeManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
                 TempData[deleted ? "SuccessMessage" : "ErrorMessage"] = deleted
-                    ? "Empleado eliminado."
-                    : "Empleado no encontrado.";
+                    ? "Empleado desactivado."
+                    : "El empleado no existe o ya estaba desactivado.";
             }
             catch (Exception ex)
             {
@@ -243,6 +280,7 @@ namespace Mercadito.Pages.Employees
         {
             ClearPendingEditEmployeeId();
             SaveCurrentPageInSession();
+            SaveSortStateInSession();
             return RedirectToPage();
         }
 
@@ -377,6 +415,19 @@ namespace Mercadito.Pages.Employees
             }
         }
 
+        public string GetSortIcon(string columnName)
+        {
+            var normalizedColumn = NormalizeSortBy(columnName);
+            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
+            {
+                return "bi-arrow-down-up";
+            }
+
+            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? "bi-sort-down"
+                : "bi-sort-up";
+        }
+
         private void LoadCurrentPageFromSession()
         {
             var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
@@ -394,9 +445,74 @@ namespace Mercadito.Pages.Employees
             CurrentPage = pageNumber > 0 ? pageNumber : 1;
         }
 
+        private void SetSortState(string sortBy, string sortDirection)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
+            {
+                LoadSortStateFromSession();
+                return;
+            }
+
+            SortBy = NormalizeSortBy(sortBy);
+            SortDirection = NormalizeSortDirection(sortDirection);
+        }
+
         private void SaveCurrentPageInSession()
         {
             HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
+        }
+
+        private void LoadSortStateFromSession()
+        {
+            var sortByInSession = HttpContext.Session.GetString(SortBySessionKey);
+            var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
+
+            SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
+            SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
+        }
+
+        private void SaveSortStateInSession()
+        {
+            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
+            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
+        }
+
+        private void ToggleSort(string sortBy)
+        {
+            var normalizedSortBy = NormalizeSortBy(sortBy);
+            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
+            {
+                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+                return;
+            }
+
+            SortBy = normalizedSortBy;
+            SortDirection = DefaultSortDirection;
+        }
+
+        private static string NormalizeSortBy(string sortBy)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy))
+            {
+                return DefaultSortBy;
+            }
+
+            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            return normalizedSortBy switch
+            {
+                "id" => "id",
+                "ci" => "ci",
+                "nombres" => "nombres",
+                "rol" => "rol",
+                _ => "apellidos"
+            };
+        }
+
+        private static string NormalizeSortDirection(string sortDirection)
+        {
+            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+                ? "desc"
+                : "asc";
         }
 
         private void SetPendingEditEmployeeId(long employeeId)
