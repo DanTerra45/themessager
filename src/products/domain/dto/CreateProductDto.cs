@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mercadito.src.products.domain.dto
 {
@@ -18,10 +19,16 @@ namespace Mercadito.src.products.domain.dto
 
         [Required(ErrorMessage = "El stock es obligatorio")]
         [Display(Name = "Stock Disponible")]
+<<<<<<< HEAD
         [Range(0, int.MaxValue, ErrorMessage = "El stock debe ser un numero positivo")]
         [RegularExpression("^[0-9]+$", ErrorMessage = "El stock debe ser un numero entero")]
         public int Stock { get; set; }
 
+=======
+        [Positive(ErrorMessage = "El stock debe ser un número positivo")]
+        [RegularExpression("^[0-9]+$", ErrorMessage = "El stock debe ser un número entero")]
+        public int? Stock { get; set; }
+>>>>>>> 374af05 (refactor: Validaciones mas descriptivas usando data anotation y tomando en cuenta casos especiales)
         [Required(ErrorMessage = "Lote es obligatorio")]
         [Display(Name = "Lote")]
         [StringLength(40, ErrorMessage = "Lote no puede exceder 40 caracteres")]
@@ -33,8 +40,9 @@ namespace Mercadito.src.products.domain.dto
         public DateOnly ExpirationDate { get; set; }
 
         [Required(ErrorMessage = "El precio es obligatorio")]
-        [Range(typeof(decimal), "0.01", "99999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true, ErrorMessage = "El precio debe estar entre 0.01 y 99999999.99")]
-        public decimal Price { get; set; }
+        [Display(Name = "Precio")]
+        [Positive(ErrorMessage = "El precio debe ser un número positivo")]
+        public decimal? Price { get; set; }
 
         [Display(Name = "Categorias")]
         public List<long> CategoryIds { get; set; } = [];

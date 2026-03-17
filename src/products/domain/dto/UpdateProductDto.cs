@@ -22,8 +22,8 @@ namespace Mercadito.src.products.domain.dto
         public required string Description { get; set; }
 
         [Required(ErrorMessage = "Stock es obligatorio")]
-        [Range(0, int.MaxValue, ErrorMessage = "Stock debe ser 0 o mayor")]
-        public int Stock { get; set; }
+        [Positive(ErrorMessage = "El stock debe ser un número positivo")]
+        public int? Stock { get; set; }
 
         [Required(ErrorMessage = "Lote es obligatorio")]
         [StringLength(40, ErrorMessage = "Lote no puede exceder 40 caracteres")]
@@ -35,8 +35,8 @@ namespace Mercadito.src.products.domain.dto
         public DateOnly ExpirationDate { get; set; }
 
         [Required(ErrorMessage = "Precio es obligatorio")]
-        [Range(typeof(decimal), "0.01", "99999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true, ErrorMessage = "Precio invalido")]
-        public decimal Price { get; set; }
+        [Positive(ErrorMessage = "El precio debe ser un número positivo")]
+        public decimal? Price { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
