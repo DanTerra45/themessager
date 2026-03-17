@@ -16,6 +16,7 @@ namespace Mercadito.src.products.domain.dto
         [Display(Name = "Descripcion del Producto")]
         [StringLength(150, ErrorMessage = "La descripcion no puede exceder 150 caracteres")]
         public required string Description { get; set; }
+<<<<<<< HEAD
 
         [Required(ErrorMessage = "El stock es obligatorio")]
         [Display(Name = "Stock Disponible")]
@@ -26,6 +27,10 @@ namespace Mercadito.src.products.domain.dto
 
 =======
         [Positive(ErrorMessage = "El stock debe ser un número positivo")]
+=======
+        [Display(Name = "Stock Disponible")]
+        [Positive(FieldName = "Stock")]
+>>>>>>> 1b0b0c2 (refactor: Validaciones mas descriptivas y mejor uso de positive)
         [RegularExpression("^[0-9]+$", ErrorMessage = "El stock debe ser un número entero")]
         public int? Stock { get; set; }
 >>>>>>> 374af05 (refactor: Validaciones mas descriptivas usando data anotation y tomando en cuenta casos especiales)
@@ -38,10 +43,13 @@ namespace Mercadito.src.products.domain.dto
         [Required(ErrorMessage = "La fecha de caducidad es obligatoria")]
         [Display(Name = "Fecha de Caducidad")]
         public DateOnly ExpirationDate { get; set; }
+<<<<<<< HEAD
 
         [Required(ErrorMessage = "El precio es obligatorio")]
+=======
+>>>>>>> 1b0b0c2 (refactor: Validaciones mas descriptivas y mejor uso de positive)
         [Display(Name = "Precio")]
-        [Positive(ErrorMessage = "El precio debe ser un número positivo")]
+        [Positive(FieldName = "Precio")]
         public decimal? Price { get; set; }
 
         [Display(Name = "Categorias")]
