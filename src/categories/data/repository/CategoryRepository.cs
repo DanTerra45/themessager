@@ -2,13 +2,13 @@
 using Mercadito.database.interfaces;
 using Mercadito.src.categories.data.entity;
 using Mercadito.src.categories.domain.model;
-using Mercadito.src.categories.domain.repository;
+using Mercadito.src.shared.domain.repository;
 using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.categories.data.repository
 {
-    public class CategoryRepository(IDbConnectionFactory dbConnection) : ICategoryRepository
+    public class CategoryRepository(IDbConnectionFactory dbConnection) : ICrudRepository<Category, Category, CategoryModel, long>
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
@@ -72,7 +72,7 @@ namespace Mercadito.src.categories.data.repository
             return categories.AsList();
         }
 
-        public async Task<CategoryModel?> GetCategoryByIdAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<CategoryModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"SELECT c.id AS Id, 
@@ -94,20 +94,21 @@ namespace Mercadito.src.categories.data.repository
             return await connection.QueryFirstOrDefaultAsync<CategoryModel>(command);
         }
 
-        public async Task AddCategoryAsync(Category category, CancellationToken cancellationToken = default)
+        public async Task<long> CreateAsync(Category category, CancellationToken cancellationToken = default)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
                 const string query = @"INSERT INTO categorias 
-                        (codigo, nombre, descripcion, estado) VALUES (@Code, @Name, @Description, @ActiveState)";
+                        (codigo, nombre, descripcion, estado) VALUES (@Code, @Name, @Description, @ActiveState);
+                        SELECT LAST_INSERT_ID();";
 
                 var command = new CommandDefinition(
                     query,
                     parameters: new { category.Code, category.Name, category.Description, ActiveState },
                     cancellationToken: cancellationToken);
 
-                await connection.ExecuteAsync(command);
+                return await connection.ExecuteScalarAsync<long>(command);
             }
             catch (MySqlException exception) when (exception.Number == 1062)
             {
@@ -119,7 +120,7 @@ namespace Mercadito.src.categories.data.repository
             }
         }
 
-        public async Task<int> UpdateCategoryAsync(Category category, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAsync(Category category, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             try
@@ -145,7 +146,7 @@ namespace Mercadito.src.categories.data.repository
             }
         }
 
-        public async Task<int> DeleteCategoryAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"UPDATE categorias

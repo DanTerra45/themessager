@@ -1,16 +1,17 @@
 using System.ComponentModel.DataAnnotations;
+using Mercadito.src.categories.data.repository;
 using Mercadito.src.categories.domain.dto;
 using Mercadito.src.categories.domain.factory;
 using Mercadito.src.categories.domain.model;
-using Mercadito.src.categories.domain.repository;
+using Mercadito.src.shared.domain.factory;
 
 namespace Mercadito.src.categories.domain.usecases
 {
     public class CategoryManagementUseCase(
-        ICategoryRepository categoryRepository,
+        RepositoryCreator<CategoryRepository> categoryRepositoryCreator,
         ICategoryFactory categoryFactory) : ICategoryManagementUseCase
     {
-        private readonly ICategoryRepository _categoryRepository = categoryRepository;
+        private readonly RepositoryCreator<CategoryRepository> _categoryRepositoryCreator = categoryRepositoryCreator;
         private readonly ICategoryFactory _categoryFactory = categoryFactory;
 
         public async Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(
@@ -20,15 +21,17 @@ namespace Mercadito.src.categories.domain.usecases
             string sortDirection,
             CancellationToken cancellationToken = default)
         {
-            var totalCount = await _categoryRepository.GetTotalCategoriesCountAsync(cancellationToken);
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            var totalCount = await categoryRepository.GetTotalCategoriesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var pagedCategories = await _categoryRepository.GetCategoryByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
+            var pagedCategories = await categoryRepository.GetCategoryByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
             return (pagedCategories, totalPages);
         }
 
         public async Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default)
         {
-            var category = await _categoryRepository.GetCategoryByIdAsync(categoryId, cancellationToken);
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            var category = await categoryRepository.GetByIdAsync(categoryId, cancellationToken);
             if (category == null)
             {
                 return null;
@@ -45,14 +48,16 @@ namespace Mercadito.src.categories.domain.usecases
 
         public async Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default)
         {
+            var categoryRepository = _categoryRepositoryCreator.Create();
             var category = _categoryFactory.CreateForInsert(newCategory);
-            await _categoryRepository.AddCategoryAsync(category, cancellationToken);
+            await categoryRepository.CreateAsync(category, cancellationToken);
         }
 
         public async Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default)
         {
+            var categoryRepository = _categoryRepositoryCreator.Create();
             var category = _categoryFactory.CreateForUpdate(editCategory);
-            var affectedRows = await _categoryRepository.UpdateCategoryAsync(category, cancellationToken);
+            var affectedRows = await categoryRepository.UpdateAsync(category, cancellationToken);
 
             if (affectedRows == 0)
             {
@@ -62,7 +67,8 @@ namespace Mercadito.src.categories.domain.usecases
 
         public async Task<bool> DeleteAsync(long categoryId, CancellationToken cancellationToken = default)
         {
-            var affectedRows = await _categoryRepository.DeleteCategoryAsync(categoryId, cancellationToken);
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            var affectedRows = await categoryRepository.DeleteAsync(categoryId, cancellationToken);
             return affectedRows > 0;
         }
 

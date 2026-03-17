@@ -1,17 +1,15 @@
 using Mercadito.src.categories.data.repository;
 using Mercadito.src.categories.domain.factory;
-using Mercadito.src.categories.domain.repository;
 using Mercadito.src.categories.domain.usecases;
 using Mercadito.database;
 using Mercadito.database.interfaces;
 using Mercadito.src.employees.data.repository;
 using Mercadito.src.employees.domain.factory;
-using Mercadito.src.employees.domain.repository;
 using Mercadito.src.employees.domain.usecases;
 using Mercadito.src.products.data.repository;
 using Mercadito.src.products.domain.factory;
-using Mercadito.src.products.domain.repository;
 using Mercadito.src.products.domain.usecases;
+using Mercadito.src.shared.domain.factory;
 
 using System.Globalization;
 
@@ -36,9 +34,12 @@ builder.Services.AddSession(options =>
 
 builder.Services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
 
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<CategoryRepository>();
+builder.Services.AddScoped<EmployeeRepository>();
+builder.Services.AddScoped<RepositoryCreator<ProductRepository>, ProductRepositoryCreator>();
+builder.Services.AddScoped<RepositoryCreator<CategoryRepository>, CategoryRepositoryCreator>();
+builder.Services.AddScoped<RepositoryCreator<EmployeeRepository>, EmployeeRepositoryCreator>();
 builder.Services.AddScoped<IProductFactory, ProductFactory>();
 builder.Services.AddScoped<ICategoryFactory, CategoryFactory>();
 builder.Services.AddScoped<IEmployeeFactory, EmployeeFactory>();
