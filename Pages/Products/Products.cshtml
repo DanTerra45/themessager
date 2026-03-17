@@ -360,7 +360,7 @@
                                 <button class="btn b-btn-number border-end-0" type="button" tabindex="-1" data-step="-1">
                                     <i class="bi bi-dash"></i>
                                 </button>
-                                <input asp-for="NewProduct.Stock" value=0 type="number" class="form-control text-center px-0" min="0" required />
+                                <input asp-for="NewProduct.Stock" type="number" class="form-control text-center px-0" min="0" required />
                                 <button class="btn b-btn-number border-start-0" type="button" tabindex="-1" data-step="1">
                                     <i class="bi bi-plus"></i>
                                 </button>
@@ -375,7 +375,7 @@
 
                         <section class="col-md-4 mb-3">
                             <label asp-for="NewProduct.ExpirationDate" class="form-label fw-bold">Vencimiento</label>
-                            <input asp-for="NewProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" required />
+                            <input asp-for="NewProduct.ExpirationDate" type="text" class="form-control date-picker-input"  asp-format="{0:yyyy-MM-dd}" required />
                             <span asp-validation-for="NewProduct.ExpirationDate" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
                         </section>
                     </section>
@@ -643,7 +643,7 @@
                 new AirDatepicker(input, {
                     locale: localeEs,
                     dateFormat: 'yyyy-MM-dd',
-                    minDate: minDate || undefined,
+                    minDate: Date.now() || undefined,
                     autoClose: true,
                     isMobile: false
                 });
