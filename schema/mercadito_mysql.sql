@@ -7,6 +7,7 @@ CREATE TABLE `categorias` (
   `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `uq_categorias_codigo` UNIQUE (`codigo`),
+  CONSTRAINT `chk_categorias_codigo_formato` CHECK (`codigo` REGEXP '^[A-Z0-9_-]{1,6}$'),
   CONSTRAINT `chk_categorias_codigo_no_vacio` CHECK (`codigo` <> ''),
   CONSTRAINT `chk_categorias_nombre_no_vacio` CHECK (`nombre` <> ''),
   CONSTRAINT `chk_categorias_descripcion_no_vacia` CHECK (`descripcion` <> '')
@@ -23,9 +24,11 @@ CREATE TABLE `products` (
   `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
   `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_products_nombre_lote_fechacaducidad` UNIQUE (`nombre`, `lote`, `fechaCaducidad`),
   CONSTRAINT `chk_products_nombre_no_vacio` CHECK (`nombre` <> ''),
   CONSTRAINT `chk_products_descripcion_no_vacia` CHECK (`descripcion` <> ''),
   CONSTRAINT `chk_products_lote_no_vacio` CHECK (`lote` <> ''),
+  CONSTRAINT `chk_products_lote_formato` CHECK (`lote` REGEXP '^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,39}$'),
   CONSTRAINT `chk_products_stock_positivo` CHECK (`stock` >= 0),
   CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01)
 );
@@ -46,6 +49,7 @@ CREATE TABLE `empleados` (
   CONSTRAINT `chk_empleados_nombres_no_vacios` CHECK (`nombres` <> ''),
   CONSTRAINT `chk_empleados_primer_apellido_no_vacio` CHECK (`primerApellido` <> ''),
   CONSTRAINT `chk_empleados_contacto_no_vacio` CHECK (`numeroContacto` <> ''),
+  CONSTRAINT `chk_empleados_contacto_formato` CHECK (`numeroContacto` REGEXP '^[0-9+() -]{7,40}$'),
   CONSTRAINT `chk_empleados_complemento_formato` CHECK (`complemento` IS NULL OR `complemento` REGEXP '^[0-9][A-Z]$')
 );
 

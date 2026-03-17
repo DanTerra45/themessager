@@ -2,15 +2,81 @@ using Dapper;
 using Mercadito.database.interfaces;
 using Mercadito.src.employees.data.entity;
 using Mercadito.src.employees.domain.repository;
+using MySqlConnector;
+using System.Data;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
 
 namespace Mercadito.src.employees.data.repository
 {
-    public class EmployeeRepository(IDataBaseConnection dbConnection) : IEmployeeRepository
+    public class EmployeeRepository(IDbConnectionFactory dbConnection) : IEmployeeRepository
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
 
-        private readonly IDataBaseConnection _dbConnection = dbConnection;
+        private readonly IDbConnectionFactory _dbConnection = dbConnection;
+
+        private static string NormalizeComplemento(string? complemento)
+        {
+            if (string.IsNullOrWhiteSpace(complemento))
+            {
+                return string.Empty;
+            }
+
+            return complemento.Trim().ToUpperInvariant();
+        }
+
+        private static CommandDefinition BuildCountActiveEmployeesByIdentityCommand(
+            long ci,
+            string normalizedComplemento,
+            bool excludeCurrentEmployee,
+            long currentEmployeeId,
+            CancellationToken cancellationToken)
+        {
+            var queryBuilder = new StringBuilder(@"SELECT COUNT(*)
+                    FROM empleados
+                    WHERE ci = @Ci
+                    AND COALESCE(complemento, '') = @Complemento
+                    AND estado = @ActiveState");
+
+            var parameters = new DynamicParameters();
+            parameters.Add("Ci", ci);
+            parameters.Add("Complemento", normalizedComplemento);
+            parameters.Add("ActiveState", ActiveState);
+
+            if (excludeCurrentEmployee)
+            {
+                queryBuilder.Append(" AND id <> @CurrentEmployeeId");
+                parameters.Add("CurrentEmployeeId", currentEmployeeId);
+            }
+
+            return new CommandDefinition(
+                queryBuilder.ToString(),
+                parameters: parameters,
+                cancellationToken: cancellationToken);
+        }
+
+        private static async Task EnsureUniqueActiveIdentityAsync(
+            IDbConnection connection,
+            Employee employee,
+            bool excludeCurrentEmployee,
+            long currentEmployeeId,
+            CancellationToken cancellationToken)
+        {
+            var normalizedComplemento = NormalizeComplemento(employee.Complemento);
+            var countCommand = BuildCountActiveEmployeesByIdentityCommand(
+                employee.Ci,
+                normalizedComplemento,
+                excludeCurrentEmployee,
+                currentEmployeeId,
+                cancellationToken);
+
+            var existingEmployeesCount = await connection.ExecuteScalarAsync<int>(countCommand);
+            if (existingEmployeesCount > 0)
+            {
+                throw new ValidationException("Ya existe un empleado activo con el mismo CI y complemento.");
+            }
+        }
 
         public async Task<IReadOnlyList<Employee>> GetEmployeesByPages(
             int page,
@@ -80,60 +146,96 @@ namespace Mercadito.src.employees.data.repository
         public async Task<long> AddEmployeeAsync(Employee employee, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"INSERT INTO empleados 
-                    (ci, complemento, nombres, primerApellido, segundoApellido, rol, numeroContacto, estado) 
-                    VALUES 
-                    (@Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Rol, @NumeroContacto, @ActiveState);
-                    SELECT LAST_INSERT_ID();";
+            await EnsureUniqueActiveIdentityAsync(
+                connection,
+                employee,
+                excludeCurrentEmployee: false,
+                currentEmployeeId: 0,
+                cancellationToken);
 
-            var insertEmployeeCommand = new CommandDefinition(
-                query,
-                parameters: new
-                {
-                    employee.Ci,
-                    employee.Complemento,
-                    employee.Nombres,
-                    employee.PrimerApellido,
-                    employee.SegundoApellido,
-                    employee.Rol,
-                    employee.NumeroContacto,
-                    ActiveState
-                },
-                cancellationToken: cancellationToken);
+            try
+            {
+                const string query = @"INSERT INTO empleados 
+                        (ci, complemento, nombres, primerApellido, segundoApellido, rol, numeroContacto, estado) 
+                        VALUES 
+                        (@Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Rol, @NumeroContacto, @ActiveState);
+                        SELECT LAST_INSERT_ID();";
 
-            return await connection.ExecuteScalarAsync<long>(insertEmployeeCommand);
+                var insertEmployeeCommand = new CommandDefinition(
+                    query,
+                    parameters: new
+                    {
+                        employee.Ci,
+                        employee.Complemento,
+                        employee.Nombres,
+                        employee.PrimerApellido,
+                        employee.SegundoApellido,
+                        employee.Rol,
+                        employee.NumeroContacto,
+                        ActiveState
+                    },
+                    cancellationToken: cancellationToken);
+
+                return await connection.ExecuteScalarAsync<long>(insertEmployeeCommand);
+            }
+            catch (MySqlException exception) when (exception.Number == 1062)
+            {
+                throw new ValidationException("Ya existe un empleado activo con el mismo CI y complemento.");
+            }
+            catch (MySqlException exception) when (exception.Number == 3819)
+            {
+                throw new ValidationException("Los datos del empleado no cumplen el formato requerido.");
+            }
         }
 
         public async Task<int> UpdateEmployeeAsync(Employee employee, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"UPDATE empleados SET
-                    ci = @Ci,
-                    complemento = @Complemento,
-                    nombres = @Nombres,
-                    primerApellido = @PrimerApellido,
-                    segundoApellido = @SegundoApellido,
-                    rol = @Rol,
-                    numeroContacto = @NumeroContacto
-                    WHERE id = @Id AND estado = @ActiveState";
+            await EnsureUniqueActiveIdentityAsync(
+                connection,
+                employee,
+                excludeCurrentEmployee: true,
+                currentEmployeeId: employee.Id,
+                cancellationToken);
 
-            var command = new CommandDefinition(
-                query,
-                parameters: new
-                {
-                    employee.Id,
-                    employee.Ci,
-                    employee.Complemento,
-                    employee.Nombres,
-                    employee.PrimerApellido,
-                    employee.SegundoApellido,
-                    employee.Rol,
-                    employee.NumeroContacto,
-                    ActiveState
-                },
-                cancellationToken: cancellationToken);
+            try
+            {
+                const string query = @"UPDATE empleados SET
+                        ci = @Ci,
+                        complemento = @Complemento,
+                        nombres = @Nombres,
+                        primerApellido = @PrimerApellido,
+                        segundoApellido = @SegundoApellido,
+                        rol = @Rol,
+                        numeroContacto = @NumeroContacto
+                        WHERE id = @Id AND estado = @ActiveState";
 
-            return await connection.ExecuteAsync(command);
+                var command = new CommandDefinition(
+                    query,
+                    parameters: new
+                    {
+                        employee.Id,
+                        employee.Ci,
+                        employee.Complemento,
+                        employee.Nombres,
+                        employee.PrimerApellido,
+                        employee.SegundoApellido,
+                        employee.Rol,
+                        employee.NumeroContacto,
+                        ActiveState
+                    },
+                    cancellationToken: cancellationToken);
+
+                return await connection.ExecuteAsync(command);
+            }
+            catch (MySqlException exception) when (exception.Number == 1062)
+            {
+                throw new ValidationException("Ya existe un empleado activo con el mismo CI y complemento.");
+            }
+            catch (MySqlException exception) when (exception.Number == 3819)
+            {
+                throw new ValidationException("Los datos del empleado no cumplen el formato requerido.");
+            }
         }
 
         public async Task<int> DeleteEmployeeAsync(long id, CancellationToken cancellationToken = default)

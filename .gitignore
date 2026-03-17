@@ -3,7 +3,7 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# Sonarcube
+# Agents? whats this?
 .agents/
 .gemini/
 .claude/

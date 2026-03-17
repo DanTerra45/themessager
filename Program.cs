@@ -1,12 +1,15 @@
 using Mercadito.src.categories.data.repository;
+using Mercadito.src.categories.domain.factory;
 using Mercadito.src.categories.domain.repository;
 using Mercadito.src.categories.domain.usecases;
 using Mercadito.database;
 using Mercadito.database.interfaces;
 using Mercadito.src.employees.data.repository;
+using Mercadito.src.employees.domain.factory;
 using Mercadito.src.employees.domain.repository;
 using Mercadito.src.employees.domain.usecases;
 using Mercadito.src.products.data.repository;
+using Mercadito.src.products.domain.factory;
 using Mercadito.src.products.domain.repository;
 using Mercadito.src.products.domain.usecases;
 
@@ -31,11 +34,14 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(30);
 });
 
-builder.Services.AddSingleton<IDataBaseConnection, MySqlConnectionFactory>();
+builder.Services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<IProductFactory, ProductFactory>();
+builder.Services.AddScoped<ICategoryFactory, CategoryFactory>();
+builder.Services.AddScoped<IEmployeeFactory, EmployeeFactory>();
 
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
 builder.Services.AddScoped<IRegisterNewProductWithCategoryUseCase, RegisterNewProductWithCategoryUseCase>();

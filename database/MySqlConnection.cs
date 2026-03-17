@@ -4,7 +4,7 @@ using MySqlConnector;
 
 namespace Mercadito.database;
 
-public class MySqlConnectionFactory : IDataBaseConnection
+public class MySqlConnectionFactory : IDbConnectionFactory
 {
     private readonly string _connectionString;
 
