@@ -5,7 +5,7 @@ namespace Mercadito.src.employees.domain.dto
     public class CreateEmployeeDto
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
-        private const string ContactPattern = "^[0-9+()\\- ]{7,40}$";
+        private const string ContactPattern = "^[+591\\d]{8}";
 
         [Required(ErrorMessage = "El CI es requerido")]
         [Range(1, long.MaxValue, ErrorMessage = "El CI debe ser mayor a cero")]
@@ -34,7 +34,7 @@ namespace Mercadito.src.employees.domain.dto
         public string Rol { get; set; } = "Cajero";
 
         [Required(ErrorMessage = "El numero de contacto es requerido")]
-        [StringLength(40, MinimumLength = 7, ErrorMessage = "El numero de contacto debe tener entre 7 y 40 caracteres")]
+        [StringLength(11, MinimumLength = 7, ErrorMessage = "El numero de contacto debe tener entre 7 y 40 caracteres")]
         [RegularExpression(ContactPattern, ErrorMessage = "El numero de contacto solo permite digitos, espacios, +, parentesis y guion")]
         public string NumeroContacto { get; set; } = string.Empty;
     }
