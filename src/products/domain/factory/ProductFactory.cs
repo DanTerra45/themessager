@@ -11,10 +11,10 @@ namespace Mercadito.src.products.domain.factory
             {
                 Name = NormalizeName(dto.Name),
                 Description = NormalizeRequired(dto.Description),
-                Stock = dto.Stock,
+                Stock = dto.Stock.GetValueOrDefault(0),
                 Batch = NormalizeBatch(dto.Batch),
                 ExpirationDate = dto.ExpirationDate,
-                Price = dto.Price
+                Price = dto.Price.GetValueOrDefault(0m)
             };
         }
 
@@ -25,10 +25,10 @@ namespace Mercadito.src.products.domain.factory
                 Id = dto.Id,
                 Name = NormalizeName(dto.Name),
                 Description = NormalizeRequired(dto.Description),
-                Stock = dto.Stock,
+                Stock = dto.Stock.GetValueOrDefault(0),
                 Batch = NormalizeBatch(dto.Batch),
                 ExpirationDate = dto.ExpirationDate,
-                Price = dto.Price
+                Price = dto.Price.GetValueOrDefault(0m)
             };
         }
 

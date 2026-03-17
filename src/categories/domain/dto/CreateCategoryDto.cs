@@ -4,7 +4,7 @@ namespace Mercadito.src.categories.domain.dto
 {
     public class CreateCategoryDto : IValidatableObject
     {
-        private const string CategoryCodePattern = "^[A-Za-z0-9_-]{1,6}$";
+        private const string CategoryCodePattern = "^[A-Z]{3}\\d{3}$";
 
         [Required(ErrorMessage = "El nombre es obligatorio")]
         [StringLength(150, ErrorMessage = "El nombre no puede exceder 150 caracteres")]
@@ -16,7 +16,7 @@ namespace Mercadito.src.categories.domain.dto
 
         [Required(ErrorMessage = "El codigo es obligatorio")]
         [StringLength(6, ErrorMessage = "El codigo no puede exceder 6 caracteres")]
-        [RegularExpression(CategoryCodePattern, ErrorMessage = "El codigo solo permite letras, numeros, guion y guion bajo")]
+        [RegularExpression(CategoryCodePattern, ErrorMessage = "El codigo solo permite letras mayusculas y numeros, con un formato de 3 letras seguidas de 3 numeros (ejemplo: ABC123)")]
         public required string Code { get; set; }
 
         public CreateCategoryDto()
