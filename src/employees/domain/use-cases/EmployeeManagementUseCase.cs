@@ -1,11 +1,12 @@
 using Mercadito.src.employees.data.entity;
-using Mercadito.src.employees.domain.repository;
+using Mercadito.src.employees.data.repository;
+using Mercadito.src.shared.domain.factory;
 
 namespace Mercadito.src.employees.domain.usecases
 {
-    public class EmployeeManagementUseCase(IEmployeeRepository employeeRepository) : IEmployeeManagementUseCase
+    public class EmployeeManagementUseCase(RepositoryCreator<EmployeeRepository> employeeRepositoryCreator) : IEmployeeManagementUseCase
     {
-        private readonly IEmployeeRepository _employeeRepository = employeeRepository;
+        private readonly RepositoryCreator<EmployeeRepository> _employeeRepositoryCreator = employeeRepositoryCreator;
 
         public async Task<(IReadOnlyList<Employee> Employees, int TotalPages)> GetPageAsync(
             int currentPage,
@@ -14,20 +15,23 @@ namespace Mercadito.src.employees.domain.usecases
             string sortDirection,
             CancellationToken cancellationToken = default)
         {
-            var totalCount = await _employeeRepository.GetTotalEmployeesCountAsync(cancellationToken);
+            var employeeRepository = _employeeRepositoryCreator.Create();
+            var totalCount = await employeeRepository.GetTotalEmployeesCountAsync(cancellationToken);
             var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var employees = await _employeeRepository.GetEmployeesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
+            var employees = await employeeRepository.GetEmployeesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
             return (employees, totalPages);
         }
 
         public async Task<Employee?> GetForEditAsync(long employeeId, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.GetEmployeeByIdAsync(employeeId, cancellationToken);
+            var employeeRepository = _employeeRepositoryCreator.Create();
+            return await employeeRepository.GetByIdAsync(employeeId, cancellationToken);
         }
 
         public async Task<bool> DeleteAsync(long employeeId, CancellationToken cancellationToken = default)
         {
-            var affectedRows = await _employeeRepository.DeleteEmployeeAsync(employeeId, cancellationToken);
+            var employeeRepository = _employeeRepositoryCreator.Create();
+            var affectedRows = await employeeRepository.DeleteAsync(employeeId, cancellationToken);
             return affectedRows > 0;
 
         }

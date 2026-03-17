@@ -1,7 +1,7 @@
 using Dapper;
 using Mercadito.database.interfaces;
 using Mercadito.src.employees.data.entity;
-using Mercadito.src.employees.domain.repository;
+using Mercadito.src.shared.domain.repository;
 using MySqlConnector;
 using System.Data;
 using System.ComponentModel.DataAnnotations;
@@ -9,7 +9,7 @@ using System.Text;
 
 namespace Mercadito.src.employees.data.repository
 {
-    public class EmployeeRepository(IDbConnectionFactory dbConnection) : IEmployeeRepository
+    public class EmployeeRepository(IDbConnectionFactory dbConnection) : ICrudRepository<Employee, Employee, Employee, long>
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
@@ -120,7 +120,7 @@ namespace Mercadito.src.employees.data.repository
             return await connection.ExecuteScalarAsync<int>(command);
         }
 
-        public async Task<Employee?> GetEmployeeByIdAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<Employee?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"SELECT
@@ -143,7 +143,7 @@ namespace Mercadito.src.employees.data.repository
             return await connection.QueryFirstOrDefaultAsync<Employee>(command);
         }
 
-        public async Task<long> AddEmployeeAsync(Employee employee, CancellationToken cancellationToken = default)
+        public async Task<long> CreateAsync(Employee employee, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             await EnsureUniqueActiveIdentityAsync(
@@ -188,7 +188,7 @@ namespace Mercadito.src.employees.data.repository
             }
         }
 
-        public async Task<int> UpdateEmployeeAsync(Employee employee, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAsync(Employee employee, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             await EnsureUniqueActiveIdentityAsync(
@@ -238,7 +238,7 @@ namespace Mercadito.src.employees.data.repository
             }
         }
 
-        public async Task<int> DeleteEmployeeAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = "UPDATE empleados SET estado = @InactiveState WHERE id = @Id AND estado = @ActiveState";

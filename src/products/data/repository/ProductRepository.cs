@@ -4,13 +4,14 @@ using Dapper;
 using Mercadito.database.interfaces;
 using Mercadito.src.products.data.entity;
 using Mercadito.src.products.domain.model;
-using Mercadito.src.products.domain.repository;
+using Mercadito.src.shared.domain.repository;
 using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.products.data.repository
 {
-    public class ProductRepository(IDbConnectionFactory dbConnection) : IProductRepository
+    public class ProductRepository(IDbConnectionFactory dbConnection)
+        : ICrudRepository<ProductWithCategoriesWriteModel, ProductWithCategoriesWriteModel, ProductForEditModel, long>
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
@@ -278,7 +279,7 @@ namespace Mercadito.src.products.data.repository
             return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
-        public async Task<ProductForEditModel?> GetProductForEditAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<ProductForEditModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"SELECT 
@@ -328,14 +329,15 @@ namespace Mercadito.src.products.data.repository
             };
         }
 
-        public async Task<long> AddProductWithCategoriesAsync(Product product, IReadOnlyList<long> categoryIds, CancellationToken cancellationToken = default)
+        public async Task<long> CreateAsync(ProductWithCategoriesWriteModel productWithCategories, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             using var transaction = connection.BeginTransaction();
 
             try
             {
-                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
+                var product = productWithCategories.Product;
+                var normalizedCategoryIds = NormalizeCategoryIds(productWithCategories.CategoryIds);
                 await EnsureAllCategoriesAreActiveAsync(
                     connection,
                     normalizedCategoryIds,
@@ -391,14 +393,15 @@ namespace Mercadito.src.products.data.repository
             }
         }
 
-        public async Task<int> UpdateProductWithCategoriesAsync(Product product, IReadOnlyList<long> categoryIds, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAsync(ProductWithCategoriesWriteModel productWithCategories, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             using var transaction = connection.BeginTransaction();
 
             try
             {
-                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
+                var product = productWithCategories.Product;
+                var normalizedCategoryIds = NormalizeCategoryIds(productWithCategories.CategoryIds);
 
                 const string updateProductQuery = @"UPDATE products
                     SET nombre = @Name,
@@ -481,7 +484,7 @@ namespace Mercadito.src.products.data.repository
             }
         }
 
-        public async Task<int> DeleteProductAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"UPDATE products

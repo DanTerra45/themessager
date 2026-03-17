@@ -1,22 +1,23 @@
 using Mercadito.src.categories.domain.model;
-using Mercadito.src.categories.domain.repository;
+using Mercadito.src.categories.data.repository;
 using Mercadito.src.products.domain.dto;
 using Mercadito.src.products.domain.model;
-using Mercadito.src.products.domain.repository;
+using Mercadito.src.products.data.repository;
+using Mercadito.src.shared.domain.factory;
 
 namespace Mercadito.src.products.domain.usecases
 {
     public class ProductManagementUseCase(
-        IProductRepository productRepository,
-        ICategoryRepository categoryRepository) : IProductManagementUseCase
+        RepositoryCreator<ProductRepository> productRepositoryCreator,
+        RepositoryCreator<CategoryRepository> categoryRepositoryCreator) : IProductManagementUseCase
     {
-
-        private readonly IProductRepository _productRepository = productRepository;
-        private readonly ICategoryRepository _categoryRepository = categoryRepository;
+        private readonly RepositoryCreator<ProductRepository> _productRepositoryCreator = productRepositoryCreator;
+        private readonly RepositoryCreator<CategoryRepository> _categoryRepositoryCreator = categoryRepositoryCreator;
 
         public async Task<IReadOnlyList<CategoryModel>> GetCategoriesAsync(CancellationToken cancellationToken = default)
         {
-            var categories = await _categoryRepository.GetAllCategoriesAsync(cancellationToken);
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            var categories = await categoryRepository.GetAllCategoriesAsync(cancellationToken);
             return categories;
         }
 
@@ -28,17 +29,19 @@ namespace Mercadito.src.products.domain.usecases
             string sortDirection,
             CancellationToken cancellationToken = default)
         {
+            var productRepository = _productRepositoryCreator.Create();
+
             if (categoryFilter == 0)
             {
-                var totalCount = await _productRepository.GetTotalProductsCountAsync(cancellationToken);
+                var totalCount = await productRepository.GetTotalProductsCountAsync(cancellationToken);
                 var totalPages = CalculateTotalPages(totalCount, pageSize);
-                var products = await _productRepository.GetProductsWithCategoriesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
+                var products = await productRepository.GetProductsWithCategoriesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
                 return (products, totalPages);
             }
 
-            var filteredTotalCount = await _productRepository.GetTotalProductsCountByCategoryAsync(categoryFilter, cancellationToken);
+            var filteredTotalCount = await productRepository.GetTotalProductsCountByCategoryAsync(categoryFilter, cancellationToken);
             var filteredTotalPages = CalculateTotalPages(filteredTotalCount, pageSize);
-            var filteredProducts = await _productRepository.GetProductsWithCategoriesFilterByCategoryByPages(
+            var filteredProducts = await productRepository.GetProductsWithCategoriesFilterByCategoryByPages(
                 currentPage,
                 categoryFilter,
                 pageSize,
@@ -56,7 +59,8 @@ namespace Mercadito.src.products.domain.usecases
 
         public async Task<UpdateProductDto?> GetForEditAsync(long productId, CancellationToken cancellationToken = default)
         {
-            var product = await _productRepository.GetProductForEditAsync(productId, cancellationToken);
+            var productRepository = _productRepositoryCreator.Create();
+            var product = await productRepository.GetByIdAsync(productId, cancellationToken);
             if (product == null)
             {
                 return null;
@@ -77,7 +81,8 @@ namespace Mercadito.src.products.domain.usecases
 
         public async Task<bool> DeleteAsync(long productId, CancellationToken cancellationToken = default)
         {
-            var affectedRows = await _productRepository.DeleteProductAsync(productId, cancellationToken);
+            var productRepository = _productRepositoryCreator.Create();
+            var affectedRows = await productRepository.DeleteAsync(productId, cancellationToken);
             return affectedRows > 0;
         }
     }
