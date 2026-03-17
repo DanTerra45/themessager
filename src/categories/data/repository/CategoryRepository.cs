@@ -8,12 +8,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.categories.data.repository
 {
-    public class CategoryRepository(IDataBaseConnection dbConnection) : ICategoryRepository
+    public class CategoryRepository(IDbConnectionFactory dbConnection) : ICategoryRepository
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
 
-        private readonly IDataBaseConnection _dbConnection = dbConnection;
+        private readonly IDbConnectionFactory _dbConnection = dbConnection;
 
         public async Task<IReadOnlyList<CategoryModel>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
         {
@@ -101,6 +101,7 @@ namespace Mercadito.src.categories.data.repository
                 using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
                 const string query = @"INSERT INTO categorias 
                         (codigo, nombre, descripcion, estado) VALUES (@Code, @Name, @Description, @ActiveState)";
+
                 var command = new CommandDefinition(
                     query,
                     parameters: new { category.Code, category.Name, category.Description, ActiveState },
@@ -112,37 +113,50 @@ namespace Mercadito.src.categories.data.repository
             {
                 throw new ValidationException("Ya existe una categoria con ese codigo.");
             }
+            catch (MySqlException exception) when (exception.Number == 3819)
+            {
+                throw new ValidationException("Los datos de la categoria no cumplen el formato requerido.");
+            }
         }
 
         public async Task<int> UpdateCategoryAsync(Category category, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"UPDATE categorias
-         SET codigo = @Code, nombre = @Name, descripcion = @Description
-         WHERE id = @Id AND estado = @ActiveState";
+            try
+            {
+                const string query = @"UPDATE categorias
+                        SET codigo = @Code, nombre = @Name, descripcion = @Description
+                        WHERE id = @Id AND estado = @ActiveState";
 
-            var command = new CommandDefinition(
-                query,
-                parameters: new { category.Id, category.Code, category.Name, category.Description, ActiveState },
-                cancellationToken: cancellationToken);
+                var command = new CommandDefinition(
+                    query,
+                    parameters: new { category.Id, category.Code, category.Name, category.Description, ActiveState },
+                    cancellationToken: cancellationToken);
 
-            return await connection.ExecuteAsync(command);
+                return await connection.ExecuteAsync(command);
+            }
+            catch (MySqlException exception) when (exception.Number == 1062)
+            {
+                throw new ValidationException("Ya existe una categoria con ese codigo.");
+            }
+            catch (MySqlException exception) when (exception.Number == 3819)
+            {
+                throw new ValidationException("Los datos de la categoria no cumplen el formato requerido.");
+            }
         }
 
         public async Task<int> DeleteCategoryAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"UPDATE categorias
-         SET estado = @InactiveState
-         WHERE id = @Id AND estado = @ActiveState";
-
+                    SET estado = @InactiveState
+                    WHERE id = @Id AND estado = @ActiveState";
             var command = new CommandDefinition(
                 query,
                 parameters: new { id, ActiveState, InactiveState },
                 cancellationToken: cancellationToken);
 
             return await connection.ExecuteAsync(command);
-
         }
 
         private static string BuildOrderByClause(string sortBy, string sortDirection)

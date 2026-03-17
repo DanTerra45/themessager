@@ -5,15 +5,17 @@ using Mercadito.database.interfaces;
 using Mercadito.src.products.data.entity;
 using Mercadito.src.products.domain.model;
 using Mercadito.src.products.domain.repository;
+using MySqlConnector;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.products.data.repository
 {
-    public class ProductRepository(IDataBaseConnection dbConnection) : IProductRepository
+    public class ProductRepository(IDbConnectionFactory dbConnection) : IProductRepository
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
 
-        private readonly IDataBaseConnection _dbConnection = dbConnection;
+        private readonly IDbConnectionFactory _dbConnection = dbConnection;
 
         private static DateOnly ToDateOnly(DateTime value)
         {
@@ -127,6 +129,50 @@ namespace Mercadito.src.products.data.repository
                 parameters: parameters,
                 transaction: transaction,
                 cancellationToken: cancellationToken);
+        }
+
+        private static CommandDefinition BuildCountActiveCategoriesCommand(
+            IReadOnlyList<long> normalizedCategoryIds,
+            IDbTransaction transaction,
+            CancellationToken cancellationToken)
+        {
+            const string query = @"SELECT COUNT(*)
+                    FROM categorias
+                    WHERE estado = @ActiveState
+                    AND id IN @CategoryIds";
+
+            return new CommandDefinition(
+                query,
+                parameters: new
+                {
+                    ActiveState,
+                    CategoryIds = normalizedCategoryIds
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken);
+        }
+
+        private static async Task EnsureAllCategoriesAreActiveAsync(
+            IDbConnection connection,
+            IReadOnlyList<long> normalizedCategoryIds,
+            IDbTransaction transaction,
+            CancellationToken cancellationToken)
+        {
+            if (normalizedCategoryIds.Count == 0)
+            {
+                return;
+            }
+
+            var activeCategoriesCommand = BuildCountActiveCategoriesCommand(
+                normalizedCategoryIds,
+                transaction,
+                cancellationToken);
+
+            var activeCategoriesCount = await connection.ExecuteScalarAsync<int>(activeCategoriesCommand);
+            if (activeCategoriesCount != normalizedCategoryIds.Count)
+            {
+                throw new ValidationException("Una o mas categorias seleccionadas no existen o estan inactivas.");
+            }
         }
 
         private static string BuildOrderByClause(string sortBy, string sortDirection)
@@ -289,6 +335,13 @@ namespace Mercadito.src.products.data.repository
 
             try
             {
+                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
+                await EnsureAllCategoriesAreActiveAsync(
+                    connection,
+                    normalizedCategoryIds,
+                    transaction,
+                    cancellationToken);
+
                 const string insertProductQuery = "INSERT INTO products (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, @ActiveState); SELECT LAST_INSERT_ID();";
                 var insertProductCommand = new CommandDefinition(
                     insertProductQuery,
@@ -297,7 +350,7 @@ namespace Mercadito.src.products.data.repository
                         product.Name,
                         product.Description,
                         product.Stock,
-                        Batch = product.Batch,
+                        product.Batch,
                         ExpirationDate = ToDateTime(product.ExpirationDate),
                         product.Price,
                         ActiveState
@@ -307,7 +360,6 @@ namespace Mercadito.src.products.data.repository
 
                 var createdProductId = await connection.ExecuteScalarAsync<long>(insertProductCommand);
 
-                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
                 if (normalizedCategoryIds.Count > 0)
                 {
                     var insertCategoriesCommand = BuildInsertProductCategoriesCommand(
@@ -321,6 +373,16 @@ namespace Mercadito.src.products.data.repository
 
                 transaction.Commit();
                 return createdProductId;
+            }
+            catch (MySqlException exception) when (exception.Number == 1062)
+            {
+                transaction.Rollback();
+                throw new ValidationException("Ya existe un producto con el mismo nombre, lote y fecha de caducidad.");
+            }
+            catch (MySqlException exception) when (exception.Number == 3819)
+            {
+                transaction.Rollback();
+                throw new ValidationException("Los datos del producto no cumplen el formato requerido.");
             }
             catch
             {
@@ -336,6 +398,8 @@ namespace Mercadito.src.products.data.repository
 
             try
             {
+                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
+
                 const string updateProductQuery = @"UPDATE products
                     SET nombre = @Name,
                         descripcion = @Description,
@@ -353,7 +417,7 @@ namespace Mercadito.src.products.data.repository
                         product.Name,
                         product.Description,
                         product.Stock,
-                        Batch = product.Batch,
+                        product.Batch,
                         ExpirationDate = ToDateTime(product.ExpirationDate),
                         product.Price,
                         ActiveState
@@ -369,6 +433,12 @@ namespace Mercadito.src.products.data.repository
                     return 0;
                 }
 
+                await EnsureAllCategoriesAreActiveAsync(
+                    connection,
+                    normalizedCategoryIds,
+                    transaction,
+                    cancellationToken);
+
                 const string deleteRelationsQuery = @"DELETE FROM categoriaDeProducto
                     WHERE productId = @ProductId";
 
@@ -380,7 +450,6 @@ namespace Mercadito.src.products.data.repository
 
                 await connection.ExecuteAsync(deleteRelationsCommand);
 
-                var normalizedCategoryIds = NormalizeCategoryIds(categoryIds);
                 if (normalizedCategoryIds.Count > 0)
                 {
                     var insertCategoriesCommand = BuildInsertProductCategoriesCommand(
@@ -394,6 +463,16 @@ namespace Mercadito.src.products.data.repository
 
                 transaction.Commit();
                 return affectedRows;
+            }
+            catch (MySqlException exception) when (exception.Number == 1062)
+            {
+                transaction.Rollback();
+                throw new ValidationException("Ya existe un producto con el mismo nombre, lote y fecha de caducidad.");
+            }
+            catch (MySqlException exception) when (exception.Number == 3819)
+            {
+                transaction.Rollback();
+                throw new ValidationException("Los datos del producto no cumplen el formato requerido.");
             }
             catch
             {

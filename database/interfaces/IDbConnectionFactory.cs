@@ -2,7 +2,7 @@ using System.Data;
 
 namespace Mercadito.database.interfaces;
 
-public interface IDataBaseConnection
+public interface IDbConnectionFactory
 {
     Task<IDbConnection> CreateConnectionAsync(CancellationToken cancellationToken = default);
 }
