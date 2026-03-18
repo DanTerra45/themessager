@@ -5,14 +5,13 @@ namespace Mercadito.src.employees.domain.dto
     public class UpdateEmployeeDto
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
-        private const string ContactPattern = "^[0-9+()\\- ]{7,40}$";
+        private const string ContactPattern = "^\\+591[0-9]{8}$";
 
         [Required]
         public long Id { get; set; }
 
-        [Required(ErrorMessage = "El CI es requerido")]
-        [Range(1000000, 99999999, ErrorMessage = "El CI debe tener entre 7 y 8 dígitos")]
-        public long Ci { get; set; }
+        [CI(FieldName = "CI")]
+        public long? Ci { get; set; }
 
         [StringLength(2, MinimumLength = 2, ErrorMessage = "El complemento debe tener exactamente 2 caracteres")]
         [RegularExpression("^[0-9][A-Za-z]$", ErrorMessage = "El complemento debe tener formato número+letra (ejemplo: 1A)")]
@@ -37,8 +36,8 @@ namespace Mercadito.src.employees.domain.dto
         public string Rol { get; set; } = "Cajero";
 
         [Required(ErrorMessage = "El número de contacto es requerido")]
-        [StringLength(40, MinimumLength = 7, ErrorMessage = "El número de contacto debe tener entre 7 y 40 caracteres")]
-        [RegularExpression(ContactPattern, ErrorMessage = "El número de contacto solo permite dígitos, espacios, +, paréntesis y guion")]
+        [StringLength(12, MinimumLength = 12, ErrorMessage = "El número de contacto debe tener 12 caracteres (ejemplo: +59171234567)")]
+        [RegularExpression(ContactPattern, ErrorMessage = "El número de contacto debe tener formato válido (ejemplo: +59171234567)")]
         public string NumeroContacto { get; set; } = string.Empty;
     }
 }

@@ -9,7 +9,7 @@ namespace Mercadito.src.employees.domain.factory
         {
             return new Employee
             {
-                Ci = dto.Ci,
+                Ci = dto.Ci.GetValueOrDefault(0),
                 Complemento = NormalizeCiExtension(dto.Complemento),
                 Nombres = NormalizePersonName(dto.Nombres),
                 PrimerApellido = NormalizePersonName(dto.PrimerApellido),
@@ -24,7 +24,7 @@ namespace Mercadito.src.employees.domain.factory
             return new Employee
             {
                 Id = dto.Id,
-                Ci = dto.Ci,
+                Ci = dto.Ci.GetValueOrDefault(0),
                 Complemento = NormalizeCiExtension(dto.Complemento),
                 Nombres = NormalizePersonName(dto.Nombres),
                 PrimerApellido = NormalizePersonName(dto.PrimerApellido),

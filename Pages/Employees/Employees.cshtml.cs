@@ -396,6 +396,7 @@ namespace Mercadito.Pages.Employees
 
                     foreach (var message in messages)
                     {
+                        this._logger.LogWarning("Restaurando error de validacion para key {Key}: {Message}", key, message);
                         if (!string.IsNullOrWhiteSpace(message))
                         {
                             ModelState.AddModelError(key, message);
