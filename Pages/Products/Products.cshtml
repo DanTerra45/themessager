@@ -743,4 +743,24 @@
 
         });
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var searchInput = document.getElementById('productSearch');
+            if (!searchInput) return;
+
+            searchInput.addEventListener('input', function () {
+                var query = searchInput.value.trim().toLowerCase();
+                var rows = document.querySelectorAll('table tbody tr');
+                rows.forEach(function (row) {
+                    var nameCell = row.querySelector('td:nth-child(2)'); // Nombre (ajustar si showIdColumn cambia)
+                    var categoriesCell = row.querySelector('td:nth-child(4)');
+                    var nameText = nameCell ? nameCell.textContent.toLowerCase() : '';
+                    var categoriesText = categoriesCell ? categoriesCell.textContent.toLowerCase() : '';
+                    var match = (!query) || nameText.indexOf(query) !== -1 || categoriesText.indexOf(query) !== -1;
+                    row.style.display = match ? '' : 'none';
+                });
+            });
+        });
+    </script>
 }

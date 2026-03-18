@@ -123,6 +123,30 @@
                                 </li>
                             </ul>
                         </li>
+                        <li class="nav-item dropdown ms-auto">
+                            <a class="nav-link d-flex align-items-center gap-2" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle" style="font-size:1.4rem;"></i>
+                                <span class="small">Iniciar sesión</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu" style="min-width: 220px; border:2px solid var(--mrc-ink);">
+                                <li class="px-3 py-2">
+                                    <!-- no funcional: solo UI para apariencia -->
+                                    <form class="d-flex flex-column" onsubmit="event.preventDefault(); alert('Inicio de sesión no funcional (UI)');">
+                                        <input type="text" class="form-control mb-2" placeholder="Usuario" />
+                                        <input type="password" class="form-control mb-2" placeholder="Contraseña" />
+                                        <button type="submit" class="b-btn">Entrar</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-page="/Providers/Providers">Proveedores</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-page="/Sales/Sales">Ventas</a>
+                        </li>
+  
                     </menu>
                 </section>
             </section>

@@ -10,13 +10,13 @@ namespace Mercadito.src.categories.domain.dto
         [StringLength(150, ErrorMessage = "El nombre no puede exceder 150 caracteres")]
         public required string Name { get; set; }
 
-        [Required(ErrorMessage = "La descripcion es obligatoria")]
-        [StringLength(150, ErrorMessage = "La descripcion no puede exceder 150 caracteres")]
+        [Required(ErrorMessage = "La descripción es obligatoria")]
+        [StringLength(150, ErrorMessage = "La descripción no puede exceder 150 caracteres")]
         public required string Description { get; set; }
 
-        [Required(ErrorMessage = "El codigo es obligatorio")]
-        [StringLength(6, ErrorMessage = "El codigo no puede exceder 6 caracteres")]
-        [RegularExpression(CategoryCodePattern, ErrorMessage = "El codigo solo permite letras mayusculas y numeros, con un formato de 3 letras seguidas de 3 numeros (ejemplo: ABC123)")]
+        [Required(ErrorMessage = "El código es obligatorio")]
+        [StringLength(6, ErrorMessage = "El código no puede exceder 6 caracteres")]
+        [RegularExpression(CategoryCodePattern, ErrorMessage = "El código solo permite letras mayúsculas y números, con el formato 3 letras + 3 números (ejemplo: ABC123)")]
         public required string Code { get; set; }
 
         public CreateCategoryDto()
@@ -39,12 +39,12 @@ namespace Mercadito.src.categories.domain.dto
 
             if (string.IsNullOrWhiteSpace(Description))
             {
-                yield return new ValidationResult("La descripcion es obligatoria", [nameof(Description)]);
+                yield return new ValidationResult("La descripción es obligatoria", [nameof(Description)]);
             }
 
             if (string.IsNullOrWhiteSpace(Code))
             {
-                yield return new ValidationResult("El codigo es obligatorio", [nameof(Code)]);
+                yield return new ValidationResult("El código es obligatorio", [nameof(Code)]);
             }
 
             if (ContainsControlCharacters(Name))
@@ -54,7 +54,7 @@ namespace Mercadito.src.categories.domain.dto
 
             if (ContainsControlCharacters(Description))
             {
-                yield return new ValidationResult("La descripcion contiene caracteres no permitidos", [nameof(Description)]);
+                yield return new ValidationResult("La descripción contiene caracteres no permitidos", [nameof(Description)]);
             }
         }
 

@@ -175,7 +175,7 @@ namespace Mercadito.Pages.Categories
                 await _categoryManagementUseCase.CreateAsync(NewCategory, HttpContext.RequestAborted);
                 _logger.LogInformation("Categoria creada: {Name}", NewCategory.Name);
 
-                TempData["SuccessMessage"] = "Categoria agregada exitosamente.";
+                TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
                 return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
@@ -187,8 +187,8 @@ namespace Mercadito.Pages.Categories
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error al crear categoria");
-                TempData["ErrorMessage"] = "Error al guardar la categoria. Intente nuevamente.";
+                _logger.LogError(exception, "Error al crear categoría");
+                TempData["ErrorMessage"] = "Error al guardar la categoría. Intente nuevamente.";
                 StorePendingCreateModal(NewCategory);
                 return RedirectToCurrentState();
             }

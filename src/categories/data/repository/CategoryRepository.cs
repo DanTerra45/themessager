@@ -112,11 +112,11 @@ namespace Mercadito.src.categories.data.repository
             }
             catch (MySqlException exception) when (exception.Number == 1062)
             {
-                throw new ValidationException("Ya existe una categoria con ese codigo.");
+                throw new ValidationException("Ya existe una categoría con ese código.");
             }
             catch (MySqlException exception) when (exception.Number == 3819)
             {
-                throw new ValidationException("Los datos de la categoria no cumplen el formato requerido.");
+                throw new ValidationException("Los datos de la categoría no cumplen el formato requerido.");
             }
         }
 
@@ -138,11 +138,11 @@ namespace Mercadito.src.categories.data.repository
             }
             catch (MySqlException exception) when (exception.Number == 1062)
             {
-                throw new ValidationException("Ya existe una categoria con ese codigo.");
+                throw new ValidationException("Ya existe una categoría con ese código.");
             }
             catch (MySqlException exception) when (exception.Number == 3819)
             {
-                throw new ValidationException("Los datos de la categoria no cumplen el formato requerido.");
+                throw new ValidationException("Los datos de la categoría no cumplen el formato requerido.");
             }
         }
 

@@ -1,0 +1,82 @@
+﻿@page "/Sales"
+@model Mercadito.Pages.Sales.SalesModel
+@{
+    ViewData["Title"] = "Sales";
+}
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Point of Sale (placeholder)</p>
+    </section>
+    <button class="b-btn" onclick="alert('Open quick sale (UI)');">
+        <i class="bi bi-cash-stack"></i> New Sale
+    </button>
+</header>
+
+<section class="py-4">
+    <aside class="text-muted">
+        Sales interface under construction. This placeholder can be extended to add product selection, cart and checkout flows.
+    </aside>
+
+    <section class="mt-4">
+        <div class="row g-3">
+            <section class="col-md-6">
+                <label class="form-label fw-bold">Search product</label>
+                <input id="saleProductSearch" class="form-control" placeholder="Search by product name or code" />
+            </section>
+
+            <section class="col-md-3">
+                <label class="form-label fw-bold">Quantity</label>
+                <input id="saleQuantity" type="number" class="form-control" min="1" value="1" />
+            </section>
+
+            <section class="col-md-3 d-flex align-items-end">
+                <button class="b-btn" onclick="alert('Add to cart (UI)');">Add to cart</button>
+            </section>
+        </div>
+    </section>
+
+    <section class="mt-4">
+        <aside class="text-muted">Cart (placeholder)</aside>
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th class="text-center">Quantity</th>
+                    <th class="text-end">Price</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody id="saleCartBody">
+                <tr>
+                    <td><small class="text-muted">(empty)</small></td>
+                    <td class="text-center">-</td>
+                    <td class="text-end">-</td>
+                    <td class="text-end">-</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-end gap-2 mt-3">
+            <button class="b-btn b-btn-secondary" onclick="alert('Cancel sale (UI)');">Cancel</button>
+            <button class="b-btn" onclick="alert('Process sale (UI)');"><i class="bi bi-check-lg me-1"></i> Charge</button>
+        </div>
+    </section>
+</section>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var search = document.getElementById('saleProductSearch');
+            if (!search) return;
+
+            // Lightweight UI helper: pressing Enter mocks "Add to cart" behavior
+            search.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    alert('Search executed (UI). Implement server-side search to return real results.');
+                }
+            });
+        });
+    </script>
+}

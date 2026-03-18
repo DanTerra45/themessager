@@ -1,0 +1,44 @@
+﻿@page "/Providers"
+@model Mercadito.Pages.Providers.ProvidersModel
+@{
+    ViewData["Title"] = "Proveedores";
+}
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Gestión de proveedores (placeholder)</p>
+    </section>
+    <button class="b-btn" data-bs-toggle="modal" data-bs-target="#addProviderModal">
+        <i class="bi bi-person-plus"></i> Agregar Proveedor
+    </button>
+</header>
+
+<section class="py-4">
+    <aside class="text-muted">Página de proveedores en construcción - UI disponible.</aside>
+</section>
+
+<!-- Modal simple -->
+<section class="modal fade" id="addProviderModal" tabindex="-1" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <header class="modal-header">
+                <h5 class="modal-title">Registrar Proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </header>
+            <section class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Contacto</label>
+                    <input class="form-control" />
+                </div>
+            </section>
+            <footer class="modal-footer">
+                <button class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="b-btn">Guardar</button>
+            </footer>
+        </article>
+    </section>
+</section>
