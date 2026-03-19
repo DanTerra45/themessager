@@ -20,7 +20,7 @@ namespace Mercadito.src.products.domain.dto
         [Display(Name = "Stock Disponible")]
         [Range(0, int.MaxValue, ErrorMessage = "El stock debe ser un número positivo")]
         [RegularExpression("^[0-9]+$", ErrorMessage = "El stock debe ser un número entero")]
-        public int Stock { get; set; }
+        public int? Stock { get; set; }
 
         [Required(ErrorMessage = "Lote es obligatorio")]
         [Display(Name = "Lote")]
@@ -32,7 +32,6 @@ namespace Mercadito.src.products.domain.dto
         [Display(Name = "Fecha de Caducidad")]
         public DateOnly ExpirationDate { get; set; }
 
-        [Required(ErrorMessage = "El precio es obligatorio")]
         [Display(Name = "Precio")]
         [Positive(FieldName = "Precio")]
         public decimal? Price { get; set; }

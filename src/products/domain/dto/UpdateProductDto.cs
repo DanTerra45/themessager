@@ -35,7 +35,7 @@ namespace Mercadito.src.products.domain.dto
 
         [Required(ErrorMessage = "Precio es obligatorio")]
         [Range(typeof(decimal), "0.01", "99999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true, ErrorMessage = "Precio inválido")]
-        public decimal Price { get; set; }
+        public decimal? Price { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
