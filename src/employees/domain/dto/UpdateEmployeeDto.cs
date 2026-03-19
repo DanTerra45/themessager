@@ -5,7 +5,7 @@ namespace Mercadito.src.employees.domain.dto
     public class UpdateEmployeeDto
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
-        private const string ContactPattern = "^\\+591[0-9]{8}$";
+        private const string ContactPattern = "^[+591]+[\\d]{8}$";
 
         [Required]
         public long Id { get; set; }

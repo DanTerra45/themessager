@@ -11,7 +11,7 @@ namespace Mercadito
 
         private static bool IsValidLength(long value)
         {
-            return value > 0 && value <= 9999999999L;
+            return value > 99999 && value <= 9999999999L;
         }
 
         protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
@@ -19,7 +19,7 @@ namespace Mercadito
             return value switch
             {
                 null => new ValidationResult($"El {FieldName} es obligatorio"),
-                long l when !IsValidLength(l) => new ValidationResult($"El {FieldName} debe ser un número positivo de hasta 10 dígitos"),
+                long l when !IsValidLength(l) => new ValidationResult($"El {FieldName} debe tener entre 6 y 10 dígitos"),
                 long => ValidationResult.Success,
                 _ => new ValidationResult("El atributo CI solo se puede aplicar a propiedades de tipo long")
             };
