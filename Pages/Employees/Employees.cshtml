@@ -246,10 +246,10 @@
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Ci" class="form-label fw-bold">
                                 CI
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números positivos de hasta 10 dígitos, sin puntos ni espacios.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números positivos de hasta 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="NewEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" maxlength="10" pattern="[0-9]{1,10}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)" autocomplete="off" required />
+                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">
@@ -358,10 +358,10 @@
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Ci" class="form-label fw-bold">
                                 CI
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números positivos de hasta 10 dígitos, sin puntos ni espacios.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números positivos de hasta 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="EditEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" maxlength="10" pattern="[0-9]{1,10}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)" autocomplete="off" required />
+                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">
