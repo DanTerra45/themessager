@@ -13,7 +13,10 @@ namespace Mercadito.src.products.domain.usecases
             int pageSize,
             string sortBy,
             string sortDirection,
+            string searchTerm = "",
             CancellationToken cancellationToken = default);
+        Task CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default);
+        Task UpdateAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default);
         Task<UpdateProductDto?> GetForEditAsync(long productId, CancellationToken cancellationToken = default);
         Task<bool> DeleteAsync(long productId, CancellationToken cancellationToken = default);
     }

@@ -24,11 +24,31 @@ namespace Mercadito.src.categories.data.repository
                         descripcion AS Description, 
                         0 AS ProductCount 
                         FROM categorias 
-                        WHERE estado = @ActiveState";
+                        WHERE estado = @ActiveState
+                        ORDER BY nombre ASC";
 
             var command = new CommandDefinition(query, parameters: new { ActiveState }, cancellationToken: cancellationToken);
             var categories = await connection.QueryAsync<CategoryModel>(command);
             return categories.AsList();
+        }
+
+        public async Task<string> GetNextCategoryCodeAsync(CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            const string query = @"SELECT MAX(CAST(SUBSTRING(codigo, 2, 5) AS UNSIGNED))
+                        FROM categorias
+                        WHERE codigo REGEXP '^C[0-9]{5}$'";
+
+            var command = new CommandDefinition(query, cancellationToken: cancellationToken);
+            var lastCodeNumber = await connection.ExecuteScalarAsync<long?>(command);
+            var nextCodeNumber = lastCodeNumber.HasValue ? lastCodeNumber.Value + 1 : 1;
+
+            if (nextCodeNumber > 99999)
+            {
+                throw new ValidationException("No hay más códigos de categoría disponibles.");
+            }
+
+            return $"C{nextCodeNumber:00000}";
         }
 
         public async Task<int> GetTotalCategoriesCountAsync(CancellationToken cancellationToken = default)
@@ -112,11 +132,11 @@ namespace Mercadito.src.categories.data.repository
             }
             catch (MySqlException exception) when (exception.Number == 1062)
             {
-                throw new ValidationException("Ya existe una categoria con ese codigo.");
+                throw new ValidationException("Ya existe una categoría con ese código.");
             }
             catch (MySqlException exception) when (exception.Number == 3819)
             {
-                throw new ValidationException("Los datos de la categoria no cumplen el formato requerido.");
+                throw new ValidationException("Los datos de la categoría no cumplen el formato requerido.");
             }
         }
 
@@ -138,11 +158,11 @@ namespace Mercadito.src.categories.data.repository
             }
             catch (MySqlException exception) when (exception.Number == 1062)
             {
-                throw new ValidationException("Ya existe una categoria con ese codigo.");
+                throw new ValidationException("Ya existe una categoría con ese código.");
             }
             catch (MySqlException exception) when (exception.Number == 3819)
             {
-                throw new ValidationException("Los datos de la categoria no cumplen el formato requerido.");
+                throw new ValidationException("Los datos de la categoría no cumplen el formato requerido.");
             }
         }
 
@@ -164,7 +184,7 @@ namespace Mercadito.src.categories.data.repository
         {
             var direction = NormalizeSortDirection(sortDirection);
             var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy)
-                ? "id"
+                ? "name"
                 : sortBy.Trim().ToLowerInvariant();
 
             return normalizedSortBy switch
@@ -172,7 +192,7 @@ namespace Mercadito.src.categories.data.repository
                 "code" => $"c.codigo {direction}, c.id ASC",
                 "name" => $"c.nombre {direction}, c.id ASC",
                 "productcount" => $"ProductCount {direction}, c.id ASC",
-                _ => $"c.id {direction}"
+                _ => $"c.nombre {direction}, c.id ASC"
             };
         }
 

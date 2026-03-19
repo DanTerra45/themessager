@@ -1,9 +1,10 @@
-using Mercadito.src.employees.data.entity;
 using Mercadito.src.employees.domain.dto;
+using Mercadito.src.employees.domain.model;
 using Mercadito.src.employees.domain.usecases;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text.Json;
@@ -27,11 +28,9 @@ namespace Mercadito.Pages.Employees
 
         private readonly ILogger<EmployeesModel> _logger;
         private readonly IEmployeeManagementUseCase _employeeManagementUseCase;
-        private readonly IRegisterEmployeeUseCase _registerEmployeeUseCase;
-        private readonly IUpdateEmployeeUseCase _updateEmployeeUseCase;
         private readonly int _defaultPageSize;
 
-        public List<Employee> Employees { get; set; } = [];
+        public List<EmployeeModel> Employees { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
         public string SortBy { get; set; } = DefaultSortBy;
@@ -48,14 +47,10 @@ namespace Mercadito.Pages.Employees
         public EmployeesModel(
             ILogger<EmployeesModel> logger,
             IEmployeeManagementUseCase employeeManagementUseCase,
-            IRegisterEmployeeUseCase registerEmployeeUseCase,
-            IUpdateEmployeeUseCase updateEmployeeUseCase,
             IConfiguration configuration)
         {
             _logger = logger;
             _employeeManagementUseCase = employeeManagementUseCase;
-            _registerEmployeeUseCase = registerEmployeeUseCase;
-            _updateEmployeeUseCase = updateEmployeeUseCase;
             var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
@@ -85,18 +80,7 @@ namespace Mercadito.Pages.Employees
             var employeeForEdit = await _employeeManagementUseCase.GetForEditAsync(editEmployeeId, HttpContext.RequestAborted);
             if (employeeForEdit != null)
             {
-                EditEmployee = new UpdateEmployeeDto
-                {
-                    Id = employeeForEdit.Id,
-                    Ci = employeeForEdit.Ci,
-                    Complemento = employeeForEdit.Complemento,
-                    Nombres = employeeForEdit.Nombres,
-                    PrimerApellido = employeeForEdit.PrimerApellido,
-                    SegundoApellido = employeeForEdit.SegundoApellido,
-                    NumeroContacto = employeeForEdit.NumeroContacto,
-                    Rol = employeeForEdit.Rol
-                };
-
+                EditEmployee = employeeForEdit;
                 ShowEditEmployeeModal = true;
             }
         }
@@ -156,6 +140,16 @@ namespace Mercadito.Pages.Employees
                 TotalPages = Math.Max(result.TotalPages, 1);
                 Employees = [.. result.Employees];
             }
+            catch (MySqlException ex)
+            {
+                _logger.LogError(ex, "Base de datos no disponible al cargar empleados");
+                throw;
+            }
+            catch (InvalidOperationException ex) when (ex.InnerException is MySqlException)
+            {
+                _logger.LogError(ex, "Base de datos no disponible al cargar empleados");
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al cargar empleados");
@@ -189,13 +183,13 @@ namespace Mercadito.Pages.Employees
 
             try
             {
-                await _registerEmployeeUseCase.ExecuteAsync(NewEmployee, HttpContext.RequestAborted);
+                await _employeeManagementUseCase.CreateAsync(NewEmployee, HttpContext.RequestAborted);
                 TempData["SuccessMessage"] = "Empleado agregado exitosamente.";
                 return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
-                _logger.LogWarning(validationException, "Validacion de negocio al crear empleado");
+                _logger.LogWarning(validationException, "Validación de negocio al crear empleado");
                 TempData["ErrorMessage"] = validationException.Message;
                 StorePendingCreateModal(NewEmployee);
                 return RedirectToCurrentState();
@@ -231,7 +225,7 @@ namespace Mercadito.Pages.Employees
 
             try
             {
-                await _updateEmployeeUseCase.ExecuteAsync(EditEmployee, HttpContext.RequestAborted);
+                await _employeeManagementUseCase.UpdateAsync(EditEmployee, HttpContext.RequestAborted);
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
                 return RedirectToCurrentState();
             }
@@ -363,7 +357,7 @@ namespace Mercadito.Pages.Employees
                 .ToDictionary(
                     entry => entry.Key,
                     entry => entry.Value!.Errors
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
+                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor inválido." : error.ErrorMessage)
                         .ToArray());
 
             if (errors.Count == 0)
@@ -411,7 +405,7 @@ namespace Mercadito.Pages.Employees
             }
             catch (JsonException exception)
             {
-                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
+                _logger.LogWarning(exception, "No se pudo restaurar errores de validación para key {SessionKey}", sessionKey);
             }
         }
 

@@ -23,6 +23,8 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Products/Products", "/Products/{handler?}");
     options.Conventions.AddPageRoute("/Categories/Categories", "/Categories/{handler?}");
     options.Conventions.AddPageRoute("/Employees/Employees", "/Employees/{handler?}");
+    options.Conventions.AddPageRoute("/Suppliers/Suppliers", "/Suppliers/{handler?}");
+    options.Conventions.AddPageRoute("/Sales/Sales", "/Sales/{handler?}");
 });
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -45,19 +47,16 @@ builder.Services.AddScoped<ICategoryFactory, CategoryFactory>();
 builder.Services.AddScoped<IEmployeeFactory, EmployeeFactory>();
 
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
-builder.Services.AddScoped<IRegisterNewProductWithCategoryUseCase, RegisterNewProductWithCategoryUseCase>();
-builder.Services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
 builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();
 
 builder.Services.AddScoped<IEmployeeManagementUseCase, EmployeeManagementUseCase>();
-builder.Services.AddScoped<IRegisterEmployeeUseCase, RegisterEmployeeUseCase>();
-builder.Services.AddScoped<IUpdateEmployeeUseCase, UpdateEmployeeUseCase>();
 
 var app = builder.Build();
 
+app.UseExceptionHandler("/Error");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 

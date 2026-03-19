@@ -31,6 +31,31 @@
                             <a class="nav-link" asp-area="" asp-page="/Index">Inicio</a>
                         </li>
                         <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="comercialDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Comercial
+                            </a>
+                            <ul class="dropdown-menu shadow-sm" aria-labelledby="comercialDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Sales">
+                                        <i class="bi bi-cash-stack me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Ventas</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Tablero y flujo comercial</small>
+                                        </section>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Suppliers/Suppliers">
+                                        <i class="bi bi-truck me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Proveedores</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Abastecimiento y contactos</small>
+                                        </section>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="productosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Productos
                             </a>
@@ -123,6 +148,17 @@
                                 </li>
                             </ul>
                         </li>
+                        @* Accesos visuales de encabezado: se dejan como placeholders de interfaz para la entrega. *@
+                        <li class="nav-item nav-auth-item ms-sm-auto mt-2 mt-sm-0">
+                            <section class="nav-auth-actions">
+                                <button type="button" class="b-btn b-btn-secondary nav-auth-icon-btn" title="Usuario invitado" aria-label="Usuario invitado">
+                                    <i class="bi bi-person-circle"></i>
+                                </button>
+                    <button type="button" class="b-btn b-btn-secondary nav-auth-icon-btn" data-bs-toggle="modal" data-bs-target="#loginModal" title="Iniciar sesión" aria-label="Iniciar sesión">
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                </button>
+                            </section>
+                        </li>
                     </menu>
                 </section>
             </section>
@@ -154,6 +190,34 @@
         @RenderBody()
     </main>
 
+    <section class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-person-lock me-2"></i> Inicio de sesión
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <section class="mb-3">
+                        <label class="form-label fw-bold">Usuario</label>
+                        <input class="form-control" placeholder="ejemplo@empresa.com" />
+                    </section>
+                    <section class="mb-0">
+                        <label class="form-label fw-bold">Contrasena</label>
+                        <input class="form-control" type="password" placeholder="********" />
+                    </section>
+                    <small class="d-block mt-3 text-muted">Prototipo visual. No autentica usuarios.</small>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="b-btn" disabled>Entrar</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+
     <footer class="footer py-3 mt-auto" style="border-top: 2px solid var(--mrc-ink); background-color: var(--mrc-surface); position: relative; z-index: 10; margin-top: auto;">
         <section class="container text-center">
             <p style="font-family: var(--font-mono); font-size: 0.9rem; margin: 0;">&copy; @DateTime.Now.Year - <strong>Mercadito</strong> <a asp-area="" asp-page="/Privacy" style="color: var(--mrc-ink); font-weight: bold;">Privacidad</a></p>
@@ -178,5 +242,119 @@
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        (function () {
+            function normalizeMessage(rawMessage) {
+                var message = (rawMessage || '').replace(/\s+/g, ' ').trim();
+                if (message.length === 0) {
+                    return 'Valor inválido.';
+                }
+
+                // Cleanup fallback english messages like:
+                // "The NewProduct.Name field is required."
+                var cleaned = message.replace(/^The\s+([A-Za-z0-9_.]+\.)?([A-Za-z0-9_]+)\s+field\s+/i, '');
+                if (cleaned !== message) {
+                    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+                    return cleaned;
+                }
+
+                return message;
+            }
+
+            function syncValidationTooltipMessages(scope) {
+                var root = scope || document;
+                var validationSpans = root.querySelectorAll('span[data-valmsg-for]');
+
+                function resolveRelatedLabel(spanElement) {
+                    var directLabel = spanElement.closest('label');
+                    if (directLabel) {
+                        return directLabel;
+                    }
+
+                    var fieldPath = spanElement.getAttribute('data-valmsg-for');
+                    if (!fieldPath) {
+                        return null;
+                    }
+
+                    var fieldId = fieldPath.replace(/\./g, '_');
+                    var label = root.querySelector('label[for="' + fieldId + '"]');
+                    if (label) {
+                        return label;
+                    }
+
+                    var input = root.getElementById(fieldId);
+                    if (!input) {
+                        return null;
+                    }
+
+                    var localContainer = input.closest('.mb-3, .mb-4, .col-md-2, .col-md-4, .col-md-5, .col-md-6, .form-floating, .input-group');
+                    if (!localContainer) {
+                        return null;
+                    }
+
+                    return localContainer.querySelector('label');
+                }
+
+                for (var index = 0; index < validationSpans.length; index++) {
+                    var span = validationSpans[index];
+                    var message = normalizeMessage(span.textContent);
+                    var hasError = span.classList.contains('field-validation-error');
+                    var relatedLabel = resolveRelatedLabel(span);
+                    var infoIcon = relatedLabel ? relatedLabel.querySelector('.info-tooltip') : null;
+
+                    if (hasError) {
+                        span.setAttribute('data-error-message', message);
+                        span.setAttribute('aria-label', message);
+                    } else {
+                        span.removeAttribute('data-error-message');
+                        span.removeAttribute('aria-label');
+                    }
+
+                    if (infoIcon) {
+                        infoIcon.classList.toggle('d-none', hasError);
+                        infoIcon.setAttribute('aria-hidden', hasError ? 'true' : 'false');
+                    }
+                }
+            }
+
+            function bindValidationTooltipObserver() {
+                var observedRoot = document.body;
+                if (!observedRoot || typeof MutationObserver === 'undefined') {
+                    return;
+                }
+
+                var schedule = window.requestAnimationFrame || function (callback) {
+                    return window.setTimeout(callback, 16);
+                };
+
+                var isQueued = false;
+                var observer = new MutationObserver(function () {
+                    if (isQueued) {
+                        return;
+                    }
+
+                    isQueued = true;
+                    schedule(function () {
+                        isQueued = false;
+                        syncValidationTooltipMessages(document);
+                    });
+                });
+
+                observer.observe(observedRoot, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true,
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                syncValidationTooltipMessages(document);
+                bindValidationTooltipObserver();
+            });
+        })();
+    </script>
 </body>
 </html>

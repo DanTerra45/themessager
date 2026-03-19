@@ -6,6 +6,7 @@ using Mercadito.src.products.domain.usecases;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
@@ -24,13 +25,16 @@ namespace Mercadito.Pages.Products
         private const string PendingEditErrorsSessionKey = "Products.PendingEditErrors";
         private const string SortBySessionKey = "Products.SortBy";
         private const string SortDirectionSessionKey = "Products.SortDirection";
+        private const string SearchTermSessionKey = "Products.SearchTerm";
         private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
+        private const string OrderPresetRecent = "recent";
+        private const string OrderPresetAlphabeticalAsc = "az";
+        private const string OrderPresetAlphabeticalDesc = "za";
+        private const string OrderPresetCustom = "custom";
 
         private readonly ILogger<ProductsModel> _logger;
         private readonly IProductManagementUseCase _productManagementUseCase;
-        private readonly IRegisterNewProductWithCategoryUseCase _registerNewProductWithCategoryUseCase;
-        private readonly IUpdateProductUseCase _updateProductUseCase;
         private readonly int _defaultPageSize;
 
         public List<ProductWithCategoriesModel> Products { get; set; } = [];
@@ -42,6 +46,8 @@ namespace Mercadito.Pages.Products
         public int TotalPages { get; set; } = 1;
         public string SortBy { get; set; } = DefaultSortBy;
         public string SortDirection { get; set; } = DefaultSortDirection;
+        public string SearchTerm { get; set; } = string.Empty;
+        public string OrderPreset { get; set; } = OrderPresetAlphabeticalAsc;
 
         public CreateProductDto NewProduct { get; set; } = new CreateProductDto
         {
@@ -61,15 +67,11 @@ namespace Mercadito.Pages.Products
         public ProductsModel(
             ILogger<ProductsModel> logger,
             IProductManagementUseCase productManagementUseCase,
-            IRegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase,
-            IUpdateProductUseCase updateProductUseCase,
             IConfiguration configuration
             )
         {
             _logger = logger;
             _productManagementUseCase = productManagementUseCase;
-            _registerNewProductWithCategoryUseCase = registerNewProductWithCategoryUseCase;
-            _updateProductUseCase = updateProductUseCase;
             var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
@@ -107,18 +109,31 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public IActionResult OnPostFilter(long categoryFilter = 0, string sortBy = "", string sortDirection = "")
+        public IActionResult OnPostFilter(
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "",
+            string searchTerm = "",
+            string orderPreset = "",
+            bool clear = false)
         {
-            SetPageAndFilter(1, categoryFilter, sortBy, sortDirection);
+            if (clear)
+            {
+                categoryFilter = 0;
+                searchTerm = string.Empty;
+            }
+
+            SetPageAndFilter(1, categoryFilter, sortBy, sortDirection, searchTerm);
+            ApplyOrderPreset(orderPreset);
 
             ClearPendingEditProductId();
             SaveStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostNavigate(int pageNumber = 1, long categoryFilter = 0, string sortBy = "", string sortDirection = "")
+        public IActionResult OnPostNavigate(int pageNumber = 1, long categoryFilter = 0, string sortBy = "", string sortDirection = "", string searchTerm = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection, searchTerm);
 
             ClearPendingEditProductId();
             SaveStateInSession();
@@ -129,9 +144,10 @@ namespace Mercadito.Pages.Products
             string sortBy = "",
             long categoryFilter = 0,
             string currentSortBy = "",
-            string currentSortDirection = "")
+            string currentSortDirection = "",
+            string searchTerm = "")
         {
-            SetPageAndFilter(1, categoryFilter, currentSortBy, currentSortDirection);
+            SetPageAndFilter(1, categoryFilter, currentSortBy, currentSortDirection, searchTerm);
             ToggleSort(sortBy);
 
             ClearPendingEditProductId();
@@ -144,9 +160,10 @@ namespace Mercadito.Pages.Products
             int pageNumber = 1,
             long categoryFilter = 0,
             string sortBy = "",
-            string sortDirection = "")
+            string sortDirection = "",
+            string searchTerm = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection, searchTerm);
 
             SaveStateInSession();
             if (id > 0)
@@ -162,17 +179,18 @@ namespace Mercadito.Pages.Products
             int pageNumber = 1,
             long categoryFilter = 0,
             string sortBy = "",
-            string sortDirection = "")
+            string sortDirection = "",
+            string searchTerm = "")
         {
             NewProduct = newProduct;
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection, searchTerm);
 
             ClearPendingEditProductId();
             SaveStateInSession();
 
             if (!ModelState.IsValid)
             {
-                _logger.LogWarning("ModelState invalido al crear producto");
+                _logger.LogWarning("ModelState inválido al crear producto");
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
                 StorePendingCreateModal(NewProduct);
                 StorePendingValidationErrors(PendingCreateErrorsSessionKey);
@@ -181,14 +199,19 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                await _registerNewProductWithCategoryUseCase.ExecuteAsync(NewProduct, HttpContext.RequestAborted);
+                await _productManagementUseCase.CreateAsync(NewProduct, HttpContext.RequestAborted);
+
+                if (IsRecentOrderPreset(OrderPreset))
+                {
+                    CurrentPage = 1;
+                }
 
                 TempData["SuccessMessage"] = "Producto agregado exitosamente.";
                 return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
-                _logger.LogWarning(validationException, "Validacion de negocio al crear producto");
+                _logger.LogWarning(validationException, "Validación de negocio al crear producto");
                 TempData["ErrorMessage"] = validationException.Message;
                 StorePendingCreateModal(NewProduct);
                 return RedirectToCurrentState();
@@ -207,10 +230,11 @@ namespace Mercadito.Pages.Products
             int pageNumber = 1,
             long categoryFilter = 0,
             string sortBy = "",
-            string sortDirection = "")
+            string sortDirection = "",
+            string searchTerm = "")
         {
             EditProduct = editProduct;
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection, searchTerm);
             SaveStateInSession();
 
             if (!ModelState.IsValid)
@@ -223,14 +247,14 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                await _updateProductUseCase.ExecuteAsync(EditProduct, HttpContext.RequestAborted);
+                await _productManagementUseCase.UpdateAsync(EditProduct, HttpContext.RequestAborted);
 
                 TempData["SuccessMessage"] = "Producto actualizado correctamente.";
                 return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
-                _logger.LogWarning(validationException, "Validacion de negocio al actualizar producto");
+                _logger.LogWarning(validationException, "Validación de negocio al actualizar producto");
                 TempData["ErrorMessage"] = validationException.Message;
                 StorePendingEditModal(EditProduct);
                 return RedirectToCurrentState();
@@ -249,9 +273,10 @@ namespace Mercadito.Pages.Products
             int pageNumber = 1,
             long categoryFilter = 0,
             string sortBy = "",
-            string sortDirection = "")
+            string sortDirection = "",
+            string searchTerm = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection, searchTerm);
             SaveStateInSession();
 
             try
@@ -362,7 +387,7 @@ namespace Mercadito.Pages.Products
                 .ToDictionary(
                     entry => entry.Key,
                     entry => entry.Value!.Errors
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
+                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor inválido." : error.ErrorMessage)
                         .ToArray());
 
             if (errors.Count == 0)
@@ -410,31 +435,36 @@ namespace Mercadito.Pages.Products
             }
             catch (JsonException exception)
             {
-                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
+                _logger.LogWarning(exception, "No se pudo restaurar errores de validación para key {SessionKey}", sessionKey);
             }
         }
 
-        private void SetPageAndFilter(int pageNumber, long categoryFilter, string sortBy, string sortDirection)
+        private void SetPageAndFilter(int pageNumber, long categoryFilter, string sortBy, string sortDirection, string searchTerm)
         {
             CurrentPage = pageNumber > 0 ? pageNumber : 1;
             CategoryFilter = categoryFilter >= 0 ? categoryFilter : 0;
+            SearchTerm = ResolveSearchTermFromRequest(searchTerm);
 
             if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
             {
                 LoadSortStateFromSession();
+                OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
                 return;
             }
 
             SortBy = NormalizeSortBy(sortBy);
             SortDirection = NormalizeSortDirection(sortDirection);
+            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
         }
 
         private void NormalizeCurrentState()
         {
             CurrentPage = CurrentPage > 0 ? CurrentPage : 1;
             CategoryFilter = CategoryFilter >= 0 ? CategoryFilter : 0;
+            SearchTerm = NormalizeSearchTerm(SearchTerm);
             SortBy = NormalizeSortBy(SortBy);
             SortDirection = NormalizeSortDirection(SortDirection);
+            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
 
             if (CategoryFilter > 0 && Categories.Count > 0 && !Categories.Exists(category => category.Id == CategoryFilter))
             {
@@ -453,6 +483,7 @@ namespace Mercadito.Pages.Products
                     _defaultPageSize,
                     SortBy,
                     SortDirection,
+                    SearchTerm,
                     cancellationToken);
                 var maxPage = Math.Max(result.TotalPages, 1);
 
@@ -465,11 +496,22 @@ namespace Mercadito.Pages.Products
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
+                        SearchTerm,
                         cancellationToken);
                 }
 
                 TotalPages = Math.Max(result.TotalPages, 1);
                 Products = [.. result.Products];
+            }
+            catch (MySqlException exception)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al cargar productos.");
+                throw;
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al cargar productos.");
+                throw;
             }
             catch (Exception exception)
             {
@@ -485,9 +527,19 @@ namespace Mercadito.Pages.Products
             {
                 Categories = [.. await _productManagementUseCase.GetCategoriesAsync(HttpContext.RequestAborted)];
             }
+            catch (MySqlException exception)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al cargar categorías para productos.");
+                throw;
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al cargar categorías para productos.");
+                throw;
+            }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error al cargar categorias");
+                _logger.LogError(exception, "Error al cargar categorías");
                 Categories = [];
             }
         }
@@ -527,6 +579,9 @@ namespace Mercadito.Pages.Products
                 CategoryFilter = parsedCategoryFilter;
             }
 
+            var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
+            SearchTerm = NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
+
             LoadSortStateFromSession();
         }
 
@@ -534,6 +589,7 @@ namespace Mercadito.Pages.Products
         {
             HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
             HttpContext.Session.SetString(CategoryFilterSessionKey, Math.Max(CategoryFilter, 0).ToString(CultureInfo.InvariantCulture));
+            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
             HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
             HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
         }
@@ -544,6 +600,7 @@ namespace Mercadito.Pages.Products
             var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
             SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
             SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
+            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
         }
 
         public string GetSortIcon(string columnName)
@@ -565,11 +622,117 @@ namespace Mercadito.Pages.Products
             if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
             {
                 SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+                OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
                 return;
             }
 
             SortBy = normalizedSortBy;
             SortDirection = DefaultSortDirection;
+            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
+        }
+
+        private void ApplyOrderPreset(string orderPreset)
+        {
+            var normalizedOrderPreset = NormalizeOrderPreset(orderPreset);
+            if (string.IsNullOrWhiteSpace(normalizedOrderPreset))
+            {
+                OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
+                return;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetCustom, StringComparison.Ordinal))
+            {
+                OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
+                return;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetRecent, StringComparison.Ordinal))
+            {
+                SortBy = "id";
+                SortDirection = "desc";
+                OrderPreset = OrderPresetRecent;
+                CurrentPage = 1;
+                return;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetAlphabeticalAsc, StringComparison.Ordinal))
+            {
+                SortBy = "name";
+                SortDirection = "asc";
+                OrderPreset = OrderPresetAlphabeticalAsc;
+                CurrentPage = 1;
+                return;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetAlphabeticalDesc, StringComparison.Ordinal))
+            {
+                SortBy = "name";
+                SortDirection = "desc";
+                OrderPreset = OrderPresetAlphabeticalDesc;
+                CurrentPage = 1;
+                return;
+            }
+
+            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
+        }
+
+        private static string NormalizeOrderPreset(string orderPreset)
+        {
+            if (string.IsNullOrWhiteSpace(orderPreset))
+            {
+                return string.Empty;
+            }
+
+            var normalizedOrderPreset = orderPreset.Trim().ToLowerInvariant();
+            if (string.Equals(normalizedOrderPreset, OrderPresetRecent, StringComparison.Ordinal))
+            {
+                return OrderPresetRecent;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetAlphabeticalAsc, StringComparison.Ordinal))
+            {
+                return OrderPresetAlphabeticalAsc;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetAlphabeticalDesc, StringComparison.Ordinal))
+            {
+                return OrderPresetAlphabeticalDesc;
+            }
+
+            if (string.Equals(normalizedOrderPreset, OrderPresetCustom, StringComparison.Ordinal))
+            {
+                return OrderPresetCustom;
+            }
+
+            return string.Empty;
+        }
+
+        private static string ResolveOrderPreset(string sortBy, string sortDirection)
+        {
+            var normalizedSortBy = NormalizeSortBy(sortBy);
+            var normalizedSortDirection = NormalizeSortDirection(sortDirection);
+
+            if (string.Equals(normalizedSortBy, "id", StringComparison.Ordinal) && string.Equals(normalizedSortDirection, "desc", StringComparison.Ordinal))
+            {
+                return OrderPresetRecent;
+            }
+
+            if (string.Equals(normalizedSortBy, "name", StringComparison.Ordinal) && string.Equals(normalizedSortDirection, "asc", StringComparison.Ordinal))
+            {
+                return OrderPresetAlphabeticalAsc;
+            }
+
+            if (string.Equals(normalizedSortBy, "name", StringComparison.Ordinal) && string.Equals(normalizedSortDirection, "desc", StringComparison.Ordinal))
+            {
+                return OrderPresetAlphabeticalDesc;
+            }
+
+            return OrderPresetCustom;
+        }
+
+        private static bool IsRecentOrderPreset(string orderPreset)
+        {
+            return string.Equals(orderPreset, OrderPresetRecent, StringComparison.Ordinal);
         }
 
         private static string NormalizeSortBy(string sortBy)
@@ -596,6 +759,35 @@ namespace Mercadito.Pages.Products
             return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
                 ? "desc"
                 : "asc";
+        }
+
+        private string ResolveSearchTermFromRequest(string searchTerm)
+        {
+            var hasSearchTermInForm = Request.HasFormContentType && Request.Form.ContainsKey("searchTerm");
+            var hasSearchTermInQuery = Request.Query.ContainsKey("searchTerm");
+
+            if (hasSearchTermInForm || hasSearchTermInQuery)
+            {
+                return NormalizeSearchTerm(searchTerm);
+            }
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
+                return NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
+            }
+
+            return NormalizeSearchTerm(searchTerm);
+        }
+
+        private static string NormalizeSearchTerm(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return string.Empty;
+            }
+
+            return searchTerm.Trim();
         }
 
         private void SetPendingEditProductId(long productId)

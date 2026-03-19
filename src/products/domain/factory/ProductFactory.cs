@@ -49,7 +49,7 @@ namespace Mercadito.src.products.domain.factory
 
         private static string NormalizeBatch(string value)
         {
-            return CollapseSpaces(NormalizeRequired(value));
+            return NormalizeRequired(value);
         }
 
         private static string CollapseSpaces(string value)

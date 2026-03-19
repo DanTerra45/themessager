@@ -2,7 +2,7 @@
 @model Mercadito.Pages.Categories.CategoriesModel
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @{
-    ViewData["Title"] = "Categorias";
+    ViewData["Title"] = "Categorías";
     ViewData["UseToasts"] = true;
     var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
 }
@@ -10,17 +10,17 @@
 <header class="dash-header d-flex justify-content-between align-items-end">
     <section>
         <h1>@ViewData["Title"]</h1>
-        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Organizacion del catalogo</p>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Organización del catálogo</p>
     </section>
-    <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-        <i class="bi bi-plus-circle"></i> Nueva Categoria
+    <button type="button" class="b-btn" id="openAddCategoryModal" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+        <i class="bi bi-plus-circle"></i> Nueva Categoría
     </button>
 </header>
 
 <section>
     @if (Model.Categories.Count > 0)
     {
-        <section class="table-responsive">
+        <section class="table-responsive table-shadow-safe-wrap">
             <table class="table table-hover align-middle">
                 <thead class="text-center">
                     <tr>
@@ -37,13 +37,13 @@
                                 </form>
                             </th>
                         }
-                        <th class="sortable-header" title="Ordenar por Codigo">
+                        <th class="sortable-header" title="Ordenar por Código">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="code" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
                                 <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
                                 <button type="submit" class="sort-button">
-                                    Codigo <i class="bi @Model.GetSortIcon("code")" style="font-size: 0.8em;"></i>
+                                    Código <i class="bi @Model.GetSortIcon("code")" style="font-size: 0.8em;"></i>
                                 </button>
                             </form>
                         </th>
@@ -57,7 +57,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th>Descripcion</th>
+                        <th>Descripción</th>
                         <th class="sortable-header" title="Ordenar por Productos Asociados">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="productCount" />
@@ -84,8 +84,12 @@
                             <td class="text-center">
                                 <mark class="badge bg-secondary" style="font-family: var(--font-mono); font-size: 0.9rem;">@category.Code</mark>
                             </td>
-                            <td class="fw-bold" style="font-family: var(--font-display); font-size: 1.1rem;">@category.Name</td>
-                            <td class="text-truncate truncate-description-category" style="max-width: 250px;">@category.Description</td>
+                            <td class="fw-bold" style="font-family: var(--font-display); font-size: 1.1rem;">
+                                <span class="table-ellipsis table-ellipsis-category-name" title="@category.Name">@category.Name</span>
+                            </td>
+                            <td>
+                                <span class="table-ellipsis table-ellipsis-category-description" title="@category.Description">@category.Description</span>
+                            </td>
                             <td class="text-center">
                                 @{
                                     var productStatus = category.ProductCount == 0
@@ -102,8 +106,9 @@
                                     <form method="post" asp-page="/Products/Products" asp-page-handler="Filter" class="d-inline">
                                         <input type="hidden" name="categoryFilter" value="@category.Id" />
                                         <button type="submit"
-                                                class="b-btn ms-2" style="background-color: white; color: #0d6efd; border-color: #0d6efd; box-shadow: 2px 2px 0 #0d6efd; padding: 0.1rem 0.4rem; font-size: 0.85rem; vertical-align: middle;"
-                                                title="Ver productos de esta categora">
+                                                class="b-btn b-btn-secondary ms-2 category-products-view-btn"
+                                                title="Ver productos de esta categoría"
+                                                aria-label="Ver productos de esta categoría">
                                             <i class="bi bi-eye-fill" aria-hidden="true"></i>
                                         </button>
                                     </form>
@@ -141,9 +146,9 @@
             </table>
         </section>
 
-        <!-- Paginacion -->
+        <!-- Paginación -->
         <section class="d-flex justify-content-center mt-4">
-            <nav aria-label="Paginacion de categorias">
+            <nav aria-label="Paginación de categorías">
                 <ul class="pagination">
                     <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
@@ -183,7 +188,7 @@
     else
     {
         <aside class="text-center text-muted py-5" style="font-family: var(--font-mono); border: 2px dashed var(--mrc-ink); border-radius: var(--radius-md);">
-            No hay categorias registradas en el sistema.
+            No hay categorías registradas en el sistema.
         </aside>
     }
 </section>
@@ -226,46 +231,49 @@
 <section class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
-            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate id="createCategoryForm">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate autocomplete="off" id="createCategoryForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
 
                 <header class="modal-header">
                     <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="addCategoryModalLabel">
-                        <i class="bi bi-tags me-2"></i> Nueva Categoria
+                        <i class="bi bi-tags me-2"></i> Nueva Categoría
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
 
-                <section class="modal-body p-4">
+                <section class="modal-body p-4 category-modal-body">
 
                     <section class="mb-3">
-                        <section class="form-floating">
-                            <input asp-for="NewCategory.Code" class="form-control fw-bold" placeholder="Codigo" required />
-                            <label asp-for="NewCategory.Code" class="fw-bold">Codigo</label>
-                        </section>
-                        <span asp-validation-for="NewCategory.Code" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
+                        <label asp-for="NewCategory.Code" class="form-label fw-bold">
+                            Código
+                            <span class="info-tooltip" tabindex="0" data-info-message="Autogenerado al guardar. Esta es una vista previa del siguiente código disponible.">i</span>
+                            <span asp-validation-for="NewCategory.Code" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewCategory.Code" class="form-control fw-bold category-code-readonly" value="@Model.NextCategoryCodePreview" readonly autocomplete="off" />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
 
                     <section class="mb-3">
-                        <section class="form-floating">
-                            <input asp-for="NewCategory.Name" class="form-control fw-bold" placeholder="Nombre" required />
-                            <label asp-for="NewCategory.Name" class="fw-bold">Nombre</label>
-                        </section>
-                        <span asp-validation-for="NewCategory.Name" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
+                        <label asp-for="NewCategory.Name" class="form-label fw-bold">
+                            Nombre
+                            <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="NewCategory.Name" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewCategory.Name" class="form-control fw-bold" autocomplete="off" required />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
 
                     <section class="mb-3">
-                        <section class="form-floating">
-                            <textarea asp-for="NewCategory.Description" class="form-control category-description-textarea" placeholder="Descripcion" rows="5"></textarea>
-                            <label asp-for="NewCategory.Description" class="fw-bold">Descripcion</label>
-                        </section>
-                        <span asp-validation-for="NewCategory.Description" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
+                        <label asp-for="NewCategory.Description" class="form-label fw-bold">
+                            Descripción
+                            <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="NewCategory.Description" class="validation-icon-inline"></span>
+                        </label>
+                        <textarea asp-for="NewCategory.Description" class="form-control category-description-textarea" autocomplete="off" rows="5"></textarea>
                     </section>
                 </section>
 
@@ -283,7 +291,7 @@
 <section class="modal fade" id="editCategoryModal" tabindex="-1" aria-labelledby="editCategoryModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
-            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="updateCategoryForm">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate autocomplete="off" id="updateCategoryForm">
                 <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
@@ -291,39 +299,42 @@
 
                 <header class="modal-header">
                     <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="editCategoryModalLabel">
-                        <i class="bi bi-pencil-square me-2"></i> Editar Categoria
+                        <i class="bi bi-pencil-square me-2"></i> Editar Categoría
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
 
-                <section class="modal-body p-4">
+                <section class="modal-body p-4 category-modal-body">
 
                     <section class="mb-3">
-                        <section class="form-floating">
-                            <input asp-for="EditCategory.Code" class="form-control fw-bold" placeholder="Codigo" required />
-                            <label asp-for="EditCategory.Code" class="fw-bold">Codigo</label>
-                        </section>
-                        <span asp-validation-for="EditCategory.Code" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
+                        <label asp-for="EditCategory.Code" class="form-label fw-bold">
+                            Código
+                            <span class="info-tooltip" tabindex="0" data-info-message="Código autogenerado. Este campo no es editable.">i</span>
+                            <span asp-validation-for="EditCategory.Code" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditCategory.Code" class="form-control fw-bold category-code-readonly" readonly autocomplete="off" />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
 
                     <section class="mb-3">
-                        <section class="form-floating">
-                            <input asp-for="EditCategory.Name" class="form-control fw-bold" placeholder="Nombre" required />
-                            <label asp-for="EditCategory.Name" class="fw-bold">Nombre</label>
-                        </section>
-                        <span asp-validation-for="EditCategory.Name" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
+                        <label asp-for="EditCategory.Name" class="form-label fw-bold">
+                            Nombre
+                            <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="EditCategory.Name" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditCategory.Name" class="form-control fw-bold" autocomplete="off" required />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
 
                     <section class="mb-3">
-                        <section class="form-floating">
-                            <textarea asp-for="EditCategory.Description" class="form-control category-description-textarea" placeholder="Descripcion" rows="5"></textarea>
-                            <label asp-for="EditCategory.Description" class="fw-bold">Descripcion</label>
-                        </section>
-                        <span asp-validation-for="EditCategory.Description" class="text-danger d-block mt-1" style="font-size: 0.85em; font-family: var(--font-mono); font-weight: bold;"></span>
+                        <label asp-for="EditCategory.Description" class="form-label fw-bold">
+                            Descripción
+                            <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="EditCategory.Description" class="validation-icon-inline"></span>
+                        </label>
+                        <textarea asp-for="EditCategory.Description" class="form-control category-description-textarea" autocomplete="off" rows="5"></textarea>
                     </section>
                 </section>
 
@@ -400,6 +411,30 @@
                     if (deleteNameLabel) {
                         deleteNameLabel.textContent = categoryName;
                     }
+                });
+            }
+
+            var openAddCategoryButton = document.getElementById('openAddCategoryModal');
+            if (openAddCategoryButton) {
+                openAddCategoryButton.addEventListener('click', function () {
+                    var createForm = document.getElementById('createCategoryForm');
+                    if (!createForm) {
+                        return;
+                    }
+
+                    createForm.reset();
+
+                    createForm.querySelectorAll('.input-validation-error').forEach(function (field) {
+                        field.classList.remove('input-validation-error');
+                    });
+
+                    createForm.querySelectorAll('span[data-valmsg-for]').forEach(function (span) {
+                        span.textContent = '';
+                        span.classList.remove('field-validation-error');
+                        span.classList.add('field-validation-valid');
+                        span.removeAttribute('data-error-message');
+                        span.removeAttribute('aria-label');
+                    });
                 });
             }
 
