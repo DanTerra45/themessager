@@ -21,9 +21,8 @@ namespace Mercadito.src.products.domain.dto
         [StringLength(150, ErrorMessage = "La descripción no puede exceder 150 caracteres")]
         public required string Description { get; set; }
 
-        [Required(ErrorMessage = "Stock es obligatorio")]
-        [Range(0, int.MaxValue, ErrorMessage = "Stock debe ser 0 o mayor")]
-        public int Stock { get; set; }
+        [Positive(FieldName = "Stock")]
+        public int? Stock { get; set; }
 
         [Required(ErrorMessage = "Lote es obligatorio")]
         [StringLength(40, ErrorMessage = "Lote no puede exceder 40 caracteres")]

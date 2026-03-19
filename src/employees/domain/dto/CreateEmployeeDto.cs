@@ -5,7 +5,7 @@ namespace Mercadito.src.employees.domain.dto
     public class CreateEmployeeDto
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
-        private const string ContactPattern = "^[0-9+()\\- ]{7,40}$";
+        private const string ContactPattern = "^[+591\\d]{8}";
 
         [Required(ErrorMessage = "El CI es requerido")]
         [Range(1000000, 99999999, ErrorMessage = "El CI debe tener entre 7 y 8 dígitos")]
