@@ -15,7 +15,7 @@ namespace Mercadito.src.employees.domain.factory
                 PrimerApellido = NormalizePersonName(dto.PrimerApellido),
                 SegundoApellido = NormalizeOptionalPersonName(dto.SegundoApellido),
                 Rol = NormalizeRequired(dto.Rol),
-                NumeroContacto = NormalizeRequired(dto.NumeroContacto)
+                NumeroContacto = NormalizeContact(dto.NumeroContacto)
             };
         }
 
@@ -30,7 +30,7 @@ namespace Mercadito.src.employees.domain.factory
                 PrimerApellido = NormalizePersonName(dto.PrimerApellido),
                 SegundoApellido = NormalizeOptionalPersonName(dto.SegundoApellido),
                 Rol = NormalizeRequired(dto.Rol),
-                NumeroContacto = NormalizeRequired(dto.NumeroContacto)
+                NumeroContacto = NormalizeContact(dto.NumeroContacto)
             };
         }
 
@@ -85,6 +85,40 @@ namespace Mercadito.src.employees.domain.factory
         {
             var segments = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             return string.Join(' ', segments);
+        }
+
+        private static string NormalizeContact(string value)
+        {
+            var normalizedValue = NormalizeRequired(value);
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                return string.Empty;
+            }
+
+            if (normalizedValue.StartsWith("+591", StringComparison.Ordinal))
+            {
+                return normalizedValue;
+            }
+
+            if (normalizedValue.Length == 8 && IsDigitsOnly(normalizedValue))
+            {
+                return $"+591{normalizedValue}";
+            }
+
+            return normalizedValue;
+        }
+
+        private static bool IsDigitsOnly(string value)
+        {
+            foreach (var character in value)
+            {
+                if (!char.IsDigit(character))
+                {
+                    return false;
+                }
+            }
+
+            return value.Length > 0;
         }
     }
 }

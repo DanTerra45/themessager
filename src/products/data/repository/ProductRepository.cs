@@ -161,7 +161,7 @@ namespace Mercadito.src.products.data.repository
         {
             if (normalizedCategoryIds.Count == 0)
             {
-                return;
+                throw new ValidationException("Debe seleccionar al menos una categoría activa.");
             }
 
             var activeCategoriesCommand = BuildCountActiveCategoriesCommand(

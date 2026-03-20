@@ -45,7 +45,7 @@ namespace Mercadito.src.employees.domain.usecases
                 Nombres = employee.Nombres,
                 PrimerApellido = employee.PrimerApellido,
                 SegundoApellido = employee.SegundoApellido,
-                NumeroContacto = employee.NumeroContacto,
+                NumeroContacto = NormalizeContactForUi(employee.NumeroContacto),
                 Rol = employee.Rol
             };
         }
@@ -80,6 +80,30 @@ namespace Mercadito.src.employees.domain.usecases
         {
             if (totalItems == 0 || pageSize <= 0) return 1;
             return (totalItems + pageSize - 1) / pageSize;
+        }
+
+        private static string NormalizeContactForUi(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var digitsOnly = new List<char>(11);
+            foreach (var character in value)
+            {
+                if (char.IsDigit(character))
+                {
+                    digitsOnly.Add(character);
+                }
+            }
+
+            if (digitsOnly.Count >= 8)
+            {
+                return new string(digitsOnly.GetRange(digitsOnly.Count - 8, 8).ToArray());
+            }
+
+            return new string([.. digitsOnly]);
         }
     }
 }

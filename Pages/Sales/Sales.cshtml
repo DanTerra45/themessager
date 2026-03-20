@@ -15,6 +15,31 @@
 </header>
 
 <section class="row g-3 mb-4">
+    <section class="col-md-6">
+        <article class="b-card h-100 p-3 d-flex align-items-center justify-content-between">
+            <section>
+                <strong class="d-block" style="font-family: var(--font-display);">Anulación de ventas</strong>
+                <small class="text-muted">Seguimiento de solicitudes y estado actual</small>
+            </section>
+            <a asp-page="/Sales/Cancellation" class="b-btn b-btn-secondary text-decoration-none">
+                <i class="bi bi-arrow-right"></i> Abrir
+            </a>
+        </article>
+    </section>
+    <section class="col-md-6">
+        <article class="b-card h-100 p-3 d-flex align-items-center justify-content-between">
+            <section>
+                <strong class="d-block" style="font-family: var(--font-display);">Reportes de ventas</strong>
+                <small class="text-muted">Resumen y exportación de información comercial</small>
+            </section>
+            <a asp-page="/Sales/Reports" class="b-btn b-btn-secondary text-decoration-none">
+                <i class="bi bi-arrow-right"></i> Abrir
+            </a>
+        </article>
+    </section>
+</section>
+
+<section class="row g-3 mb-4">
     <section class="col-md-4">
         <article class="b-card h-100 p-3">
             <h2 style="font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 0.5rem 0;">Ventas de hoy</h2>

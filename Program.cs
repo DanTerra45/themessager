@@ -25,6 +25,8 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Employees/Employees", "/Employees/{handler?}");
     options.Conventions.AddPageRoute("/Suppliers/Suppliers", "/Suppliers/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Sales", "/Sales/{handler?}");
+    options.Conventions.AddPageRoute("/Sales/Cancellation", "/Sales/Cancellation/{handler?}");
+    options.Conventions.AddPageRoute("/Sales/Reports", "/Sales/Reports/{handler?}");
 });
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

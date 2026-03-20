@@ -58,7 +58,7 @@ CREATE TABLE `empleados` (
   CONSTRAINT `chk_empleados_nombres_no_vacios` CHECK (TRIM(`nombres`) <> ''),
   CONSTRAINT `chk_empleados_primer_apellido_no_vacio` CHECK (TRIM(`primerApellido`) <> ''),
   CONSTRAINT `chk_empleados_contacto_no_vacio` CHECK (TRIM(`numeroContacto`) <> ''),
-  CONSTRAINT `chk_empleados_contacto_formato` CHECK (`numeroContacto` REGEXP '^[0-9+() -]{7,40}$'),
+  CONSTRAINT `chk_empleados_contacto_formato` CHECK (`numeroContacto` REGEXP '^[+]591[0-9]{8}$'),
   CONSTRAINT `chk_empleados_complemento_formato` CHECK (`complemento` IS NULL OR `complemento` REGEXP '^[0-9][A-Z]$')
 );
 

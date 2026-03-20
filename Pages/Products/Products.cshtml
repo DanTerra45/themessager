@@ -258,7 +258,7 @@
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
                                 <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
                                 <button type="submit" class="sort-button">
-                                    Precio <i class="bi @Model.GetSortIcon("price")" style="font-size: 0.8em;"></i>
+                                    Precio (Bs.) <i class="bi @Model.GetSortIcon("price")" style="font-size: 0.8em;"></i>
                                 </button>
                             </form>
                         </th>
@@ -348,7 +348,7 @@
                             </td>
 
                             <td class="text-end fw-bold" style="font-family: var(--font-mono); font-size: 1.1rem;">
-                                @($"{product.Price:N2} Bs.")
+                                @($"{product.Price:N2}")
                             </td>
 
                             <td class="text-center">
@@ -503,7 +503,7 @@
                         <section class="col-md-6 mb-3">
                             <label asp-for="NewProduct.CategoryIds" class="form-label fw-bold category-field-label">
                                 Categorías
-                                <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Puede dejarlo vacío o elegir varias categorías sin repetir. Si no hay categorías creadas, no estará disponible.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Seleccione al menos una categoría activa, sin repetir.">i</span>
                                 <span asp-validation-for="NewProduct.CategoryIds" class="validation-icon-inline"></span>
                             </label>
                             <section class="dropdown">
@@ -567,10 +567,10 @@
                         <section class="col-md-4">
                             <label asp-for="NewProduct.Batch" class="form-label fw-bold">
                                 Lote
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números (1 a 40 dígitos).">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
                                 <span asp-validation-for="NewProduct.Batch" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewProduct.Batch" type="text" class="form-control" maxlength="40" required />
+                            <input asp-for="NewProduct.Batch" type="text" class="form-control" inputmode="numeric" pattern="[0-9]{1,40}" maxlength="40" oninput="this.value=this.value.replace(/\D/g,'').slice(0,40)" required />
                         </section>
 
                         <section class="col-md-4">
@@ -651,7 +651,7 @@
                         <section class="col-md-6 mb-3">
                             <label asp-for="EditProduct.CategoryIds" class="form-label fw-bold category-field-label">
                                 Categorías
-                                <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Puede dejarlo vacío o elegir varias categorías sin repetir. Si no hay categorías creadas, no estará disponible.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Seleccione al menos una categoría activa, sin repetir.">i</span>
                                 <span asp-validation-for="EditProduct.CategoryIds" class="validation-icon-inline"></span>
                             </label>
                             <section class="dropdown">
@@ -717,10 +717,10 @@
                         <section class="col-md-4">
                             <label asp-for="EditProduct.Batch" class="form-label fw-bold">
                                 Lote
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números (1 a 40 dígitos).">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
                                 <span asp-validation-for="EditProduct.Batch" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditProduct.Batch" type="text" class="form-control" maxlength="40" required />
+                            <input asp-for="EditProduct.Batch" type="text" class="form-control" inputmode="numeric" pattern="[0-9]{1,40}" maxlength="40" oninput="this.value=this.value.replace(/\D/g,'').slice(0,40)" required />
                         </section>
 
                         <section class="col-md-4">
@@ -803,394 +803,19 @@
     }
 </div>
 
+@section Styles {
+    <link rel="stylesheet" href="~/lib/air-datepicker/air-datepicker.css" />
+    <link rel="stylesheet" href="~/css/air-datepicker-overrides.css" asp-append-version="true" />
+}
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
+    <script src="~/lib/air-datepicker/air-datepicker.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.brutal-stepper-btn[data-step]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    var inputGroup = button.closest('[data-stepper]') || button.closest('.input-group');
-                    if (!inputGroup) {
-                        return;
-                    }
-
-                    var numericInput = inputGroup.querySelector('input[type=number]');
-                    if (!numericInput) {
-                        return;
-                    }
-
-                    if (button.getAttribute('data-step') == '-1') {
-                        numericInput.stepDown();
-                    } else {
-                        numericInput.stepUp();
-                    }
-
-                    numericInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    numericInput.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-            });
-
-            function resizeProductDescription(textarea) {
-                var minHeight = 96;
-                var maxHeight = 180;
-
-                textarea.style.height = minHeight + 'px';
-                var contentHeight = textarea.scrollHeight;
-                var targetHeight = contentHeight > maxHeight ? maxHeight : contentHeight;
-
-                if (targetHeight < minHeight) {
-                    targetHeight = minHeight;
-                }
-
-                textarea.style.height = targetHeight + 'px';
-                textarea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
-            }
-
-            document.querySelectorAll('.product-description-textarea').forEach(function (textarea) {
-                resizeProductDescription(textarea);
-                textarea.addEventListener('input', function () {
-                    resizeProductDescription(textarea);
-                });
-                textarea.addEventListener('focus', function () {
-                    resizeProductDescription(textarea);
-                });
-            });
-        });
+        window.productsPageConfig = {
+            showCreateModal: @(Model.ShowModal.ToString().ToLowerInvariant()),
+            showEditModal: @(Model.ShowEditModal.ToString().ToLowerInvariant())
+        };
     </script>
-
-    @if (Model.ShowModal)
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var createModalElement = document.getElementById('addProductModal');
-                if (createModalElement && typeof bootstrap !== 'undefined') {
-                    var createModal = new bootstrap.Modal(createModalElement);
-                    createModal.show();
-                }
-            });
-        </script>
-    }
-
-    @if (Model.ShowEditModal)
-    {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var editModalElement = document.getElementById('editProductModal');
-                if (editModalElement && typeof bootstrap !== 'undefined') {
-                    var editModal = new bootstrap.Modal(editModalElement);
-                    editModal.show();
-                }
-            });
-        </script>
-    }
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Spanish locale definition for AirDatepicker
-            const localeEs = {
-                days: ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'],
-                daysShort: ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'],
-                daysMin: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
-                months: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
-                monthsShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-                today: 'Hoy',
-                clear: 'Limpiar',
-                dateFormat: 'dd/MM/yyyy',
-                timeFormat: 'hh:mm aa',
-                firstDay: 1
-            };
-
-            // Initialize Air Datepicker for dates
-            const dateInputs = document.querySelectorAll('.date-picker-input');
-            dateInputs.forEach(input => {
-                const minDate = input.getAttribute('data-min-date');
-                new AirDatepicker(input, {
-                    locale: localeEs,
-                    dateFormat: 'yyyy-MM-dd',
-                    minDate: Date.now() || undefined,
-                    autoClose: true,
-                    isMobile: false
-                });
-            });
-
-            var deleteProductModal = document.getElementById('deleteProductModal');
-            if (deleteProductModal) {
-                deleteProductModal.addEventListener('show.bs.modal', function (event) {
-                    var button = event.relatedTarget;
-                    if (!button) {
-                        return;
-                    }
-
-                    var productId = button.getAttribute('data-id') || '';
-                    var productName = button.getAttribute('data-name') || '-';
-                    var hasCategories = (button.getAttribute('data-has-categories') || '').toLowerCase() === 'true';
-
-                    var deleteIdInput = document.getElementById('DeleteProductId');
-                    var deleteNameLabel = document.getElementById('deleteProductName');
-                    var deleteCategoryWarning = document.getElementById('deleteProductCategoryWarning');
-
-                    if (deleteIdInput) {
-                        deleteIdInput.value = productId;
-                    }
-                    if (deleteNameLabel) {
-                        deleteNameLabel.textContent = productName;
-                    }
-                    if (deleteCategoryWarning) {
-                        deleteCategoryWarning.classList.toggle('d-none', !hasCategories);
-                    }
-                });
-            }
-
-            // Actualizar texto del dropdown de categorías en modal de crear
-            function updateNewCategoryText() {
-                const allBoxes = document.querySelectorAll('.new-category-checkbox');
-                const checkedBoxes = document.querySelectorAll('.new-category-checkbox:checked');
-                const textSpan = document.getElementById('newCategoryDropdownText');
-                if (allBoxes.length === 0) {
-                    textSpan.textContent = 'No hay categorías creadas.';
-                    return;
-                }
-                if (checkedBoxes.length === 0) {
-                    textSpan.textContent = 'Sin categorías seleccionadas';
-                } else if (checkedBoxes.length === 1) {
-                    textSpan.textContent = checkedBoxes[0].getAttribute('data-name');
-                } else {
-                    textSpan.textContent = checkedBoxes.length + ' categorías seleccionadas';
-                }
-            }
-
-            document.querySelectorAll('.new-category-checkbox').forEach(box => {
-                box.addEventListener('change', function() {
-                    updateNewCategoryText();
-                    const label = this.closest('.category-select-item');
-                    const icon = label.querySelector('.check-icon');
-                    if (this.checked) {
-                        label.style.backgroundColor = 'rgba(0, 230, 118, 0.15)'; // Soft brutalist green
-                        label.style.fontWeight = 'bold';
-                        icon.classList.remove('d-none');
-                    } else {
-                        label.style.backgroundColor = '';
-                        label.style.fontWeight = 'normal';
-                        icon.classList.add('d-none');
-                    }
-                });
-                // Initialize styles
-                box.dispatchEvent(new Event('change'));
-            });
-
-            // Actualizar texto del dropdown de categorías en modal de editar
-            function updateEditCategoryText() {
-                const allBoxes = document.querySelectorAll('.edit-category-checkbox');
-                const checkedBoxes = document.querySelectorAll('.edit-category-checkbox:checked');
-                const textSpan = document.getElementById('editCategoryDropdownText');
-                if (allBoxes.length === 0) {
-                    textSpan.textContent = 'No hay categorías creadas.';
-                    return;
-                }
-                if (checkedBoxes.length === 0) {
-                    textSpan.textContent = 'Sin categorías seleccionadas';
-                } else if (checkedBoxes.length === 1) {
-                    textSpan.textContent = checkedBoxes[0].getAttribute('data-name');
-                } else {
-                    textSpan.textContent = checkedBoxes.length + ' categorías seleccionadas';
-                }
-            }
-
-            document.querySelectorAll('.edit-category-checkbox').forEach(box => {
-                box.addEventListener('change', function() {
-                    updateEditCategoryText();
-                    const label = this.closest('.category-select-item');
-                    const icon = label.querySelector('.check-icon');
-                    if (this.checked) {
-                        label.style.backgroundColor = 'rgba(0, 230, 118, 0.15)'; // Soft brutalist green
-                        label.style.fontWeight = 'bold';
-                        icon.classList.remove('d-none');
-                    } else {
-                        label.style.backgroundColor = '';
-                        label.style.fontWeight = 'normal';
-                        icon.classList.add('d-none');
-                    }
-                });
-                // Initialize styles
-                box.dispatchEvent(new Event('change'));
-            });
-
-            // Dropdown custom para filtro superior de categorías (single-select + buscador)
-            var filterInput = document.getElementById('categoryFilterInput');
-            var filterTrigger = document.getElementById('productsFilterDropdown');
-            var filterText = document.getElementById('productsFilterDropdownText');
-            var filterSearch = document.getElementById('productsFilterSearch');
-            var filterItems = document.querySelectorAll('.products-filter-item');
-            var orderInput = document.getElementById('productsOrderPresetInput');
-            var orderTrigger = document.getElementById('productsOrderDropdown');
-            var orderText = document.getElementById('productsOrderDropdownText');
-            var orderItems = document.querySelectorAll('.products-order-item');
-
-            function setFilterItemVisualState(item, isSelected) {
-                var icon = item.querySelector('.check-icon');
-                item.style.backgroundColor = isSelected ? 'rgba(0, 230, 118, 0.15)' : '';
-                item.style.fontWeight = isSelected ? 'bold' : 'normal';
-                if (icon) {
-                    icon.classList.toggle('d-none', !isSelected);
-                }
-            }
-
-            function applyFilterSelection(selectedValue, selectedName) {
-                if (!filterInput || !filterText) {
-                    return;
-                }
-
-                filterInput.value = selectedValue;
-                filterText.textContent = selectedName;
-
-                filterItems.forEach(function (item) {
-                    var itemValue = item.getAttribute('data-filter-value') || '';
-                    setFilterItemVisualState(item, itemValue === selectedValue);
-                });
-            }
-
-            function filterCategoryItemsBySearch(term) {
-                var normalizedTerm = (term || '').trim().toLowerCase();
-                filterItems.forEach(function (item) {
-                    var value = item.getAttribute('data-filter-value') || '';
-                    var name = (item.getAttribute('data-filter-name') || '').toLowerCase();
-                    var itemContainer = item.closest('li');
-                    if (!itemContainer) {
-                        return;
-                    }
-
-                    var shouldShow = value === '0' || normalizedTerm.length === 0 || name.indexOf(normalizedTerm) >= 0;
-                    itemContainer.classList.toggle('d-none', !shouldShow);
-                });
-            }
-
-            if (filterInput && filterText && filterItems.length > 0) {
-                var currentValue = filterInput.value || '0';
-                var foundCurrentSelection = false;
-
-                filterItems.forEach(function (item) {
-                    var itemValue = item.getAttribute('data-filter-value') || '';
-                    var itemName = item.getAttribute('data-filter-name') || '';
-                    if (itemValue === currentValue) {
-                        applyFilterSelection(itemValue, itemName);
-                        foundCurrentSelection = true;
-                    }
-
-                    item.addEventListener('click', function () {
-                        applyFilterSelection(itemValue, itemName);
-                        if (filterTrigger && typeof bootstrap !== 'undefined') {
-                            var dropdownInstance = bootstrap.Dropdown.getOrCreateInstance(filterTrigger);
-                            dropdownInstance.hide();
-                        }
-                    });
-                });
-
-                if (!foundCurrentSelection) {
-                    applyFilterSelection('0', 'Todas las categorías');
-                }
-
-                if (filterSearch) {
-                    filterSearch.addEventListener('input', function () {
-                        filterCategoryItemsBySearch(filterSearch.value);
-                    });
-
-                    filterSearch.addEventListener('keydown', function (event) {
-                        if (event.key === 'Enter') {
-                            event.preventDefault();
-                        }
-                    });
-                }
-
-                if (filterTrigger) {
-                    filterTrigger.addEventListener('shown.bs.dropdown', function () {
-                        if (filterSearch) {
-                            filterSearch.value = '';
-                            filterCategoryItemsBySearch('');
-                            filterSearch.focus();
-                        }
-                    });
-
-                    filterTrigger.addEventListener('hidden.bs.dropdown', function () {
-                        if (filterSearch) {
-                            filterSearch.value = '';
-                        }
-                        filterCategoryItemsBySearch('');
-                    });
-                }
-            }
-
-            function setOrderItemVisualState(item, isSelected) {
-                var icon = item.querySelector('.check-icon');
-                item.style.backgroundColor = isSelected ? 'rgba(0, 230, 118, 0.15)' : '';
-                item.style.fontWeight = isSelected ? 'bold' : 'normal';
-                if (icon) {
-                    icon.classList.toggle('d-none', !isSelected);
-                }
-            }
-
-            function applyOrderSelection(selectedValue, selectedName, submitAfterSelection) {
-                if (!orderInput || !orderText) {
-                    return;
-                }
-
-                orderInput.value = selectedValue;
-                orderText.textContent = selectedName;
-
-                orderItems.forEach(function (item) {
-                    var itemValue = item.getAttribute('data-order-value') || '';
-                    setOrderItemVisualState(item, itemValue === selectedValue);
-                });
-
-                if (!submitAfterSelection) {
-                    return;
-                }
-
-                var parentForm = orderInput.closest('form');
-                if (!parentForm) {
-                    return;
-                }
-
-                parentForm.requestSubmit();
-            }
-
-            if (orderInput && orderText && orderItems.length > 0) {
-                var currentOrderValue = orderInput.value || 'custom';
-                var foundCurrentOrder = false;
-
-                orderItems.forEach(function (item) {
-                    var itemValue = item.getAttribute('data-order-value') || '';
-                    var itemName = item.getAttribute('data-order-name') || '';
-
-                    if (itemValue === currentOrderValue) {
-                        applyOrderSelection(itemValue, itemName, false);
-                        foundCurrentOrder = true;
-                    }
-
-                    item.addEventListener('click', function () {
-                        applyOrderSelection(itemValue, itemName, true);
-                        if (orderTrigger && typeof bootstrap !== 'undefined') {
-                            var dropdownInstance = bootstrap.Dropdown.getOrCreateInstance(orderTrigger);
-                            dropdownInstance.hide();
-                        }
-                    });
-                });
-
-                if (!foundCurrentOrder) {
-                    applyOrderSelection('custom', 'Personalizado', false);
-                }
-
-                if (orderTrigger) {
-                    orderTrigger.addEventListener('hidden.bs.dropdown', function () {
-                        var persistedOrderValue = orderInput.value || 'custom';
-                        orderItems.forEach(function (item) {
-                            var itemValue = item.getAttribute('data-order-value') || '';
-                            setOrderItemVisualState(item, itemValue === persistedOrderValue);
-                        });
-                    });
-                }
-            }
-
-        });
-    </script>
+    <script src="~/js/pages/products-page.js" asp-append-version="true"></script>
 }

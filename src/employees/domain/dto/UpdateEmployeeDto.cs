@@ -5,7 +5,7 @@ namespace Mercadito.src.employees.domain.dto
     public class UpdateEmployeeDto
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
-        private const string ContactPattern = "^[+591]+[\\d]{8}$";
+        private const string ContactPattern = "^(?:\\+591)?[0-9]{8}$";
 
         [Required]
         public long Id { get; set; }
@@ -36,8 +36,8 @@ namespace Mercadito.src.employees.domain.dto
         public string Rol { get; set; } = "Cajero";
 
         [Required(ErrorMessage = "El número de contacto es requerido")]
-        [StringLength(12, MinimumLength = 12, ErrorMessage = "El número de contacto debe tener 12 caracteres (ejemplo: +59171234567)")]
-        [RegularExpression(ContactPattern, ErrorMessage = "El número de contacto debe tener formato válido (ejemplo: +59171234567)")]
+        [StringLength(12, MinimumLength = 8, ErrorMessage = "El número de contacto debe tener 8 dígitos o incluir el prefijo +591")]
+        [RegularExpression(ContactPattern, ErrorMessage = "El número de contacto debe tener formato válido (ejemplo: 71234567 o +59171234567)")]
         public string NumeroContacto { get; set; } = string.Empty;
     }
 }

@@ -246,10 +246,10 @@
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Ci" class="form-label fw-bold">
                                 CI
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números positivos de hasta 8 dígitos, sin puntos ni espacios.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 7 y 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="NewEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
+                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" minlength="7" maxlength="8" pattern="[0-9]{7,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">
@@ -319,10 +319,10 @@
                         <section class="col-md-6 mt-2 mt-md-4">
                             <label asp-for="NewEmployee.NumeroContacto" class="form-label fw-bold">
                                 Número de teléfono/domicilio
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Permite dígitos, espacios, +, paréntesis y guion.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese 8 dígitos. El sistema asumirá prefijo +591 al guardar.">i</span>
                                 <span asp-validation-for="NewEmployee.NumeroContacto" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" autocomplete="off" required />
+                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" inputmode="numeric" minlength="8" maxlength="8" pattern="[0-9]{8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
                         </section>
                     </section>
                 </section>
@@ -358,10 +358,10 @@
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Ci" class="form-label fw-bold">
                                 CI
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números positivos de hasta 8 dígitos, sin puntos ni espacios.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 7 y 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="EditEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
+                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" minlength="7" maxlength="8" pattern="[0-9]{7,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">
@@ -431,10 +431,10 @@
                         <section class="col-md-6 mt-2 mt-md-4">
                             <label asp-for="EditEmployee.NumeroContacto" class="form-label fw-bold">
                                 Número de teléfono/domicilio
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Permite dígitos, espacios, +, paréntesis y guion.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese 8 dígitos. El sistema asumirá prefijo +591 al guardar.">i</span>
                                 <span asp-validation-for="EditEmployee.NumeroContacto" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" autocomplete="off" required />
+                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" inputmode="numeric" minlength="8" maxlength="8" pattern="[0-9]{8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
                         </section>
                     </section>
                 </section>
@@ -486,114 +486,10 @@
     <partial name="_ValidationScriptsPartial" />
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.js-uppercase').forEach(function (input) {
-                input.addEventListener('input', function () {
-                    input.value = input.value.toUpperCase();
-                });
-            });
-
-            if (typeof bootstrap === 'undefined') {
-                return;
-            }
-
-            function initializeRoleDropdown(config) {
-                var hiddenInput = document.getElementById(config.hiddenInputId);
-                var triggerText = document.getElementById(config.triggerTextId);
-                var items = document.querySelectorAll('[data-role-dropdown="' + config.dropdownKey + '"]');
-
-                if (!hiddenInput || !triggerText || items.length === 0) {
-                    return;
-                }
-
-                function applyRoleSelection(roleValue) {
-                    hiddenInput.value = roleValue;
-                    triggerText.textContent = roleValue;
-
-                    items.forEach(function (item) {
-                        var icon = item.querySelector('.check-icon');
-                        var isSelected = item.getAttribute('data-value') === roleValue;
-
-                        item.style.backgroundColor = isSelected ? 'rgba(0, 230, 118, 0.15)' : '';
-                        item.style.fontWeight = isSelected ? 'bold' : 'normal';
-
-                        if (icon) {
-                            icon.classList.toggle('d-none', !isSelected);
-                        }
-                    });
-
-                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-
-                var currentValue = hiddenInput.value;
-                if (currentValue !== 'Cajero' && currentValue !== 'Inventario') {
-                    currentValue = 'Cajero';
-                }
-                applyRoleSelection(currentValue);
-
-                items.forEach(function (item) {
-                    item.addEventListener('click', function () {
-                        var selectedValue = item.getAttribute('data-value');
-                        if (!selectedValue) {
-                            return;
-                        }
-
-                        applyRoleSelection(selectedValue);
-                    });
-                });
-            }
-
-            initializeRoleDropdown({
-                hiddenInputId: 'NewEmployee_Rol',
-                triggerTextId: 'newRoleDropdownText',
-                dropdownKey: 'newRole'
-            });
-
-            initializeRoleDropdown({
-                hiddenInputId: 'EditEmployee_Rol',
-                triggerTextId: 'editRoleDropdownText',
-                dropdownKey: 'editRole'
-            });
-
-            var deleteEmployeeModal = document.getElementById('deleteEmployeeModal');
-            if (deleteEmployeeModal) {
-                deleteEmployeeModal.addEventListener('show.bs.modal', function (event) {
-                    var button = event.relatedTarget;
-                    if (!button) {
-                        return;
-                    }
-
-                    var employeeId = button.getAttribute('data-id') || '';
-                    var employeeName = button.getAttribute('data-name') || '-';
-
-                    var deleteIdInput = document.getElementById('DeleteEmployeeId');
-                    var deleteNameLabel = document.getElementById('deleteEmployeeName');
-
-                    if (deleteIdInput) {
-                        deleteIdInput.value = employeeId;
-                    }
-                    if (deleteNameLabel) {
-                        deleteNameLabel.textContent = employeeName;
-                    }
-                });
-            }
-
-            @if (Model.ShowCreateEmployeeModal)
-            {
-                <text>
-                var addModal = new bootstrap.Modal(document.getElementById('addEmployeeModal'));
-                addModal.show();
-                </text>
-            }
-
-            @if (Model.ShowEditEmployeeModal)
-            {
-                <text>
-                var editModal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
-                editModal.show();
-                </text>
-            }
-
-        });
+        window.employeesPageConfig = {
+            showCreateModal: @(Model.ShowCreateEmployeeModal.ToString().ToLowerInvariant()),
+            showEditModal: @(Model.ShowEditEmployeeModal.ToString().ToLowerInvariant())
+        };
     </script>
+    <script src="~/js/pages/employees-page.js" asp-append-version="true"></script>
 }

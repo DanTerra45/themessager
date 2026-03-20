@@ -53,6 +53,7 @@ namespace Mercadito.Pages.Products
         {
             Name = string.Empty,
             Description = string.Empty,
+            Stock = 0,
             Batch = string.Empty,
             ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
             Price = 0.01m
@@ -85,7 +86,7 @@ namespace Mercadito.Pages.Products
 
             await LoadProductsByState();
             SaveStateInSession();
-            EnsureDefaultNewProductDates();
+            EnsureDefaultNewProductValues();
             RestorePendingPostbackState();
             RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
             RestorePendingValidationErrors(PendingEditErrorsSessionKey);
@@ -328,7 +329,7 @@ namespace Mercadito.Pages.Products
                 if (pendingCreateDraft != null)
                 {
                     NewProduct = pendingCreateDraft;
-                    EnsureDefaultNewProductDates();
+                    EnsureDefaultNewProductValues();
                 }
             }
             else
@@ -544,16 +545,26 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        private void EnsureDefaultNewProductDates()
+        private void EnsureDefaultNewProductValues()
         {
             if (string.IsNullOrWhiteSpace(NewProduct.Batch))
             {
                 NewProduct.Batch = string.Empty;
             }
 
+            if (!NewProduct.Stock.HasValue || NewProduct.Stock.Value < 0)
+            {
+                NewProduct.Stock = 0;
+            }
+
             if (NewProduct.ExpirationDate == default)
             {
                 NewProduct.ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3));
+            }
+
+            if (!NewProduct.Price.HasValue || NewProduct.Price.Value < 0.01m)
+            {
+                NewProduct.Price = 0.01m;
             }
         }
 

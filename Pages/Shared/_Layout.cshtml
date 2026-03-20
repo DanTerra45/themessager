@@ -8,10 +8,10 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
-    <link rel="stylesheet" href="~/lib/air-datepicker/air-datepicker.css" />
     <link rel="stylesheet" href="~/css/fonts-local.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Mercadito.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100">
     <header>
@@ -41,6 +41,24 @@
                                         <section>
                                             <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Ventas</span>
                                             <small class="d-block text-muted" style="font-size: 0.75rem;">Tablero y flujo comercial</small>
+                                        </section>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Cancellation">
+                                        <i class="bi bi-receipt-cutoff me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Anulación</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Gestión visual de anulaciones</small>
+                                        </section>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Reports">
+                                        <i class="bi bi-bar-chart-line me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Reportes</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Resumen comercial y exportación</small>
                                         </section>
                                     </a>
                                 </li>
@@ -224,137 +242,11 @@
         </section>
     </footer>
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/lib/air-datepicker/air-datepicker.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (typeof bootstrap === 'undefined') {
-                return;
-            }
-
-            var toastElements = document.querySelectorAll('.toast');
-            for (var index = 0; index < toastElements.length; index++) {
-                var toast = new bootstrap.Toast(toastElements[index]);
-                toast.show();
-            }
-        });
-    </script>
+    <script src="~/js/shared/toasts.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 
-    <script>
-        (function () {
-            function normalizeMessage(rawMessage) {
-                var message = (rawMessage || '').replace(/\s+/g, ' ').trim();
-                if (message.length === 0) {
-                    return 'Valor inválido.';
-                }
-
-                // Cleanup fallback english messages like:
-                // "The NewProduct.Name field is required."
-                var cleaned = message.replace(/^The\s+([A-Za-z0-9_.]+\.)?([A-Za-z0-9_]+)\s+field\s+/i, '');
-                if (cleaned !== message) {
-                    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-                    return cleaned;
-                }
-
-                return message;
-            }
-
-            function syncValidationTooltipMessages(scope) {
-                var root = scope || document;
-                var validationSpans = root.querySelectorAll('span[data-valmsg-for]');
-
-                function resolveRelatedLabel(spanElement) {
-                    var directLabel = spanElement.closest('label');
-                    if (directLabel) {
-                        return directLabel;
-                    }
-
-                    var fieldPath = spanElement.getAttribute('data-valmsg-for');
-                    if (!fieldPath) {
-                        return null;
-                    }
-
-                    var fieldId = fieldPath.replace(/\./g, '_');
-                    var label = root.querySelector('label[for="' + fieldId + '"]');
-                    if (label) {
-                        return label;
-                    }
-
-                    var input = root.getElementById(fieldId);
-                    if (!input) {
-                        return null;
-                    }
-
-                    var localContainer = input.closest('.mb-3, .mb-4, .col-md-2, .col-md-4, .col-md-5, .col-md-6, .form-floating, .input-group');
-                    if (!localContainer) {
-                        return null;
-                    }
-
-                    return localContainer.querySelector('label');
-                }
-
-                for (var index = 0; index < validationSpans.length; index++) {
-                    var span = validationSpans[index];
-                    var message = normalizeMessage(span.textContent);
-                    var hasError = span.classList.contains('field-validation-error');
-                    var relatedLabel = resolveRelatedLabel(span);
-                    var infoIcon = relatedLabel ? relatedLabel.querySelector('.info-tooltip') : null;
-
-                    if (hasError) {
-                        span.setAttribute('data-error-message', message);
-                        span.setAttribute('aria-label', message);
-                    } else {
-                        span.removeAttribute('data-error-message');
-                        span.removeAttribute('aria-label');
-                    }
-
-                    if (infoIcon) {
-                        infoIcon.classList.toggle('d-none', hasError);
-                        infoIcon.setAttribute('aria-hidden', hasError ? 'true' : 'false');
-                    }
-                }
-            }
-
-            function bindValidationTooltipObserver() {
-                var observedRoot = document.body;
-                if (!observedRoot || typeof MutationObserver === 'undefined') {
-                    return;
-                }
-
-                var schedule = window.requestAnimationFrame || function (callback) {
-                    return window.setTimeout(callback, 16);
-                };
-
-                var isQueued = false;
-                var observer = new MutationObserver(function () {
-                    if (isQueued) {
-                        return;
-                    }
-
-                    isQueued = true;
-                    schedule(function () {
-                        isQueued = false;
-                        syncValidationTooltipMessages(document);
-                    });
-                });
-
-                observer.observe(observedRoot, {
-                    childList: true,
-                    subtree: true,
-                    characterData: true,
-                    attributes: true,
-                    attributeFilter: ['class']
-                });
-            }
-
-            document.addEventListener('DOMContentLoaded', function () {
-                syncValidationTooltipMessages(document);
-                bindValidationTooltipObserver();
-            });
-        })();
-    </script>
+    <script src="~/js/shared/validation-tooltips.js" asp-append-version="true"></script>
 </body>
 </html>

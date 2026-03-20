@@ -183,24 +183,24 @@ SELECT
   e.`numeroContacto`,
   'A'
 FROM (
-  SELECT 6845123 AS `ci`, '1A' AS `complemento`, 'Luz Maria' AS `nombres`, 'Quispe' AS `primerApellido`, 'Rojas' AS `segundoApellido`, 'Cajero' AS `rol`, '71234567' AS `numeroContacto`
-  UNION ALL SELECT 5901234, NULL, 'Carlos Alberto', 'Mamani', 'Lopez', 'Inventario', '72345678'
-  UNION ALL SELECT 7312456, '2B', 'Ana Sofia', 'Perez', 'Guzman', 'Cajero', '+591 77123456'
-  UNION ALL SELECT 8023344, NULL, 'Jorge Luis', 'Vargas', 'Flores', 'Inventario', '(2) 2456789'
-  UNION ALL SELECT 9276543, '3C', 'Mariana', 'Choque', 'Torrez', 'Cajero', '78901234'
-  UNION ALL SELECT 7482311, NULL, 'Diego Andres', 'Camacho', 'Rios', 'Inventario', '71500123'
-  UNION ALL SELECT 8832190, '4D', 'Paola', 'Suarez', 'Mendez', 'Cajero', '74455667'
-  UNION ALL SELECT 6654321, NULL, 'Renzo', 'Paredes', 'Luna', 'Inventario', '72233445'
-  UNION ALL SELECT 9134567, NULL, 'Valeria', 'Molina', 'Cruz', 'Cajero', '73322110'
-  UNION ALL SELECT 7012458, '5E', 'Gabriel', 'Rojas', 'Soto', 'Inventario', '70011223'
-  UNION ALL SELECT 8123401, NULL, 'Cynthia', 'Arce', 'Nina', 'Cajero', '75544123'
-  UNION ALL SELECT 9567321, NULL, 'Bruno', 'Loayza', 'Herrera', 'Inventario', '76655443'
-  UNION ALL SELECT 6234987, '6F', 'Martha', 'Velasco', 'Arias', 'Cajero', '78888999'
-  UNION ALL SELECT 8899001, NULL, 'Adrian', 'Medina', 'Ruiz', 'Inventario', '71190022'
-  UNION ALL SELECT 7400112, NULL, 'Nadia', 'Mendoza', 'Siles', 'Cajero', '77222334'
-  UNION ALL SELECT 7999888, '7G', 'Pablo', 'Cortez', 'Salinas', 'Inventario', '+591 71234567'
-  UNION ALL SELECT 6555444, NULL, 'Erika', 'Flores', 'Ledezma', 'Cajero', '73444555'
-  UNION ALL SELECT 9444333, NULL, 'Martin', 'Alarcon', 'Lima', 'Inventario', '76550011'
+  SELECT 6845123 AS `ci`, '1A' AS `complemento`, 'Luz Maria' AS `nombres`, 'Quispe' AS `primerApellido`, 'Rojas' AS `segundoApellido`, 'Cajero' AS `rol`, '+59171234567' AS `numeroContacto`
+  UNION ALL SELECT 5901234, NULL, 'Carlos Alberto', 'Mamani', 'Lopez', 'Inventario', '+59172345678'
+  UNION ALL SELECT 7312456, '2B', 'Ana Sofia', 'Perez', 'Guzman', 'Cajero', '+59177123456'
+  UNION ALL SELECT 8023344, NULL, 'Jorge Luis', 'Vargas', 'Flores', 'Inventario', '+59122456789'
+  UNION ALL SELECT 9276543, '3C', 'Mariana', 'Choque', 'Torrez', 'Cajero', '+59178901234'
+  UNION ALL SELECT 7482311, NULL, 'Diego Andres', 'Camacho', 'Rios', 'Inventario', '+59171500123'
+  UNION ALL SELECT 8832190, '4D', 'Paola', 'Suarez', 'Mendez', 'Cajero', '+59174455667'
+  UNION ALL SELECT 6654321, NULL, 'Renzo', 'Paredes', 'Luna', 'Inventario', '+59172233445'
+  UNION ALL SELECT 9134567, NULL, 'Valeria', 'Molina', 'Cruz', 'Cajero', '+59173322110'
+  UNION ALL SELECT 7012458, '5E', 'Gabriel', 'Rojas', 'Soto', 'Inventario', '+59170011223'
+  UNION ALL SELECT 8123401, NULL, 'Cynthia', 'Arce', 'Nina', 'Cajero', '+59175544123'
+  UNION ALL SELECT 9567321, NULL, 'Bruno', 'Loayza', 'Herrera', 'Inventario', '+59176655443'
+  UNION ALL SELECT 6234987, '6F', 'Martha', 'Velasco', 'Arias', 'Cajero', '+59178888999'
+  UNION ALL SELECT 8899001, NULL, 'Adrian', 'Medina', 'Ruiz', 'Inventario', '+59171190022'
+  UNION ALL SELECT 7400112, NULL, 'Nadia', 'Mendoza', 'Siles', 'Cajero', '+59177222334'
+  UNION ALL SELECT 7999888, '7G', 'Pablo', 'Cortez', 'Salinas', 'Inventario', '+59171234567'
+  UNION ALL SELECT 6555444, NULL, 'Erika', 'Flores', 'Ledezma', 'Cajero', '+59173444555'
+  UNION ALL SELECT 9444333, NULL, 'Martin', 'Alarcon', 'Lima', 'Inventario', '+59176550011'
 ) AS e
 WHERE NOT EXISTS (
   SELECT 1

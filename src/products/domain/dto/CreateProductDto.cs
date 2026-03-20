@@ -105,6 +105,12 @@ namespace Mercadito.src.products.domain.dto
                 }
             }
 
+            if (CategoryIds.Count == 0)
+            {
+                yield return new ValidationResult("Debe seleccionar al menos una categoría", [nameof(CategoryIds)]);
+                yield break;
+            }
+
             var distinctCategoryIds = new HashSet<long>();
             foreach (var categoryId in CategoryIds)
             {

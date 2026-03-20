@@ -1,0 +1,82 @@
+@page "/Sales/Reports"
+@model Mercadito.Pages.Sales.ReportsModel
+@{
+    ViewData["Title"] = "Reportes de ventas";
+}
+
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Panel mock para descarga y seguimiento de reportes</p>
+    </section>
+    <a asp-page="/Sales/Sales" class="b-btn b-btn-secondary text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Volver a Ventas
+    </a>
+</header>
+
+<section class="row g-3 mb-4">
+    <section class="col-md-3">
+        <article class="b-card h-100 p-3">
+            <h2 style="font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 0.5rem 0;">Reportes diarios</h2>
+            <p style="font-family: var(--font-display); font-size: 2rem; margin: 0;">@Model.DailyReports</p>
+            <small class="text-muted">Dato referencial</small>
+        </article>
+    </section>
+    <section class="col-md-3">
+        <article class="b-card h-100 p-3">
+            <h2 style="font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 0.5rem 0;">Semanales</h2>
+            <p style="font-family: var(--font-display); font-size: 2rem; margin: 0;">@Model.WeeklyReports</p>
+            <small class="text-muted">Dato referencial</small>
+        </article>
+    </section>
+    <section class="col-md-3">
+        <article class="b-card h-100 p-3">
+            <h2 style="font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 0.5rem 0;">Mensuales</h2>
+            <p style="font-family: var(--font-display); font-size: 2rem; margin: 0;">@Model.MonthlyReports</p>
+            <small class="text-muted">Dato referencial</small>
+        </article>
+    </section>
+    <section class="col-md-3">
+        <article class="b-card h-100 p-3">
+            <h2 style="font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase; margin: 0 0 0.5rem 0;">Exportaciones</h2>
+            <p style="font-family: var(--font-display); font-size: 2rem; margin: 0;">@Model.ExportsToday</p>
+            <small class="text-muted">Dato referencial</small>
+        </article>
+    </section>
+</section>
+
+<section class="b-card p-0 overflow-hidden">
+    <header class="d-flex justify-content-between align-items-center p-3" style="border-bottom: 2px solid var(--mrc-ink); background-color: var(--mrc-surface-alt);">
+        <strong style="font-family: var(--font-display); text-transform: uppercase;">Centro de reportes</strong>
+        <mark class="status-badge" data-status="warning">Solo visual</mark>
+    </header>
+    <section class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="text-center">
+                <tr>
+                    <th>Reporte</th>
+                    <th>Periodo</th>
+                    <th>Formato</th>
+                    <th>Última generación</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var report in Model.ReportRows)
+                {
+                    <tr>
+                        <td class="fw-bold">@report.ReportName</td>
+                        <td>@report.Period</td>
+                        <td style="font-family: var(--font-mono);">@report.Format</td>
+                        <td style="font-family: var(--font-mono);">@report.LastGeneratedAt</td>
+                        <td class="text-center">
+                            <button type="button" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;" disabled title="Generar reporte">
+                                <i class="bi bi-file-earmark-arrow-down"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+</section>
