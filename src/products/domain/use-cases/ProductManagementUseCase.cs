@@ -1,18 +1,22 @@
 using Mercadito.src.categories.domain.model;
 using Mercadito.src.categories.data.repository;
 using Mercadito.src.products.domain.dto;
+using Mercadito.src.products.domain.factory;
 using Mercadito.src.products.domain.model;
 using Mercadito.src.products.data.repository;
 using Mercadito.src.shared.domain.factory;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.products.domain.usecases
 {
     public class ProductManagementUseCase(
         RepositoryCreator<ProductRepository> productRepositoryCreator,
-        RepositoryCreator<CategoryRepository> categoryRepositoryCreator) : IProductManagementUseCase
+        RepositoryCreator<CategoryRepository> categoryRepositoryCreator,
+        IProductFactory productFactory) : IProductManagementUseCase
     {
         private readonly RepositoryCreator<ProductRepository> _productRepositoryCreator = productRepositoryCreator;
         private readonly RepositoryCreator<CategoryRepository> _categoryRepositoryCreator = categoryRepositoryCreator;
+        private readonly IProductFactory _productFactory = productFactory;
 
         public async Task<IReadOnlyList<CategoryModel>> GetCategoriesAsync(CancellationToken cancellationToken = default)
         {
@@ -27,19 +31,20 @@ namespace Mercadito.src.products.domain.usecases
             int pageSize,
             string sortBy,
             string sortDirection,
+            string searchTerm = "",
             CancellationToken cancellationToken = default)
         {
             var productRepository = _productRepositoryCreator.Create();
 
             if (categoryFilter == 0)
             {
-                var totalCount = await productRepository.GetTotalProductsCountAsync(cancellationToken);
+                var totalCount = await productRepository.GetTotalProductsCountAsync(searchTerm, cancellationToken);
                 var totalPages = CalculateTotalPages(totalCount, pageSize);
-                var products = await productRepository.GetProductsWithCategoriesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
+                var products = await productRepository.GetProductsWithCategoriesByPages(currentPage, pageSize, sortBy, sortDirection, searchTerm, cancellationToken);
                 return (products, totalPages);
             }
 
-            var filteredTotalCount = await productRepository.GetTotalProductsCountByCategoryAsync(categoryFilter, cancellationToken);
+            var filteredTotalCount = await productRepository.GetTotalProductsCountByCategoryAsync(categoryFilter, searchTerm, cancellationToken);
             var filteredTotalPages = CalculateTotalPages(filteredTotalCount, pageSize);
             var filteredProducts = await productRepository.GetProductsWithCategoriesFilterByCategoryByPages(
                 currentPage,
@@ -47,8 +52,40 @@ namespace Mercadito.src.products.domain.usecases
                 pageSize,
                 sortBy,
                 sortDirection,
+                searchTerm,
                 cancellationToken);
             return (filteredProducts, filteredTotalPages);
+        }
+
+        public async Task CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default)
+        {
+            var productRepository = _productRepositoryCreator.Create();
+            await productRepository.CreateAsync(
+                new ProductWithCategoriesWriteModel
+                {
+                    Product = _productFactory.CreateForInsert(newProduct),
+                    CategoryIds = newProduct.CategoryIds
+                },
+                cancellationToken);
+        }
+
+        public async Task UpdateAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default)
+        {
+            var productRepository = _productRepositoryCreator.Create();
+            var productToUpdate = _productFactory.CreateForUpdate(updateProduct);
+
+            var affectedRows = await productRepository.UpdateAsync(
+                new ProductWithCategoriesWriteModel
+                {
+                    Product = productToUpdate,
+                    CategoryIds = updateProduct.CategoryIds
+                },
+                cancellationToken);
+
+            if (affectedRows == 0)
+            {
+                throw new ValidationException("Producto no encontrado.");
+            }
         }
 
         private static int CalculateTotalPages(int totalItems, int pageSize)

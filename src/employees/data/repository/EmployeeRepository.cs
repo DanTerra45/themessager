@@ -1,6 +1,7 @@
 using Dapper;
 using Mercadito.database.interfaces;
 using Mercadito.src.employees.data.entity;
+using Mercadito.src.employees.domain.model;
 using Mercadito.src.shared.domain.repository;
 using MySqlConnector;
 using System.Data;
@@ -9,7 +10,7 @@ using System.Text;
 
 namespace Mercadito.src.employees.data.repository
 {
-    public class EmployeeRepository(IDbConnectionFactory dbConnection) : ICrudRepository<Employee, Employee, Employee, long>
+    public class EmployeeRepository(IDbConnectionFactory dbConnection) : ICrudRepository<Employee, Employee, EmployeeModel, long>
     {
         private const string ActiveState = "A";
         private const string InactiveState = "I";
@@ -78,7 +79,7 @@ namespace Mercadito.src.employees.data.repository
             }
         }
 
-        public async Task<IReadOnlyList<Employee>> GetEmployeesByPages(
+        public async Task<IReadOnlyList<EmployeeModel>> GetEmployeesByPages(
             int page,
             int pageSize,
             string sortBy,
@@ -107,7 +108,7 @@ namespace Mercadito.src.employees.data.repository
                 parameters: new { ActiveState, Offset = offset, PageSize = pageSize },
                 cancellationToken: cancellationToken);
 
-            var employees = await connection.QueryAsync<Employee>(command);
+            var employees = await connection.QueryAsync<EmployeeModel>(command);
             return employees.AsList();
         }
 
@@ -120,7 +121,7 @@ namespace Mercadito.src.employees.data.repository
             return await connection.ExecuteScalarAsync<int>(command);
         }
 
-        public async Task<Employee?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<EmployeeModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             const string query = @"SELECT
@@ -140,7 +141,7 @@ namespace Mercadito.src.employees.data.repository
                 parameters: new { Id = id, ActiveState },
                 cancellationToken: cancellationToken);
 
-            return await connection.QueryFirstOrDefaultAsync<Employee>(command);
+            return await connection.QueryFirstOrDefaultAsync<EmployeeModel>(command);
         }
 
         public async Task<long> CreateAsync(Employee employee, CancellationToken cancellationToken = default)

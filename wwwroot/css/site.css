@@ -16,6 +16,7 @@
   --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', sans-serif;
   --font-body: 'DM Sans Variable', 'DM Sans', sans-serif;
   --font-mono: 'Chivo Mono Variable', 'Chivo Mono', monospace;
+  --mrc-control-height: calc(1.5em + 0.75rem + 4px);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -93,6 +94,46 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   color: #ffffff !important;
   transform: translateY(-2px);
   box-shadow: 2px 2px 0 var(--mrc-border);
+}
+
+.nav-auth-item {
+  padding-left: 0.5rem;
+}
+
+.nav-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-auth-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  width: var(--mrc-control-height);
+  min-width: var(--mrc-control-height);
+  height: var(--mrc-control-height);
+  min-height: var(--mrc-control-height);
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center;
+  line-height: 1;
+}
+
+.nav-auth-icon-btn i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+@media (max-width: 575.98px) {
+  .nav-auth-item {
+    width: 100%;
+    padding-top: 0.35rem;
+  }
+
+  .nav-auth-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 /* Cards / Articles */
@@ -197,6 +238,8 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   color: var(--mrc-ink);
   font-weight: 800;
   padding: 1rem;
+  vertical-align: middle;
+  line-height: 1.1;
 }
 
 .sortable-header {
@@ -219,6 +262,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   justify-content: center;
   gap: 0.25rem;
   padding: 1rem;
+  line-height: 1.1;
 }
 
 .text-end.sortable-header .sort-button {
@@ -300,13 +344,18 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 .page-link {
   border: 2px solid var(--mrc-ink);
-  border-radius: var(--radius-sm);
+  border-radius: 0 !important;
   color: var(--mrc-ink);
   font-family: var(--font-mono);
   font-weight: bold;
   background-color: var(--mrc-surface);
   box-shadow: 2px 2px 0 var(--mrc-ink);
   transition: all 0.15s ease;
+}
+
+.page-item:first-child .page-link,
+.page-item:last-child .page-link {
+  border-radius: 0 !important;
 }
 .page-link:hover {
   background-color: var(--mrc-ink);
@@ -328,17 +377,31 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 .page-item.disabled .page-link {
   background-color: var(--mrc-bg);
-  color: var(--mrc-border);
+  color: var(--mrc-ink-light);
   border-color: var(--mrc-border);
   box-shadow: none;
 }
 
-.dropdown-menu {
-  margin-top: -2px !important; /* Overlap the top border with the button's bottom border */
-  border-top: none; /* Make it look like a continuation */
+.page-item.disabled .page-link:hover,
+.page-item.disabled .page-link:focus {
+  background-color: var(--mrc-bg);
+  color: var(--mrc-ink-light) !important;
+  border-color: var(--mrc-border);
+  box-shadow: none;
+  transform: none;
 }
 
-/* CSS-only hover dropdowns for navbar */
+.page-item.disabled .page-link:hover i,
+.page-item.disabled .page-link:focus i {
+  color: var(--mrc-ink-light) !important;
+}
+
+.dropdown-menu {
+  margin-top: -2px !important;
+  border-top: none;
+}
+
+/* Hover dropdowns for navbar */
 @media (min-width: 576px) {
   .nav-item.dropdown:hover > .dropdown-menu {
     display: block;
@@ -357,7 +420,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 
 /* Modal form controls */
-.form-control, .form-select, .form-floating > .form-control, .form-floating > .form-select {
+.form-control, .form-select {
   border: 2px solid var(--mrc-ink);
   border-radius: var(--radius-sm);
   background-color: var(--mrc-surface);
@@ -382,30 +445,34 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 input[type="number"] {
+  appearance: textfield !important;
   -moz-appearance: textfield !important;
 }
 
+.brutal-stepper-btn,
 .b-btn-number {
   background-color: var(--mrc-surface-alt);
   border: 2px solid var(--mrc-ink);
   color: var(--mrc-ink);
-  font-weight: bold;
-  font-size: 1.2rem;
-  display: flex;
+  font-weight: 700;
+  font-size: 1rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 0;
   transition: all 0.15s ease;
-  z-index: 1; /* Keep above inputs when focused */
-  width: 40px; /* Fixed width for the buttons */
+  z-index: 1;
+  width: 2.65rem;
   padding: 0;
 }
 
 .brutal-number-group {
   display: flex;
   width: 100%;
+  align-items: stretch;
 }
 
+.brutal-stepper .form-control,
 .brutal-number-group .form-control {
   flex: 1;
   min-width: 0;
@@ -413,16 +480,317 @@ input[type="number"] {
   position: relative;
 }
 
+.brutal-stepper .form-control:focus,
 .brutal-number-group .form-control:focus {
   z-index: 3;
 }
 
+.brutal-stepper-prefix {
+  min-width: 3rem;
+  justify-content: center;
+  font-family: var(--font-mono);
+}
+
+.brutal-stepper .form-control,
+.brutal-stepper-btn,
+.brutal-stepper-prefix {
+  min-height: var(--mrc-control-height);
+  height: var(--mrc-control-height);
+}
+
+.product-modal-body .brutal-stepper {
+  --bs-border-width: 2px;
+}
+
+.product-modal-body .brutal-stepper > :not(:first-child) {
+  margin-left: -2px !important;
+}
+
+.product-modal-body .brutal-stepper > .input-group-text,
+.product-modal-body .brutal-stepper > .form-control,
+.product-modal-body .brutal-stepper > .btn {
+  border-radius: 0 !important;
+}
+
+.product-modal-body .brutal-stepper .form-control,
+.product-modal-body .brutal-stepper .form-control:focus {
+  box-shadow: none !important;
+  border-color: var(--mrc-ink) !important;
+}
+
+.stepper-label {
+  margin-bottom: 0.35rem;
+}
+
+.category-field-label {
+  margin-bottom: 0.35rem;
+}
+
+.product-modal-body .form-label {
+  margin-bottom: 0.35rem;
+  min-height: 1.5rem;
+}
+
+.category-modal-body .form-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  min-height: 1.5rem;
+}
+
+.category-modal-body .category-code-readonly:focus,
+.category-modal-body .category-code-readonly:active {
+  box-shadow: none !important;
+  border-color: var(--mrc-ink) !important;
+}
+
+.category-modal-body .category-code-readonly[readonly] {
+  cursor: not-allowed;
+}
+
+.category-modal-body .category-code-readonly[readonly]:focus {
+  caret-color: transparent;
+}
+
+.category-select-trigger {
+  min-height: var(--mrc-control-height);
+  height: var(--mrc-control-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--mrc-surface) !important;
+  color: var(--mrc-ink) !important;
+  padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+}
+
+.category-select-trigger:hover,
+.category-select-trigger:focus {
+  background-color: var(--mrc-surface) !important;
+  color: var(--mrc-ink) !important;
+}
+
+.product-modal-body .category-select-trigger:disabled {
+  background-image: none !important;
+  padding-right: 0.75rem !important;
+  cursor: not-allowed;
+}
+
+.product-modal-body .category-select-trigger:focus,
+.product-modal-body .category-select-trigger:active,
+.product-modal-body .category-select-trigger.show {
+  box-shadow: none !important;
+  border-color: var(--mrc-ink) !important;
+}
+
+.product-modal-body .category-dropdown-menu {
+  margin-top: -2px !important;
+  border-top: 0 !important;
+  box-shadow: none !important;
+}
+
+.product-modal-body .category-dropdown-menu li:last-child .category-select-item {
+  border-bottom: 0 !important;
+}
+
+.products-filter-wrap {
+  margin-bottom: 1.25rem;
+}
+
+.products-filter-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  row-gap: 0.5rem;
+}
+
+.products-search-field {
+  width: min(24rem, 100%);
+  flex: 1 1 20rem;
+}
+
+.products-search-input {
+  border: 2px solid var(--mrc-ink) !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-mono);
+  box-shadow: none !important;
+  min-height: var(--mrc-control-height);
+}
+
+.products-search-input:focus {
+  border-color: var(--mrc-ink) !important;
+  box-shadow: none !important;
+}
+
+.products-filter-dropdown {
+  width: min(22rem, 100%);
+  flex: 1 1 16rem;
+}
+
+.products-order-field {
+  width: min(12rem, 100%);
+  flex: 0 1 11rem;
+}
+
+.products-order-trigger {
+  border: 2px solid var(--mrc-ink) !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  min-height: var(--mrc-control-height);
+  box-shadow: none !important;
+  padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+}
+
+.products-order-trigger:focus,
+.products-order-trigger:active,
+.products-order-trigger.show {
+  border-color: var(--mrc-ink) !important;
+  box-shadow: none !important;
+}
+
+.products-order-dropdown-menu {
+  background-color: var(--mrc-surface);
+  border: 2px solid var(--mrc-ink);
+  border-radius: 0;
+  box-shadow: none !important;
+  margin-top: -1px !important;
+  border-top: 1px solid var(--mrc-ink) !important;
+  padding-top: 0 !important;
+}
+
+.products-order-item {
+  cursor: pointer;
+  border-radius: 0 !important;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--mrc-ink);
+}
+
+.products-order-dropdown-menu li:last-child .products-order-item {
+  border-bottom: 0 !important;
+}
+
+.category-select-item.is-selected,
+.products-filter-item.is-selected,
+.products-order-item.is-selected,
+.role-select-item.is-selected {
+  background-color: rgba(0, 230, 118, 0.15) !important;
+  font-weight: 700 !important;
+}
+
+.products-order-dropdown-menu .dropdown-item {
+  border-radius: 0 !important;
+}
+
+.products-filter-trigger {
+  border: 2px solid var(--mrc-ink) !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+}
+
+.products-filter-trigger:focus,
+.products-filter-trigger:active,
+.products-filter-trigger.show {
+  box-shadow: none !important;
+  border-color: var(--mrc-ink) !important;
+}
+
+.products-filter-dropdown-menu {
+  max-height: 260px;
+  overflow-y: auto;
+  background-color: var(--mrc-surface);
+  border: 2px solid var(--mrc-ink);
+  border-radius: 0;
+  box-shadow: none !important;
+  margin-top: -2px !important;
+  border-top: 0 !important;
+}
+
+.products-filter-search-wrap {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--mrc-ink);
+  background-color: var(--mrc-surface);
+}
+
+.products-filter-search {
+  border: 2px solid var(--mrc-ink) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: var(--font-mono);
+}
+
+.products-filter-search:focus {
+  box-shadow: none !important;
+  border-color: var(--mrc-ink) !important;
+}
+
+.products-filter-item {
+  cursor: pointer;
+  border-radius: 0 !important;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--mrc-ink);
+}
+
+.products-filter-dropdown-menu li:last-child .products-filter-item {
+  border-bottom: 0 !important;
+}
+
+.products-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.products-icon-btn {
+  width: var(--mrc-control-height);
+  min-width: var(--mrc-control-height);
+  height: var(--mrc-control-height);
+  padding: 0;
+  justify-content: center;
+}
+
+.products-filter-form .b-btn {
+  min-height: var(--mrc-control-height);
+}
+
+@media (max-width: 767.98px) {
+  .products-search-field,
+  .products-filter-dropdown,
+  .products-order-field {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .products-filter-actions {
+    margin-left: 0;
+  }
+}
+
+.brutal-stepper-btn i {
+  pointer-events: none;
+}
+
+.product-modal-body .brutal-stepper .brutal-stepper-btn.border-start-0 {
+  border-left: 2px solid var(--mrc-ink) !important;
+}
+
+.product-modal-body .brutal-stepper .brutal-stepper-btn.border-end-0 {
+  border-right: 2px solid var(--mrc-ink) !important;
+}
+
+.brutal-stepper-btn:hover,
 .b-btn-number:hover {
   background-color: var(--mrc-accent);
   color: var(--mrc-ink);
   border-color: var(--mrc-ink) !important;
 }
 
+.brutal-stepper-btn:focus, .brutal-stepper-btn:active,
 .b-btn-number:focus, .b-btn-number:active {
   box-shadow: none !important;
   background-color: var(--mrc-accent-hover);
@@ -459,20 +827,360 @@ mark.status-badge[data-status="good"], .badge.bg-success {
   border: 1px solid var(--mrc-ink);
 }
 
-/* Legacy Classes preservation for compatibility */
+/* Legacy Classes */
 .app-brand-logo { width: 36px; height: 36px; display: block; }
 .truncate-description-category { max-width: 250px; }
 .truncate-description-product { max-width: 200px; }
 .category-description-textarea { height: 100px; resize: none; }
-.product-description-textarea { min-height: 120px; resize: none; }
+
+.table-ellipsis {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.table-ellipsis-name {
+  width: 170px;
+  max-width: 170px;
+}
+
+.table-ellipsis-description {
+  width: 200px;
+  max-width: 200px;
+}
+
+.table-ellipsis-batch {
+  width: 150px;
+  max-width: 150px;
+}
+
+.table-ellipsis-category-name {
+  width: 220px;
+  max-width: 220px;
+}
+
+.table-ellipsis-category-description {
+  width: 260px;
+  max-width: 260px;
+}
+
+.table-ellipsis-employee-ci {
+  width: 150px;
+  max-width: 150px;
+}
+
+.table-ellipsis-employee-name {
+  width: 200px;
+  max-width: 200px;
+}
+
+.table-ellipsis-employee-surnames {
+  width: 230px;
+  max-width: 230px;
+}
+
+.table-ellipsis-employee-contact {
+  width: 190px;
+  max-width: 190px;
+}
+
+.product-category-badge {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.products-table > thead > tr > th,
+.products-table > tbody > tr > td {
+  padding: 0.75rem;
+}
+
+.products-table > thead > tr > th {
+  text-align: center;
+  vertical-align: middle;
+  line-height: 1.1;
+}
+
+.products-table .sortable-header .sort-button {
+  justify-content: center !important;
+  align-items: center;
+  padding: 0.75rem;
+  line-height: 1.1;
+}
+
+.products-table .sortable-header .sort-button i {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.table-shadow-safe-wrap {
+  padding-right: 4px;
+  padding-bottom: 4px;
+}
+
+.products-table-wrap {
+  padding-right: 4px;
+}
+
+.products-table .products-actions-col {
+  width: 170px;
+  min-width: 170px;
+}
+
+.product-category-extra-badge {
+  font-weight: 700;
+  background-color: var(--mrc-surface-alt) !important;
+}
+
+.category-products-view-btn {
+  padding: 0.25rem 0.5rem;
+  min-width: 2.2rem;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.product-description-textarea {
+  min-height: 96px;
+  height: 96px;
+  resize: none;
+  overflow-y: hidden;
+  line-height: 1.35;
+}
+
+.product-modal-body .product-description-block {
+  margin-bottom: 1.25rem !important;
+}
+
+.product-form-grid {
+  --bs-gutter-y: 0.4rem;
+}
 
 /* Validation Styles */
-small.text-danger, span.text-danger, .field-validation-error {
+span[data-valmsg-for] {
+  display: none !important;
+}
+
+span.field-validation-error[data-valmsg-for] {
+  display: inline-block !important;
+  position: absolute;
+  right: 20px;
+  top: auto;
+  bottom: 8px;
+  transform: none;
+  width: 24px;
+  height: 24px;
+  cursor: help;
+  z-index: 10;
+  color: transparent !important;
+  font-size: 0 !important;
+  overflow: visible;
+}
+
+span.validation-icon-inline.field-validation-error[data-valmsg-for] {
+  display: inline-flex !important;
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.35rem;
+  vertical-align: text-top;
+  overflow: visible;
+  pointer-events: auto;
+}
+
+/* The Warning Icon (Fake element drawn inside the span) */
+span.field-validation-error[data-valmsg-for]::before {
+  content: '\F33B';
+  font-family: 'bootstrap-icons';
+  color: var(--mrc-danger);
+  font-size: 1.2rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+span.validation-icon-inline.field-validation-error[data-valmsg-for]::before {
+  position: static;
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* The Tooltip Bubble (Drawn when hovering the icon) */
+span.field-validation-error[data-valmsg-for]::after {
+  content: attr(data-error-message);
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background-color: var(--mrc-ink);
+  color: var(--mrc-surface);
   font-family: var(--font-mono);
   font-weight: 700;
-  display: block;
-  margin-top: 0.25rem;
-  color: var(--mrc-danger);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.8rem;
+  white-space: normal;
+  max-width: 300px;
+  min-width: 160px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  box-shadow: 4px 4px 0px rgba(13,31,21,0.2);
+  border: 1px solid var(--mrc-surface);
+  z-index: 100;
+}
+
+span.validation-icon-inline.field-validation-error[data-valmsg-for]::after {
+  right: auto;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  margin-bottom: 0;
+  transform: translateX(-50%);
+}
+
+/* Show the tooltip on hover */
+span.field-validation-error[data-valmsg-for]:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-4px);
+}
+
+span.validation-icon-inline.field-validation-error[data-valmsg-for]:hover::after {
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* Optional info tooltip for helper text */
+.info-tooltip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-left: 0.35rem;
+  border: 1.5px solid var(--mrc-ink);
+  background-color: var(--mrc-surface-alt);
+  color: var(--mrc-ink);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  position: relative;
+  vertical-align: text-top;
+}
+
+.info-tooltip::after {
+  content: attr(data-info-message);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--mrc-ink);
+  color: var(--mrc-surface);
+  border: 1px solid var(--mrc-surface);
+  box-shadow: 4px 4px 0 rgba(13, 31, 21, 0.2);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 0.5rem 0.65rem;
+  min-width: 180px;
+  max-width: 320px;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 110;
+}
+
+.info-tooltip:hover::after,
+.info-tooltip:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.info-tooltip:focus-visible {
+  outline: 2px solid var(--mrc-ink);
+  outline-offset: 2px;
+}
+
+.form-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  max-width: 100%;
+}
+
+.form-label > .validation-icon-inline.field-validation-error[data-valmsg-for] {
+  margin-left: 0.15rem;
+}
+
+/* We need relative positioning on the parent containers so the absolute icon aligns correctly */
+.input-group, .col-md-6, .col-md-4, .col-md-5, .col-md-2 {
+  position: relative;
+}
+
+.employee-modal-body .form-label {
+  margin-bottom: 0.35rem;
+  min-height: 1.5rem;
+}
+
+.employee-modal-body .col-md-2 .form-label {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.employee-modal-body .employee-label-ellipsis {
+  min-width: 0;
+  max-width: calc(100% - 2.25rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employee-modal-body .col-md-2 .form-label > .info-tooltip,
+.employee-modal-body .col-md-2 .form-label > .validation-icon-inline {
+  flex-shrink: 0;
+}
+
+.employee-modal-body .category-select-trigger:focus,
+.employee-modal-body .category-select-trigger:active,
+.employee-modal-body .category-select-trigger.show {
+  box-shadow: none !important;
+  border-color: var(--mrc-ink) !important;
+}
+
+.employee-modal-body .role-dropdown-menu {
+  margin-top: -2px !important;
+  border-top: 0 !important;
+  box-shadow: none !important;
+}
+
+.employee-modal-body .role-dropdown-menu li:last-child .role-select-item {
+  border-bottom: 0 !important;
 }
 
 .validation-summary-errors {
@@ -517,7 +1225,7 @@ small.text-danger, span.text-danger, .field-validation-error {
   padding: 2rem;
 }
 
-/* CSS-only Alert Auto-close */
+/* Alert Auto-close */
 .auto-close-alert {
   margin-bottom: 1.5rem;
   animation: autoHideAlert 3.5s forwards;

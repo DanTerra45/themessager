@@ -11,6 +11,7 @@ namespace Mercadito.src.categories.domain.usecases
             string sortBy,
             string sortDirection,
             CancellationToken cancellationToken = default);
+        Task<string> GetNextCategoryCodePreviewAsync(CancellationToken cancellationToken = default);
         Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default);
         Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default);
         Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default);

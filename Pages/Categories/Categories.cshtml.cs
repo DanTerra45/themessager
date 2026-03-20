@@ -4,6 +4,7 @@ using Mercadito.src.categories.domain.usecases;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text.Json;
@@ -22,7 +23,7 @@ namespace Mercadito.Pages.Categories
         private const string PendingEditErrorsSessionKey = "Categories.PendingEditErrors";
         private const string SortBySessionKey = "Categories.SortBy";
         private const string SortDirectionSessionKey = "Categories.SortDirection";
-        private const string DefaultSortBy = "id";
+        private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
 
         private readonly ILogger<CategoriesModel> _logger;
@@ -34,6 +35,7 @@ namespace Mercadito.Pages.Categories
         public int TotalPages { get; set; } = 1;
         public string SortBy { get; set; } = DefaultSortBy;
         public string SortDirection { get; set; } = DefaultSortDirection;
+        public string NextCategoryCodePreview { get; private set; } = "C00001";
 
         public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
 
@@ -64,6 +66,8 @@ namespace Mercadito.Pages.Categories
             RestorePendingPostbackState();
             RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
             RestorePendingValidationErrors(PendingEditErrorsSessionKey);
+            await LoadNextCategoryCodePreviewAsync();
+            NewCategory.Code = NextCategoryCodePreview;
 
             if (ShowCreateCategoryModal || ShowEditCategoryModal)
             {
@@ -139,12 +143,45 @@ namespace Mercadito.Pages.Categories
                 TotalPages = Math.Max(result.TotalPages, 1);
                 Categories = [.. result.Categories];
             }
+            catch (MySqlException exception)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al cargar categorías.");
+                throw;
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al cargar categorías.");
+                throw;
+            }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error al cargar categorias");
-                ModelState.AddModelError(string.Empty, "Error al cargar las categorias. Intente nuevamente.");
+                _logger.LogError(exception, "Error al cargar categorías");
+                ModelState.AddModelError(string.Empty, "Error al cargar las categorías. Intente nuevamente.");
                 Categories = [];
                 TotalPages = 1;
+            }
+        }
+
+        private async Task LoadNextCategoryCodePreviewAsync()
+        {
+            try
+            {
+                NextCategoryCodePreview = await _categoryManagementUseCase.GetNextCategoryCodePreviewAsync(HttpContext.RequestAborted);
+            }
+            catch (MySqlException exception)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al generar vista previa de código de categoría.");
+                throw;
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                _logger.LogError(exception, "Base de datos no disponible al generar vista previa de código de categoría.");
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "No se pudo obtener la vista previa del próximo código de categoría");
+                NextCategoryCodePreview = "C00001";
             }
         }
 
@@ -173,22 +210,22 @@ namespace Mercadito.Pages.Categories
             try
             {
                 await _categoryManagementUseCase.CreateAsync(NewCategory, HttpContext.RequestAborted);
-                _logger.LogInformation("Categoria creada: {Name}", NewCategory.Name);
+                _logger.LogInformation("Categoría creada: {Name}", NewCategory.Name);
 
-                TempData["SuccessMessage"] = "Categoria agregada exitosamente.";
+                TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
                 return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
-                _logger.LogWarning(validationException, "Business validation while creating category");
+                _logger.LogWarning(validationException, "Validación de negocio al crear categoría");
                 TempData["ErrorMessage"] = validationException.Message;
                 StorePendingCreateModal(NewCategory);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error al crear categoria");
-                TempData["ErrorMessage"] = "Error al guardar la categoria. Intente nuevamente.";
+                _logger.LogError(exception, "Error al crear categoría");
+                TempData["ErrorMessage"] = "Error al guardar la categoría. Intente nuevamente.";
                 StorePendingCreateModal(NewCategory);
                 return RedirectToCurrentState();
             }
@@ -217,21 +254,21 @@ namespace Mercadito.Pages.Categories
             try
             {
                 await _categoryManagementUseCase.UpdateAsync(EditCategory, HttpContext.RequestAborted);
-                _logger.LogInformation("Categoria actualizada: {Id}", EditCategory.Id);
-                TempData["SuccessMessage"] = "Categoria actualizada correctamente.";
+                _logger.LogInformation("Categoría actualizada: {Id}", EditCategory.Id);
+                TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
                 return RedirectToCurrentState();
             }
             catch (ValidationException validationException)
             {
-                _logger.LogWarning(validationException, "Validacion de negocio al actualizar categoria");
+                _logger.LogWarning(validationException, "Validación de negocio al actualizar categoría");
                 TempData["ErrorMessage"] = validationException.Message;
                 StorePendingEditModal(EditCategory);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error al actualizar categoria");
-                TempData["ErrorMessage"] = "Error al actualizar la categoria. Intente nuevamente.";
+                _logger.LogError(exception, "Error al actualizar categoría");
+                TempData["ErrorMessage"] = "Error al actualizar la categoría. Intente nuevamente.";
                 StorePendingEditModal(EditCategory);
                 return RedirectToCurrentState();
             }
@@ -251,17 +288,17 @@ namespace Mercadito.Pages.Categories
                 var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
                 if (wasDeleted)
                 {
-                    TempData["SuccessMessage"] = "Categoria desactivada.";
+                    TempData["SuccessMessage"] = "Categoría desactivada.";
                 }
                 else
                 {
-                    TempData["ErrorMessage"] = "La categoria no existe o ya estaba desactivada.";
+                    TempData["ErrorMessage"] = "La categoría no existe o ya estaba desactivada.";
                 }
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Error al eliminar la categoria");
-                TempData["ErrorMessage"] = "No se pudo eliminar la categoria.";
+                _logger.LogError(exception, "Error al eliminar la categoría");
+                TempData["ErrorMessage"] = "No se pudo eliminar la categoría.";
             }
 
             return RedirectToCurrentState();
@@ -354,7 +391,7 @@ namespace Mercadito.Pages.Categories
                 .ToDictionary(
                     entry => entry.Key,
                     entry => entry.Value!.Errors
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
+                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor inválido." : error.ErrorMessage)
                         .ToArray());
 
             if (errors.Count == 0)
@@ -402,7 +439,7 @@ namespace Mercadito.Pages.Categories
             }
             catch (JsonException exception)
             {
-                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
+                _logger.LogWarning(exception, "No se pudo restaurar errores de validación para key {SessionKey}", sessionKey);
             }
         }
 
@@ -494,7 +531,7 @@ namespace Mercadito.Pages.Categories
                 "code" => "code",
                 "name" => "name",
                 "productcount" => "productcount",
-                _ => "id"
+                _ => "name"
             };
         }
 

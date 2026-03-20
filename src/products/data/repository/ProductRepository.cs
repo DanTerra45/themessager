@@ -161,7 +161,7 @@ namespace Mercadito.src.products.data.repository
         {
             if (normalizedCategoryIds.Count == 0)
             {
-                return;
+                throw new ValidationException("Debe seleccionar al menos una categoría activa.");
             }
 
             var activeCategoriesCommand = BuildCountActiveCategoriesCommand(
@@ -172,7 +172,7 @@ namespace Mercadito.src.products.data.repository
             var activeCategoriesCount = await connection.ExecuteScalarAsync<int>(activeCategoriesCommand);
             if (activeCategoriesCount != normalizedCategoryIds.Count)
             {
-                throw new ValidationException("Una o mas categorias seleccionadas no existen o estan inactivas.");
+                throw new ValidationException("Una o más categorías seleccionadas no existen o están inactivas.");
             }
         }
 
@@ -199,16 +199,44 @@ namespace Mercadito.src.products.data.repository
             return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
         }
 
+        private static string NormalizeSearchTerm(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return string.Empty;
+            }
+
+            return searchTerm.Trim();
+        }
+
+        private static string BuildSearchPattern(string normalizedSearchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                return string.Empty;
+            }
+
+            var escapedSearchTerm = normalizedSearchTerm
+                .Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace("%", "\\%", StringComparison.Ordinal)
+                .Replace("_", "\\_", StringComparison.Ordinal);
+
+            return $"%{escapedSearchTerm}%";
+        }
+
         public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(
             int page,
             int pageSize,
             string sortBy,
             string sortDirection,
+            string searchTerm = "",
             CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
             var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
 
             var query = $@"
                 SELECT 
@@ -224,13 +252,31 @@ namespace Mercadito.src.products.data.repository
                 LEFT JOIN categoriaDeProducto pc ON p.id = pc.productId
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
                 WHERE p.estado = @ActiveState
+                AND (
+                    @SearchTerm = ''
+                    OR p.nombre LIKE @SearchPattern ESCAPE '\\'
+                    OR EXISTS (
+                        SELECT 1
+                        FROM categoriaDeProducto pc2
+                        INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
+                        WHERE pc2.productId = p.id
+                        AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
+                    )
+                )
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                 ORDER BY {orderByClause}
                 LIMIT @PageSize OFFSET @Offset";
 
             var command = new CommandDefinition(
                 query,
-                parameters: new { ActiveState, Offset = offset, PageSize = pageSize },
+                parameters: new
+                {
+                    ActiveState,
+                    Offset = offset,
+                    PageSize = pageSize,
+                    SearchTerm = normalizedSearchTerm,
+                    SearchPattern = searchPattern
+                },
                 cancellationToken: cancellationToken);
 
             var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
@@ -245,11 +291,14 @@ namespace Mercadito.src.products.data.repository
             int pageSize,
             string sortBy,
             string sortDirection,
+            string searchTerm = "",
             CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var offset = (page - 1) * pageSize;
             var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
             var query = $@"
                 SELECT 
                     p.id as Id,
@@ -264,13 +313,32 @@ namespace Mercadito.src.products.data.repository
                 INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
                 WHERE pc.categoriaId = @CategoryId AND p.estado = @ActiveState
+                AND (
+                    @SearchTerm = ''
+                    OR p.nombre LIKE @SearchPattern ESCAPE '\\'
+                    OR EXISTS (
+                        SELECT 1
+                        FROM categoriaDeProducto pc2
+                        INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
+                        WHERE pc2.productId = p.id
+                        AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
+                    )
+                )
                 GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
                 ORDER BY {orderByClause}
                 LIMIT @PageSize OFFSET @Offset";
 
             var command = new CommandDefinition(
                 query,
-                parameters: new { ActiveState, CategoryId = categoryId, Offset = offset, PageSize = pageSize },
+                parameters: new
+                {
+                    ActiveState,
+                    CategoryId = categoryId,
+                    Offset = offset,
+                    PageSize = pageSize,
+                    SearchTerm = normalizedSearchTerm,
+                    SearchPattern = searchPattern
+                },
                 cancellationToken: cancellationToken);
 
             var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
@@ -379,7 +447,7 @@ namespace Mercadito.src.products.data.repository
             catch (MySqlException exception) when (exception.Number == 1062)
             {
                 transaction.Rollback();
-                throw new ValidationException("Ya existe un producto con el mismo nombre, lote y fecha de caducidad.");
+                throw new ValidationException("Ya existe un producto activo con el mismo nombre, lote y fecha de caducidad.");
             }
             catch (MySqlException exception) when (exception.Number == 3819)
             {
@@ -470,7 +538,7 @@ namespace Mercadito.src.products.data.repository
             catch (MySqlException exception) when (exception.Number == 1062)
             {
                 transaction.Rollback();
-                throw new ValidationException("Ya existe un producto con el mismo nombre, lote y fecha de caducidad.");
+                throw new ValidationException("Ya existe un producto activo con el mismo nombre, lote y fecha de caducidad.");
             }
             catch (MySqlException exception) when (exception.Number == 3819)
             {
@@ -499,26 +567,69 @@ namespace Mercadito.src.products.data.repository
             return await connection.ExecuteAsync(command);
         }
 
-        public async Task<int> GetTotalProductsCountAsync(CancellationToken cancellationToken = default)
+        public async Task<int> GetTotalProductsCountAsync(string searchTerm = "", CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = "SELECT COUNT(*) FROM products WHERE estado = @ActiveState";
-
-            var command = new CommandDefinition(query, parameters: new { ActiveState }, cancellationToken: cancellationToken);
-            return await connection.ExecuteScalarAsync<int>(command);
-        }
-
-        public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId, CancellationToken cancellationToken = default)
-        {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT COUNT(DISTINCT p.id)
-                     FROM products p
-                     INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
-                    WHERE pc.categoriaId = @CategoryId AND p.estado = @ActiveState";
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
+            const string query = @"SELECT COUNT(*)
+                    FROM products p
+                    WHERE p.estado = @ActiveState
+                    AND (
+                        @SearchTerm = ''
+                        OR p.nombre LIKE @SearchPattern ESCAPE '\\'
+                        OR EXISTS (
+                            SELECT 1
+                            FROM categoriaDeProducto pc2
+                            INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
+                            WHERE pc2.productId = p.id
+                            AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
+                        )
+                    )";
 
             var command = new CommandDefinition(
                 query,
-                parameters: new { CategoryId = categoryId, ActiveState },
+                parameters: new
+                {
+                    ActiveState,
+                    SearchTerm = normalizedSearchTerm,
+                    SearchPattern = searchPattern
+                },
+                cancellationToken: cancellationToken);
+            return await connection.ExecuteScalarAsync<int>(command);
+        }
+
+        public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId, string searchTerm = "", CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
+            const string query = @"SELECT COUNT(DISTINCT p.id)
+                    FROM products p
+                    INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
+                    WHERE pc.categoriaId = @CategoryId
+                    AND p.estado = @ActiveState
+                    AND (
+                        @SearchTerm = ''
+                        OR p.nombre LIKE @SearchPattern ESCAPE '\\'
+                        OR EXISTS (
+                            SELECT 1
+                            FROM categoriaDeProducto pc2
+                            INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
+                            WHERE pc2.productId = p.id
+                            AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
+                        )
+                    )";
+
+            var command = new CommandDefinition(
+                query,
+                parameters: new
+                {
+                    CategoryId = categoryId,
+                    ActiveState,
+                    SearchTerm = normalizedSearchTerm,
+                    SearchPattern = searchPattern
+                },
                 cancellationToken: cancellationToken);
 
             return await connection.ExecuteScalarAsync<int>(command);

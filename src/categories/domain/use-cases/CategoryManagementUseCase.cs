@@ -28,6 +28,12 @@ namespace Mercadito.src.categories.domain.usecases
             return (pagedCategories, totalPages);
         }
 
+        public async Task<string> GetNextCategoryCodePreviewAsync(CancellationToken cancellationToken = default)
+        {
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            return await categoryRepository.GetNextCategoryCodeAsync(cancellationToken);
+        }
+
         public async Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default)
         {
             var categoryRepository = _categoryRepositoryCreator.Create();
@@ -49,19 +55,44 @@ namespace Mercadito.src.categories.domain.usecases
         public async Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default)
         {
             var categoryRepository = _categoryRepositoryCreator.Create();
-            var category = _categoryFactory.CreateForInsert(newCategory);
+            var generatedCode = await categoryRepository.GetNextCategoryCodeAsync(cancellationToken);
+            var categoryToCreate = new CreateCategoryDto
+            {
+                Name = newCategory.Name,
+                Description = newCategory.Description,
+                Code = generatedCode
+            };
+            var category = _categoryFactory.CreateForInsert(categoryToCreate);
             await categoryRepository.CreateAsync(category, cancellationToken);
         }
 
         public async Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default)
         {
             var categoryRepository = _categoryRepositoryCreator.Create();
-            var category = _categoryFactory.CreateForUpdate(editCategory);
+            var existingCategory = await categoryRepository.GetByIdAsync(editCategory.Id, cancellationToken);
+            if (existingCategory == null)
+            {
+                throw new ValidationException("Categoría no encontrada.");
+            }
+
+            var categoryCode = string.IsNullOrWhiteSpace(editCategory.Code)
+                ? existingCategory.Code
+                : editCategory.Code;
+
+            var categoryToUpdate = new UpdateCategoryDto
+            {
+                Id = editCategory.Id,
+                Code = categoryCode,
+                Name = editCategory.Name,
+                Description = editCategory.Description
+            };
+
+            var category = _categoryFactory.CreateForUpdate(categoryToUpdate);
             var affectedRows = await categoryRepository.UpdateAsync(category, cancellationToken);
 
             if (affectedRows == 0)
             {
-                throw new ValidationException("Categoria no encontrada.");
+                throw new ValidationException("Categoría no encontrada.");
             }
         }
 
