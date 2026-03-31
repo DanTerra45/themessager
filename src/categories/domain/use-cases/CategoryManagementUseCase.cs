@@ -14,18 +14,60 @@ namespace Mercadito.src.categories.domain.usecases
         private readonly RepositoryCreator<CategoryRepository> _categoryRepositoryCreator = categoryRepositoryCreator;
         private readonly ICategoryFactory _categoryFactory = categoryFactory;
 
-        public async Task<(IReadOnlyList<CategoryModel> Categories, int TotalPages)> GetPageAsync(
-            int currentPage,
+        public async Task<IReadOnlyList<CategoryModel>> GetPageByCursorAsync(
             int pageSize,
             string sortBy,
             string sortDirection,
+            long cursorCategoryId,
+            bool isNextPage,
             CancellationToken cancellationToken = default)
         {
             var categoryRepository = _categoryRepositoryCreator.Create();
-            var totalCount = await categoryRepository.GetTotalCategoriesCountAsync(cancellationToken);
-            var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var pagedCategories = await categoryRepository.GetCategoryByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
-            return (pagedCategories, totalPages);
+            return await categoryRepository.GetCategoriesByCursorAsync(
+                pageSize,
+                sortBy,
+                sortDirection,
+                cursorCategoryId,
+                isNextPage,
+                cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<CategoryModel>> GetPageFromAnchorAsync(
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long anchorCategoryId,
+            CancellationToken cancellationToken = default)
+        {
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            return await categoryRepository.GetCategoriesFromAnchorAsync(
+                pageSize,
+                sortBy,
+                sortDirection,
+                anchorCategoryId,
+                cancellationToken);
+        }
+
+        public async Task<bool> HasCategoriesByCursorAsync(
+            string sortBy,
+            string sortDirection,
+            long cursorCategoryId,
+            bool isNextPage,
+            CancellationToken cancellationToken = default)
+        {
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            return await categoryRepository.HasCategoriesByCursorAsync(
+                sortBy,
+                sortDirection,
+                cursorCategoryId,
+                isNextPage,
+                cancellationToken);
+        }
+
+        public async Task<string> GetNextCategoryCodePreviewAsync(CancellationToken cancellationToken = default)
+        {
+            var categoryRepository = _categoryRepositoryCreator.Create();
+            return await categoryRepository.GetNextCategoryCodeAsync(cancellationToken);
         }
 
         public async Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default)
@@ -56,12 +98,26 @@ namespace Mercadito.src.categories.domain.usecases
         public async Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default)
         {
             var categoryRepository = _categoryRepositoryCreator.Create();
-            var category = _categoryFactory.CreateForUpdate(editCategory);
+            var existingCategory = await categoryRepository.GetByIdAsync(editCategory.Id, cancellationToken);
+            if (existingCategory == null)
+            {
+                throw new ValidationException("Categoría no encontrada.");
+            }
+
+            var categoryToUpdate = new UpdateCategoryDto
+            {
+                Id = editCategory.Id,
+                Code = editCategory.Code,
+                Name = editCategory.Name,
+                Description = editCategory.Description
+            };
+
+            var category = _categoryFactory.CreateForUpdate(categoryToUpdate);
             var affectedRows = await categoryRepository.UpdateAsync(category, cancellationToken);
 
             if (affectedRows == 0)
             {
-                throw new ValidationException("Categoria no encontrada.");
+                throw new ValidationException("Categoría no encontrada.");
             }
         }
 
@@ -72,14 +128,5 @@ namespace Mercadito.src.categories.domain.usecases
             return affectedRows > 0;
         }
 
-        private static int CalculateTotalPages(int totalItems, int pageSize)
-        {
-            if (totalItems == 0 || pageSize <= 0)
-            {
-                return 1;
-            }
-
-            return (totalItems + pageSize - 1) / pageSize;
-        }
     }
 }

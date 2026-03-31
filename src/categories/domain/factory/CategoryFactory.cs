@@ -9,7 +9,7 @@ namespace Mercadito.src.categories.domain.factory
         {
             return new Category
             {
-                Code = NormalizeCode(dto.Code),
+                Code = string.Empty,
                 Name = NormalizeName(dto.Name),
                 Description = NormalizeRequired(dto.Description)
             };

@@ -6,12 +6,10 @@ using Mercadito.src.products.domain.usecases;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 
 namespace Mercadito.Pages.Products
 {
-    public class ProductsModel : PageModel
+    public partial class ProductsModel : PageModel
     {
         private const string CurrentPageSessionKey = "Products.CurrentPage";
         private const string CategoryFilterSessionKey = "Products.CategoryFilter";
@@ -24,13 +22,21 @@ namespace Mercadito.Pages.Products
         private const string PendingEditErrorsSessionKey = "Products.PendingEditErrors";
         private const string SortBySessionKey = "Products.SortBy";
         private const string SortDirectionSessionKey = "Products.SortDirection";
+        private const string SearchTermSessionKey = "Products.SearchTerm";
+        private const string CurrentAnchorProductIdSessionKey = "Products.CurrentAnchorProductId";
+        private const string PendingNavigationModeSessionKey = "Products.PendingNavigationMode";
+        private const string PendingNavigationCursorProductIdSessionKey = "Products.PendingNavigationCursorProductId";
         private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
+        private const string OrderPresetRecent = "recent";
+        private const string OrderPresetAlphabeticalAsc = "az";
+        private const string OrderPresetAlphabeticalDesc = "za";
+        private const string OrderPresetCustom = "custom";
+        private const string NavigationModeNext = "next";
+        private const string NavigationModePrevious = "prev";
 
         private readonly ILogger<ProductsModel> _logger;
         private readonly IProductManagementUseCase _productManagementUseCase;
-        private readonly IRegisterNewProductWithCategoryUseCase _registerNewProductWithCategoryUseCase;
-        private readonly IUpdateProductUseCase _updateProductUseCase;
         private readonly int _defaultPageSize;
 
         public List<ProductWithCategoriesModel> Products { get; set; } = [];
@@ -39,14 +45,19 @@ namespace Mercadito.Pages.Products
         public long CategoryFilter { get; set; }
 
         public int CurrentPage { get; set; } = 1;
-        public int TotalPages { get; set; } = 1;
+        public bool HasPreviousPage { get; set; }
+        public bool HasNextPage { get; set; }
+        public long CurrentAnchorProductId { get; set; }
         public string SortBy { get; set; } = DefaultSortBy;
         public string SortDirection { get; set; } = DefaultSortDirection;
+        public string SearchTerm { get; set; } = string.Empty;
+        public string OrderPreset { get; set; } = OrderPresetAlphabeticalAsc;
 
         public CreateProductDto NewProduct { get; set; } = new CreateProductDto
         {
             Name = string.Empty,
             Description = string.Empty,
+            Stock = 0,
             Batch = string.Empty,
             ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
             Price = 0.01m
@@ -61,15 +72,11 @@ namespace Mercadito.Pages.Products
         public ProductsModel(
             ILogger<ProductsModel> logger,
             IProductManagementUseCase productManagementUseCase,
-            IRegisterNewProductWithCategoryUseCase registerNewProductWithCategoryUseCase,
-            IUpdateProductUseCase updateProductUseCase,
             IConfiguration configuration
             )
         {
             _logger = logger;
             _productManagementUseCase = productManagementUseCase;
-            _registerNewProductWithCategoryUseCase = registerNewProductWithCategoryUseCase;
-            _updateProductUseCase = updateProductUseCase;
             var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
             _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
         }
@@ -81,9 +88,18 @@ namespace Mercadito.Pages.Products
             await LoadCategoriesAsync();
             NormalizeCurrentState();
 
-            await LoadProductsByState();
+            var pendingNavigation = PopPendingNavigation();
+            if (pendingNavigation.HasValue)
+            {
+                await LoadProductsByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorProductId);
+            }
+            else
+            {
+                await LoadProductsFromAnchorAsync();
+            }
+
             SaveStateInSession();
-            EnsureDefaultNewProductDates();
+            EnsureDefaultNewProductValues();
             RestorePendingPostbackState();
             RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
             RestorePendingValidationErrors(PendingEditErrorsSessionKey);
@@ -107,18 +123,42 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        public IActionResult OnPostFilter(long categoryFilter = 0, string sortBy = "", string sortDirection = "")
+        public IActionResult OnPostFilter(
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "",
+            string searchTerm = "",
+            string orderPreset = "",
+            bool clear = false)
         {
-            SetPageAndFilter(1, categoryFilter, sortBy, sortDirection);
+            if (clear)
+            {
+                categoryFilter = 0;
+                searchTerm = string.Empty;
+            }
+
+            SetFilterAndState(categoryFilter, sortBy, sortDirection, searchTerm);
+            ApplyOrderPreset(orderPreset);
+            CurrentPage = 1;
+            CurrentAnchorProductId = 0;
 
             ClearPendingEditProductId();
+            ClearPendingNavigation();
             SaveStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostNavigate(int pageNumber = 1, long categoryFilter = 0, string sortBy = "", string sortDirection = "")
+        public IActionResult OnPostNavigate(
+            long categoryFilter = 0,
+            string sortBy = "",
+            string sortDirection = "",
+            string searchTerm = "",
+            string navigationMode = "",
+            long cursorProductId = 0)
         {
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            LoadStateFromSession();
+            SetFilterAndState(categoryFilter, sortBy, sortDirection, searchTerm);
+            SetPendingNavigation(navigationMode, cursorProductId);
 
             ClearPendingEditProductId();
             SaveStateInSession();
@@ -129,25 +169,31 @@ namespace Mercadito.Pages.Products
             string sortBy = "",
             long categoryFilter = 0,
             string currentSortBy = "",
-            string currentSortDirection = "")
+            string currentSortDirection = "",
+            string searchTerm = "")
         {
-            SetPageAndFilter(1, categoryFilter, currentSortBy, currentSortDirection);
+            SetFilterAndState(categoryFilter, currentSortBy, currentSortDirection, searchTerm);
             ToggleSort(sortBy);
+            CurrentPage = 1;
+            CurrentAnchorProductId = 0;
 
             ClearPendingEditProductId();
+            ClearPendingNavigation();
             SaveStateInSession();
             return RedirectToPage();
         }
 
         public IActionResult OnPostStartEdit(
             long id,
-            int pageNumber = 1,
             long categoryFilter = 0,
             string sortBy = "",
-            string sortDirection = "")
+            string sortDirection = "",
+            string searchTerm = "")
         {
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
+            LoadStateFromSession();
+            SetFilterAndState(categoryFilter, sortBy, sortDirection, searchTerm);
 
+            ClearPendingNavigation();
             SaveStateInSession();
             if (id > 0)
             {
@@ -156,466 +202,6 @@ namespace Mercadito.Pages.Products
 
             return RedirectToPage();
         }
-
-        public async Task<IActionResult> OnPostCreateAsync(
-            [Bind(Prefix = "NewProduct")] CreateProductDto newProduct,
-            int pageNumber = 1,
-            long categoryFilter = 0,
-            string sortBy = "",
-            string sortDirection = "")
-        {
-            NewProduct = newProduct;
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
-
-            ClearPendingEditProductId();
-            SaveStateInSession();
-
-            if (!ModelState.IsValid)
-            {
-                _logger.LogWarning("ModelState invalido al crear producto");
-                TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
-                StorePendingCreateModal(NewProduct);
-                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
-                return RedirectToCurrentState();
-            }
-
-            try
-            {
-                await _registerNewProductWithCategoryUseCase.ExecuteAsync(NewProduct, HttpContext.RequestAborted);
-
-                TempData["SuccessMessage"] = "Producto agregado exitosamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validacion de negocio al crear producto");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingCreateModal(NewProduct);
-                return RedirectToCurrentState();
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al crear producto");
-                TempData["ErrorMessage"] = "Error al guardar el producto. Intente nuevamente.";
-                StorePendingCreateModal(NewProduct);
-                return RedirectToCurrentState();
-            }
-        }
-
-        public async Task<IActionResult> OnPostEditAsync(
-            [Bind(Prefix = "EditProduct")] UpdateProductDto editProduct,
-            int pageNumber = 1,
-            long categoryFilter = 0,
-            string sortBy = "",
-            string sortDirection = "")
-        {
-            EditProduct = editProduct;
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
-            SaveStateInSession();
-
-            if (!ModelState.IsValid)
-            {
-                TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
-                StorePendingEditModal(EditProduct);
-                StorePendingValidationErrors(PendingEditErrorsSessionKey);
-                return RedirectToCurrentState();
-            }
-
-            try
-            {
-                await _updateProductUseCase.ExecuteAsync(EditProduct, HttpContext.RequestAborted);
-
-                TempData["SuccessMessage"] = "Producto actualizado correctamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validacion de negocio al actualizar producto");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingEditModal(EditProduct);
-                return RedirectToCurrentState();
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al actualizar producto");
-                TempData["ErrorMessage"] = "Error al actualizar el producto. Intente nuevamente.";
-                StorePendingEditModal(EditProduct);
-                return RedirectToCurrentState();
-            }
-        }
-
-        public async Task<IActionResult> OnPostDeleteAsync(
-            long id,
-            int pageNumber = 1,
-            long categoryFilter = 0,
-            string sortBy = "",
-            string sortDirection = "")
-        {
-            SetPageAndFilter(pageNumber, categoryFilter, sortBy, sortDirection);
-            SaveStateInSession();
-
-            try
-            {
-                var wasDeleted = await _productManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
-                if (wasDeleted)
-                {
-                    TempData["SuccessMessage"] = "Producto desactivado.";
-                }
-                else
-                {
-                    TempData["ErrorMessage"] = "El producto no existe o ya estaba desactivado.";
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al eliminar producto");
-                TempData["ErrorMessage"] = "No se pudo eliminar el producto.";
-            }
-
-            return RedirectToCurrentState();
-        }
-
-        private RedirectToPageResult RedirectToCurrentState()
-        {
-            ClearPendingEditProductId();
-            SaveStateInSession();
-            return RedirectToPage();
-        }
-
-        private void StorePendingCreateModal(CreateProductDto draft)
-        {
-            HttpContext.Session.SetString(PendingCreateModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingCreateDraftSessionKey, JsonSerializer.Serialize(draft));
-        }
-
-        private void StorePendingEditModal(UpdateProductDto draft)
-        {
-            HttpContext.Session.SetString(PendingEditModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingEditDraftSessionKey, JsonSerializer.Serialize(draft));
-        }
-
-        private void RestorePendingPostbackState()
-        {
-            if (PopFlag(PendingCreateModalSessionKey))
-            {
-                ShowModal = true;
-                var pendingCreateDraft = PopDraft<CreateProductDto>(PendingCreateDraftSessionKey);
-                if (pendingCreateDraft != null)
-                {
-                    NewProduct = pendingCreateDraft;
-                    EnsureDefaultNewProductDates();
-                }
-            }
-            else
-            {
-                HttpContext.Session.Remove(PendingCreateDraftSessionKey);
-            }
-
-            if (PopFlag(PendingEditModalSessionKey))
-            {
-                ShowEditModal = true;
-                var pendingEditDraft = PopDraft<UpdateProductDto>(PendingEditDraftSessionKey);
-                if (pendingEditDraft != null)
-                {
-                    EditProduct = pendingEditDraft;
-                }
-            }
-            else
-            {
-                HttpContext.Session.Remove(PendingEditDraftSessionKey);
-            }
-        }
-
-        private bool PopFlag(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            return bool.TryParse(rawValue, out var parsedValue) && parsedValue;
-        }
-
-        private T? PopDraft<T>(string sessionKey) where T : class
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return null;
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<T>(rawValue);
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
-                return null;
-            }
-        }
-
-        private void StorePendingValidationErrors(string sessionKey)
-        {
-            var errors = ModelState
-                .Where(entry => entry.Value?.Errors.Count > 0)
-                .ToDictionary(
-                    entry => entry.Key,
-                    entry => entry.Value!.Errors
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor invalido." : error.ErrorMessage)
-                        .ToArray());
-
-            if (errors.Count == 0)
-            {
-                HttpContext.Session.Remove(sessionKey);
-                return;
-            }
-
-            HttpContext.Session.SetString(sessionKey, JsonSerializer.Serialize(errors));
-        }
-
-        private void RestorePendingValidationErrors(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return;
-            }
-
-            try
-            {
-                var errors = JsonSerializer.Deserialize<Dictionary<string, string[]>>(rawValue);
-                if (errors == null)
-                {
-                    return;
-                }
-
-                foreach (var (key, messages) in errors)
-                {
-                    if (messages == null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var message in messages)
-                    {
-                        if (!string.IsNullOrWhiteSpace(message))
-                        {
-                            ModelState.AddModelError(key, message);
-                        }
-                    }
-                }
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar errores de validacion para key {SessionKey}", sessionKey);
-            }
-        }
-
-        private void SetPageAndFilter(int pageNumber, long categoryFilter, string sortBy, string sortDirection)
-        {
-            CurrentPage = pageNumber > 0 ? pageNumber : 1;
-            CategoryFilter = categoryFilter >= 0 ? categoryFilter : 0;
-
-            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
-            {
-                LoadSortStateFromSession();
-                return;
-            }
-
-            SortBy = NormalizeSortBy(sortBy);
-            SortDirection = NormalizeSortDirection(sortDirection);
-        }
-
-        private void NormalizeCurrentState()
-        {
-            CurrentPage = CurrentPage > 0 ? CurrentPage : 1;
-            CategoryFilter = CategoryFilter >= 0 ? CategoryFilter : 0;
-            SortBy = NormalizeSortBy(SortBy);
-            SortDirection = NormalizeSortDirection(SortDirection);
-
-            if (CategoryFilter > 0 && Categories.Count > 0 && !Categories.Exists(category => category.Id == CategoryFilter))
-            {
-                CategoryFilter = 0;
-            }
-        }
-
-        private async Task LoadProductsByState()
-        {
-            try
-            {
-                var cancellationToken = HttpContext.RequestAborted;
-                var result = await _productManagementUseCase.GetPageAsync(
-                    CurrentPage,
-                    CategoryFilter,
-                    _defaultPageSize,
-                    SortBy,
-                    SortDirection,
-                    cancellationToken);
-                var maxPage = Math.Max(result.TotalPages, 1);
-
-                if (CurrentPage > maxPage)
-                {
-                    CurrentPage = maxPage;
-                    result = await _productManagementUseCase.GetPageAsync(
-                        CurrentPage,
-                        CategoryFilter,
-                        _defaultPageSize,
-                        SortBy,
-                        SortDirection,
-                        cancellationToken);
-                }
-
-                TotalPages = Math.Max(result.TotalPages, 1);
-                Products = [.. result.Products];
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar productos");
-                Products = [];
-                TotalPages = 1;
-            }
-        }
-
-        private async Task LoadCategoriesAsync()
-        {
-            try
-            {
-                Categories = [.. await _productManagementUseCase.GetCategoriesAsync(HttpContext.RequestAborted)];
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar categorias");
-                Categories = [];
-            }
-        }
-
-        private void EnsureDefaultNewProductDates()
-        {
-            if (string.IsNullOrWhiteSpace(NewProduct.Batch))
-            {
-                NewProduct.Batch = string.Empty;
-            }
-
-            if (NewProduct.ExpirationDate == default)
-            {
-                NewProduct.ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3));
-            }
-        }
-
-        private void LoadStateFromSession()
-        {
-            var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
-            if (!currentPageInSession.HasValue || currentPageInSession.Value <= 0)
-            {
-                CurrentPage = 1;
-            }
-            else
-            {
-                CurrentPage = currentPageInSession.Value;
-            }
-
-            var rawCategoryFilter = HttpContext.Session.GetString(CategoryFilterSessionKey);
-            if (!long.TryParse(rawCategoryFilter, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedCategoryFilter) || parsedCategoryFilter < 0)
-            {
-                CategoryFilter = 0;
-            }
-            else
-            {
-                CategoryFilter = parsedCategoryFilter;
-            }
-
-            LoadSortStateFromSession();
-        }
-
-        private void SaveStateInSession()
-        {
-            HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
-            HttpContext.Session.SetString(CategoryFilterSessionKey, Math.Max(CategoryFilter, 0).ToString(CultureInfo.InvariantCulture));
-            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
-            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
-        }
-
-        private void LoadSortStateFromSession()
-        {
-            var sortByInSession = HttpContext.Session.GetString(SortBySessionKey);
-            var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
-            SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
-            SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
-        }
-
-        public string GetSortIcon(string columnName)
-        {
-            var normalizedColumn = NormalizeSortBy(columnName);
-            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
-            {
-                return "bi-arrow-down-up";
-            }
-
-            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "bi-sort-down"
-                : "bi-sort-up";
-        }
-
-        private void ToggleSort(string sortBy)
-        {
-            var normalizedSortBy = NormalizeSortBy(sortBy);
-            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
-            {
-                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-                return;
-            }
-
-            SortBy = normalizedSortBy;
-            SortDirection = DefaultSortDirection;
-        }
-
-        private static string NormalizeSortBy(string sortBy)
-        {
-            if (string.IsNullOrWhiteSpace(sortBy))
-            {
-                return DefaultSortBy;
-            }
-
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
-            return normalizedSortBy switch
-            {
-                "id" => "id",
-                "stock" => "stock",
-                "batch" => "batch",
-                "expirationdate" => "expirationdate",
-                "price" => "price",
-                _ => "name"
-            };
-        }
-
-        private static string NormalizeSortDirection(string sortDirection)
-        {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "desc"
-                : "asc";
-        }
-
-        private void SetPendingEditProductId(long productId)
-        {
-            HttpContext.Session.SetString(EditProductSessionKey, productId.ToString(CultureInfo.InvariantCulture));
-        }
-
-        private long PopPendingEditProductId()
-        {
-            var rawEditProductId = HttpContext.Session.GetString(EditProductSessionKey);
-            HttpContext.Session.Remove(EditProductSessionKey);
-
-            return long.TryParse(rawEditProductId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var editProductId)
-                ? editProductId
-                : 0;
-        }
-
-        private void ClearPendingEditProductId()
-        {
-            HttpContext.Session.Remove(EditProductSessionKey);
-        }
     }
 }
+

@@ -8,10 +8,10 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
-    <link rel="stylesheet" href="~/lib/air-datepicker/air-datepicker.css" />
     <link rel="stylesheet" href="~/css/fonts-local.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Mercadito.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100">
     <header>
@@ -29,6 +29,49 @@
                     <menu class="navbar-nav m-0 ps-4 gap-2 align-items-center w-100 p-0">
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-page="/Index">Inicio</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="comercialDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Comercial
+                            </a>
+                            <ul class="dropdown-menu shadow-sm" aria-labelledby="comercialDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Sales">
+                                        <i class="bi bi-cash-stack me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Ventas</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Tablero y flujo comercial</small>
+                                        </section>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Cancellation">
+                                        <i class="bi bi-receipt-cutoff me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Anulación</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Gestión visual de anulaciones</small>
+                                        </section>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Reports">
+                                        <i class="bi bi-bar-chart-line me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Reportes</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Resumen comercial y exportación</small>
+                                        </section>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Suppliers/Suppliers">
+                                        <i class="bi bi-truck me-3" style="font-size: 1.5rem;"></i>
+                                        <section>
+                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Proveedores</span>
+                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Abastecimiento y contactos</small>
+                                        </section>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="productosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -123,6 +166,17 @@
                                 </li>
                             </ul>
                         </li>
+                        @* Accesos visuales de encabezado: se dejan como placeholders de interfaz para la entrega. *@
+                        <li class="nav-item nav-auth-item ms-sm-auto mt-2 mt-sm-0">
+                            <section class="nav-auth-actions">
+                                <button type="button" class="b-btn b-btn-secondary nav-auth-icon-btn" title="Usuario invitado" aria-label="Usuario invitado">
+                                    <i class="bi bi-person-circle"></i>
+                                </button>
+                    <button type="button" class="b-btn b-btn-secondary nav-auth-icon-btn" data-bs-toggle="modal" data-bs-target="#loginModal" title="Iniciar sesión" aria-label="Iniciar sesión">
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                </button>
+                            </section>
+                        </li>
                     </menu>
                 </section>
             </section>
@@ -154,29 +208,46 @@
         @RenderBody()
     </main>
 
+    <section class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-person-lock me-2"></i> Inicio de sesión
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <section class="mb-3">
+                        <label class="form-label fw-bold">Usuario</label>
+                        <input class="form-control" placeholder="ejemplo@empresa.com" />
+                    </section>
+                    <section class="mb-0">
+                        <label class="form-label fw-bold">Contrasena</label>
+                        <input class="form-control" type="password" placeholder="********" />
+                    </section>
+                    <small class="d-block mt-3 text-muted">Prototipo visual. No autentica usuarios.</small>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="b-btn" disabled>Entrar</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+
     <footer class="footer py-3 mt-auto" style="border-top: 2px solid var(--mrc-ink); background-color: var(--mrc-surface); position: relative; z-index: 10; margin-top: auto;">
         <section class="container text-center">
             <p style="font-family: var(--font-mono); font-size: 0.9rem; margin: 0;">&copy; @DateTime.Now.Year - <strong>Mercadito</strong> <a asp-area="" asp-page="/Privacy" style="color: var(--mrc-ink); font-weight: bold;">Privacidad</a></p>
         </section>
     </footer>
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/lib/air-datepicker/air-datepicker.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (typeof bootstrap === 'undefined') {
-                return;
-            }
-
-            var toastElements = document.querySelectorAll('.toast');
-            for (var index = 0; index < toastElements.length; index++) {
-                var toast = new bootstrap.Toast(toastElements[index]);
-                toast.show();
-            }
-        });
-    </script>
+    <script src="~/js/shared/toasts.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+    <script src="~/js/shared/validation-native-attributes.js" asp-append-version="true"></script>
+    <script src="~/js/shared/validation-tooltips.js" asp-append-version="true"></script>
 </body>
 </html>
