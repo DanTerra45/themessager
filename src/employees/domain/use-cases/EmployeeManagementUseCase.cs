@@ -14,18 +14,54 @@ namespace Mercadito.src.employees.domain.usecases
         private readonly RepositoryCreator<EmployeeRepository> _employeeRepositoryCreator = employeeRepositoryCreator;
         private readonly IEmployeeFactory _employeeFactory = employeeFactory;
 
-        public async Task<(IReadOnlyList<EmployeeModel> Employees, int TotalPages)> GetPageAsync(
-            int currentPage,
+        public async Task<IReadOnlyList<EmployeeModel>> GetPageByCursorAsync(
             int pageSize,
             string sortBy,
             string sortDirection,
+            long cursorEmployeeId,
+            bool isNextPage,
             CancellationToken cancellationToken = default)
         {
             var employeeRepository = _employeeRepositoryCreator.Create();
-            var totalCount = await employeeRepository.GetTotalEmployeesCountAsync(cancellationToken);
-            var totalPages = CalculateTotalPages(totalCount, pageSize);
-            var employees = await employeeRepository.GetEmployeesByPages(currentPage, pageSize, sortBy, sortDirection, cancellationToken);
-            return (employees, totalPages);
+            return await employeeRepository.GetEmployeesByCursorAsync(
+                pageSize,
+                sortBy,
+                sortDirection,
+                cursorEmployeeId,
+                isNextPage,
+                cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<EmployeeModel>> GetPageFromAnchorAsync(
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long anchorEmployeeId,
+            CancellationToken cancellationToken = default)
+        {
+            var employeeRepository = _employeeRepositoryCreator.Create();
+            return await employeeRepository.GetEmployeesFromAnchorAsync(
+                pageSize,
+                sortBy,
+                sortDirection,
+                anchorEmployeeId,
+                cancellationToken);
+        }
+
+        public async Task<bool> HasEmployeesByCursorAsync(
+            string sortBy,
+            string sortDirection,
+            long cursorEmployeeId,
+            bool isNextPage,
+            CancellationToken cancellationToken = default)
+        {
+            var employeeRepository = _employeeRepositoryCreator.Create();
+            return await employeeRepository.HasEmployeesByCursorAsync(
+                sortBy,
+                sortDirection,
+                cursorEmployeeId,
+                isNextPage,
+                cancellationToken);
         }
 
         public async Task<UpdateEmployeeDto?> GetForEditAsync(long employeeId, CancellationToken cancellationToken = default)
@@ -74,12 +110,6 @@ namespace Mercadito.src.employees.domain.usecases
             var employeeRepository = _employeeRepositoryCreator.Create();
             var affectedRows = await employeeRepository.DeleteAsync(employeeId, cancellationToken);
             return affectedRows > 0;
-        }
-
-        private static int CalculateTotalPages(int totalItems, int pageSize)
-        {
-            if (totalItems == 0 || pageSize <= 0) return 1;
-            return (totalItems + pageSize - 1) / pageSize;
         }
 
         private static string NormalizeContactForUi(string value)

@@ -5,6 +5,8 @@
     ViewData["Title"] = "Empleados";
     ViewData["UseToasts"] = true;
     var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
+    var firstPageEmployeeId = Model.Employees.Count > 0 ? Model.Employees[0].Id : 0;
+    var lastPageEmployeeId = Model.Employees.Count > 0 ? Model.Employees[Model.Employees.Count - 1].Id : 0;
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -118,7 +120,6 @@
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
                                     <form method="post" asp-page-handler="StartEdit" class="d-inline">
                                         <input type="hidden" name="id" value="@emp.Id" />
-                                        <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                                         <button type="submit" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;"
@@ -148,33 +149,29 @@
         <section class="d-flex justify-content-center mt-4">
             <nav aria-label="Paginación de empleados">
                 <ul class="pagination">
-                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                    <li class="page-item @((!Model.HasPreviousPage || Model.CurrentPage <= 1) ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
-                            <input type="hidden" name="pageNumber" value="@(Model.CurrentPage - 1)" />
                             <input type="hidden" name="sortBy" value="@Model.SortBy" />
                             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <button type="submit" class="page-link" disabled="@(Model.CurrentPage == 1)">
+                            <input type="hidden" name="navigationMode" value="prev" />
+                            <input type="hidden" name="cursorEmployeeId" value="@firstPageEmployeeId" />
+                            <button type="submit" class="page-link" disabled="@(!Model.HasPreviousPage || Model.CurrentPage <= 1)">
                                 <i class="bi bi-chevron-left me-1"></i>Anterior
                             </button>
                         </form>
                     </li>
-                    @for (int i = 1; i <= Model.TotalPages; i++)
-                    {
-                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                            <form method="post" asp-page-handler="Navigate" class="d-inline">
-                                <input type="hidden" name="pageNumber" value="@i" />
-                                <input type="hidden" name="sortBy" value="@Model.SortBy" />
-                                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                                <button type="submit" class="page-link">@i</button>
-                            </form>
-                        </li>
-                    }
-                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+
+                    <li class="page-item active">
+                        <button type="button" class="page-link">@Model.CurrentPage</button>
+                    </li>
+
+                    <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
-                            <input type="hidden" name="pageNumber" value="@(Model.CurrentPage + 1)" />
                             <input type="hidden" name="sortBy" value="@Model.SortBy" />
                             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <button type="submit" class="page-link" disabled="@(Model.CurrentPage == Model.TotalPages)">
+                            <input type="hidden" name="navigationMode" value="next" />
+                            <input type="hidden" name="cursorEmployeeId" value="@lastPageEmployeeId" />
+                            <button type="submit" class="page-link" disabled="@(!Model.HasNextPage)">
                                 Siguiente<i class="bi bi-chevron-right ms-1"></i>
                             </button>
                         </form>
@@ -196,7 +193,6 @@
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Delete" id="deleteEmployeeForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <input type="hidden" name="id" id="DeleteEmployeeId" />
@@ -230,7 +226,6 @@
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Create" class="needs-validation" novalidate autocomplete="off" id="createEmployeeForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <header class="modal-header">
@@ -249,7 +244,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 7 y 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="NewEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" minlength="7" maxlength="8" pattern="[0-9]{7,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
+                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off" />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">
@@ -257,7 +252,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Si se llena, debe tener formato número+letra (ejemplo: 1A).">i</span>
                                 <span asp-validation-for="NewEmployee.Complemento" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase js-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" autocomplete="off" title="Debe tener 2 caracteres: número y letra (ej. 1A)" />
+                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" />
                         </section>
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Rol" class="form-label fw-bold">
@@ -298,7 +293,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="NewEmployee.Nombres" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Nombres" class="form-control" autocomplete="off" required />
+                            <input asp-for="NewEmployee.Nombres" class="form-control" autocomplete="off" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.PrimerApellido" class="form-label fw-bold">
@@ -306,7 +301,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="NewEmployee.PrimerApellido" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" autocomplete="off" required />
+                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" autocomplete="off" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.SegundoApellido" class="form-label fw-bold">
@@ -322,7 +317,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese 8 dígitos. El sistema asumirá prefijo +591 al guardar.">i</span>
                                 <span asp-validation-for="NewEmployee.NumeroContacto" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" inputmode="numeric" minlength="8" maxlength="8" pattern="[0-9]{8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
+                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" inputmode="numeric" autocomplete="off" />
                         </section>
                     </section>
                 </section>
@@ -341,7 +336,6 @@
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate autocomplete="off" id="editEmployeeForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <input asp-for="EditEmployee.Id" type="hidden" />
@@ -361,7 +355,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 7 y 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="EditEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" minlength="7" maxlength="8" pattern="[0-9]{7,8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
+                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off" />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">
@@ -369,7 +363,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Si se llena, debe tener formato número+letra (ejemplo: 1A).">i</span>
                                 <span asp-validation-for="EditEmployee.Complemento" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase js-uppercase" minlength="2" maxlength="2" pattern="[0-9][A-Za-z]" autocomplete="off" title="Debe tener 2 caracteres: número y letra (ej. 1A)" />
+                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" />
                         </section>
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Rol" class="form-label fw-bold">
@@ -410,7 +404,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="EditEmployee.Nombres" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Nombres" class="form-control" autocomplete="off" required />
+                            <input asp-for="EditEmployee.Nombres" class="form-control" autocomplete="off" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.PrimerApellido" class="form-label fw-bold">
@@ -418,7 +412,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="EditEmployee.PrimerApellido" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" autocomplete="off" required />
+                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" autocomplete="off" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.SegundoApellido" class="form-label fw-bold">
@@ -434,7 +428,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese 8 dígitos. El sistema asumirá prefijo +591 al guardar.">i</span>
                                 <span asp-validation-for="EditEmployee.NumeroContacto" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" inputmode="numeric" minlength="8" maxlength="8" pattern="[0-9]{8}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)" autocomplete="off" required />
+                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" inputmode="numeric" autocomplete="off" />
                         </section>
                     </section>
                 </section>

@@ -545,6 +545,9 @@ input[type="number"] {
 
 .category-modal-body .category-code-readonly[readonly] {
   cursor: not-allowed;
+  color: var(--mrc-ink-light) !important;
+  -webkit-text-fill-color: var(--mrc-ink-light);
+  background-color: var(--mrc-surface-alt) !important;
 }
 
 .category-modal-body .category-code-readonly[readonly]:focus {

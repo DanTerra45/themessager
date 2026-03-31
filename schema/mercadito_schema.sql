@@ -7,13 +7,22 @@ CREATE TABLE `categorias` (
   `codigo` VARCHAR(6) NOT NULL,
   `nombre` VARCHAR(150) NOT NULL,
   `descripcion` VARCHAR(150) NOT NULL,
+  `productosActivosCount` INT NOT NULL DEFAULT 0,
   `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
   `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `uq_categorias_codigo` UNIQUE (`codigo`),
   CONSTRAINT `chk_categorias_codigo_formato` CHECK (`codigo` REGEXP '^C[0-9]{5}$'),
   CONSTRAINT `chk_categorias_nombre_no_vacio` CHECK (TRIM(`nombre`) <> ''),
-  CONSTRAINT `chk_categorias_descripcion_no_vacia` CHECK (TRIM(`descripcion`) <> '')
+  CONSTRAINT `chk_categorias_descripcion_no_vacia` CHECK (TRIM(`descripcion`) <> ''),
+  CONSTRAINT `chk_categorias_productos_activos_count` CHECK (`productosActivosCount` >= 0)
+);
+
+CREATE TABLE `category_code_sequence` (
+  `id` TINYINT UNSIGNED PRIMARY KEY,
+  `nextValue` INT NOT NULL,
+  CONSTRAINT `chk_category_code_sequence_id` CHECK (`id` = 1),
+  CONSTRAINT `chk_category_code_sequence_next_value` CHECK (`nextValue` BETWEEN 1 AND 100000)
 );
 
 CREATE TABLE `products` (
@@ -73,6 +82,7 @@ CREATE TABLE `categoriaDeProducto` (
 CREATE INDEX `categorias_index_1` ON `categorias` (`estado`, `nombre`);
 CREATE INDEX `categorias_index_2` ON `categorias` (`estado`, `id`);
 CREATE INDEX `categorias_index_3` ON `categorias` (`estado`, `codigo`);
+CREATE INDEX `categorias_index_4` ON `categorias` (`estado`, `productosActivosCount`, `id`);
 
 CREATE INDEX `products_index_1` ON `products` (`estado`, `nombre`);
 CREATE INDEX `products_index_2` ON `products` (`estado`, `lote`, `fechaCaducidad`);
@@ -80,6 +90,7 @@ CREATE INDEX `products_index_3` ON `products` (`estado`, `fechaCaducidad`);
 CREATE INDEX `products_index_4` ON `products` (`estado`, `stock`);
 CREATE INDEX `products_index_5` ON `products` (`estado`, `precio`);
 CREATE INDEX `products_index_6` ON `products` (`estado`, `id`);
+CREATE FULLTEXT INDEX `products_ft_nombre` ON `products` (`nombre`);
 
 CREATE INDEX `empleados_index_4` ON `empleados` (`estado`, `primerApellido`, `segundoApellido`, `nombres`);
 CREATE INDEX `empleados_index_5` ON `empleados` (`estado`, `ci`);
@@ -87,6 +98,11 @@ CREATE INDEX `empleados_index_6` ON `empleados` (`estado`, `rol`);
 CREATE INDEX `empleados_index_7` ON `empleados` (`estado`, `id`);
 
 CREATE INDEX `categoriaDeProducto_idx_categoria` ON `categoriaDeProducto` (`categoriaId`);
+CREATE FULLTEXT INDEX `categorias_ft_nombre` ON `categorias` (`nombre`);
+
+INSERT INTO `category_code_sequence` (`id`, `nextValue`)
+VALUES (1, 1)
+ON DUPLICATE KEY UPDATE `nextValue` = `nextValue`;
 
 -- Evita warnings de "trigger no existe" en primeras ejecuciones.
 SET @prev_sql_notes := @@sql_notes;

@@ -4,13 +4,14 @@ namespace Mercadito.src.categories.domain.dto
 {
     public class UpdateCategoryDto : IValidatableObject
     {
-        private const string OptionalCategoryCodePattern = "^$|^[A-Za-z0-9_-]{1,6}$";
+        private const string CategoryCodePattern = "^C[0-9]{5}$";
 
         [Required]
         public long Id { get; set; }
 
-        [StringLength(6, ErrorMessage = "El código no puede exceder 6 caracteres")]
-        [RegularExpression(OptionalCategoryCodePattern, ErrorMessage = "El código solo permite letras, números, guion y guion bajo")]
+        [Required(ErrorMessage = "El código es obligatorio")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "El código debe tener exactamente 6 caracteres")]
+        [RegularExpression(CategoryCodePattern, ErrorMessage = "El código debe tener formato C00001")]
         public string Code { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El nombre es obligatorio")]

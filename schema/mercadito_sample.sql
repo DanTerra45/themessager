@@ -27,6 +27,12 @@ ON DUPLICATE KEY UPDATE
   `descripcion` = `incoming_categoria`.`descripcion`,
   `estado` = 'A';
 
+REPLACE INTO `category_code_sequence` (`id`, `nextValue`)
+SELECT
+  1 AS `id`,
+  LEAST(COALESCE(MAX(CAST(SUBSTRING(`codigo`, 2, 5) AS UNSIGNED)), 0) + 1, 100000) AS `nextValue`
+FROM `categorias`;
+
 -- PRODUCTOS
 INSERT INTO `products`
   (`nombre`, `descripcion`, `lote`, `fechaCaducidad`, `precio`, `stock`, `estado`)
@@ -169,6 +175,20 @@ INNER JOIN `products` p
 INNER JOIN `categorias` c
   ON c.`codigo` = m.`codigo`
  AND c.`estado` = 'A';
+
+-- RECOMPUTAR CONTADOR CACHEADO DE PRODUCTOS ACTIVOS POR CATEGORIA
+UPDATE `categorias` c
+LEFT JOIN (
+  SELECT
+    cp.`categoriaId` AS `CategoryId`,
+    COUNT(DISTINCT cp.`productId`) AS `ActiveProductCount`
+  FROM `categoriaDeProducto` cp
+  INNER JOIN `products` p ON p.`id` = cp.`productId`
+  WHERE p.`estado` = 'A'
+  GROUP BY cp.`categoriaId`
+) AS counts
+  ON counts.`CategoryId` = c.`id`
+SET c.`productosActivosCount` = COALESCE(counts.`ActiveProductCount`, 0);
 
 -- EMPLEADOS
 INSERT INTO `empleados`

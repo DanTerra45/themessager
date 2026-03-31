@@ -1,4 +1,4 @@
-using Mercadito.src.categories.domain.dto;
+﻿using Mercadito.src.categories.domain.dto;
 using Mercadito.src.categories.domain.model;
 using Mercadito.src.categories.domain.usecases;
 using Microsoft.AspNetCore.Http;
@@ -11,9 +11,12 @@ using System.Text.Json;
 
 namespace Mercadito.Pages.Categories
 {
-    public class CategoriesModel : PageModel
+    public partial class CategoriesModel : PageModel
     {
         private const string CurrentPageSessionKey = "Categories.CurrentPage";
+        private const string CurrentAnchorCategoryIdSessionKey = "Categories.CurrentAnchorCategoryId";
+        private const string PendingNavigationModeSessionKey = "Categories.PendingNavigationMode";
+        private const string PendingNavigationCursorCategoryIdSessionKey = "Categories.PendingNavigationCursorCategoryId";
         private const string EditCategorySessionKey = "Categories.EditCategoryId";
         private const string PendingCreateModalSessionKey = "Categories.PendingCreateModal";
         private const string PendingCreateDraftSessionKey = "Categories.PendingCreateDraft";
@@ -25,6 +28,8 @@ namespace Mercadito.Pages.Categories
         private const string SortDirectionSessionKey = "Categories.SortDirection";
         private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
+        private const string NavigationModeNext = "next";
+        private const string NavigationModePrevious = "prev";
 
         private readonly ILogger<CategoriesModel> _logger;
         private readonly ICategoryManagementUseCase _categoryManagementUseCase;
@@ -32,17 +37,16 @@ namespace Mercadito.Pages.Categories
 
         public List<CategoryModel> Categories { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
-        public int TotalPages { get; set; } = 1;
+        public bool HasPreviousPage { get; set; }
+        public bool HasNextPage { get; set; }
+        public long CurrentAnchorCategoryId { get; set; }
         public string SortBy { get; set; } = DefaultSortBy;
         public string SortDirection { get; set; } = DefaultSortDirection;
         public string NextCategoryCodePreview { get; private set; } = "C00001";
 
         public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
-
         public UpdateCategoryDto EditCategory { get; set; } = new UpdateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
-
         public bool ShowEditCategoryModal { get; set; }
-
         public bool ShowCreateCategoryModal { get; set; }
 
         public CategoriesModel(
@@ -58,11 +62,20 @@ namespace Mercadito.Pages.Categories
 
         public async Task OnGetAsync()
         {
-            LoadCurrentPageFromSession();
-            LoadSortStateFromSession();
-            await LoadCategoriesAsync();
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
+            LoadStateFromSession();
+            NormalizeCurrentState();
+
+            var pendingNavigation = PopPendingNavigation();
+            if (pendingNavigation.HasValue)
+            {
+                await LoadCategoriesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorCategoryId);
+            }
+            else
+            {
+                await LoadCategoriesFromAnchorAsync();
+            }
+
+            SaveStateInSession();
             RestorePendingPostbackState();
             RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
             RestorePendingValidationErrors(PendingEditErrorsSessionKey);
@@ -88,35 +101,40 @@ namespace Mercadito.Pages.Categories
             }
         }
 
-        public IActionResult OnPostNavigate(int pageNumber = 1, string sortBy = "", string sortDirection = "")
+        public IActionResult OnPostNavigate(
+            string navigationMode = "",
+            long cursorCategoryId = 0,
+            string sortBy = "",
+            string sortDirection = "")
         {
-            SetCurrentPage(pageNumber);
+            LoadStateFromSession();
             SetSortState(sortBy, sortDirection);
+            SetPendingNavigation(navigationMode, cursorCategoryId);
 
             ClearPendingEditCategoryId();
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
+            SaveStateInSession();
             return RedirectToPage();
         }
 
         public IActionResult OnPostSort(string sortBy = "", string currentSortBy = "", string currentSortDirection = "")
         {
-            SetCurrentPage(1);
             SetSortState(currentSortBy, currentSortDirection);
             ToggleSort(sortBy);
+            CurrentPage = 1;
+            CurrentAnchorCategoryId = 0;
 
             ClearPendingEditCategoryId();
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
+            ClearPendingNavigation();
+            SaveStateInSession();
             return RedirectToPage();
         }
 
-        public IActionResult OnPostStartEdit(long id, int pageNumber = 1, string sortBy = "", string sortDirection = "")
+        public IActionResult OnPostStartEdit(long id, string sortBy = "", string sortDirection = "")
         {
-            SetCurrentPage(pageNumber);
+            LoadStateFromSession();
             SetSortState(sortBy, sortDirection);
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
+            ClearPendingNavigation();
+            SaveStateInSession();
 
             if (id > 0)
             {
@@ -126,440 +144,7 @@ namespace Mercadito.Pages.Categories
             return RedirectToPage();
         }
 
-        private async Task LoadCategoriesAsync()
-        {
-            try
-            {
-                var cancellationToken = HttpContext.RequestAborted;
-                var result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, SortBy, SortDirection, cancellationToken);
-                var maxPage = Math.Max(result.TotalPages, 1);
 
-                if (CurrentPage > maxPage)
-                {
-                    CurrentPage = maxPage;
-                    result = await _categoryManagementUseCase.GetPageAsync(CurrentPage, _defaultPageSize, SortBy, SortDirection, cancellationToken);
-                }
-
-                TotalPages = Math.Max(result.TotalPages, 1);
-                Categories = [.. result.Categories];
-            }
-            catch (MySqlException exception)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar categorías.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar categorías.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar categorías");
-                ModelState.AddModelError(string.Empty, "Error al cargar las categorías. Intente nuevamente.");
-                Categories = [];
-                TotalPages = 1;
-            }
-        }
-
-        private async Task LoadNextCategoryCodePreviewAsync()
-        {
-            try
-            {
-                NextCategoryCodePreview = await _categoryManagementUseCase.GetNextCategoryCodePreviewAsync(HttpContext.RequestAborted);
-            }
-            catch (MySqlException exception)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al generar vista previa de código de categoría.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al generar vista previa de código de categoría.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning(exception, "No se pudo obtener la vista previa del próximo código de categoría");
-                NextCategoryCodePreview = "C00001";
-            }
-        }
-
-        public async Task<IActionResult> OnPostCreateAsync(
-            [Bind(Prefix = "NewCategory")] CreateCategoryDto newCategory,
-            int pageNumber = 1,
-            string sortBy = "",
-            string sortDirection = "")
-        {
-            NewCategory = newCategory;
-            SetCurrentPage(pageNumber);
-            SetSortState(sortBy, sortDirection);
-
-            ClearPendingEditCategoryId();
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
-
-            if (!ModelState.IsValid)
-            {
-                TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
-                StorePendingCreateModal(NewCategory);
-                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
-                return RedirectToCurrentState();
-            }
-
-            try
-            {
-                await _categoryManagementUseCase.CreateAsync(NewCategory, HttpContext.RequestAborted);
-                _logger.LogInformation("Categoría creada: {Name}", NewCategory.Name);
-
-                TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al crear categoría");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingCreateModal(NewCategory);
-                return RedirectToCurrentState();
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al crear categoría");
-                TempData["ErrorMessage"] = "Error al guardar la categoría. Intente nuevamente.";
-                StorePendingCreateModal(NewCategory);
-                return RedirectToCurrentState();
-            }
-        }
-
-        public async Task<IActionResult> OnPostEditAsync(
-            [Bind(Prefix = "EditCategory")] UpdateCategoryDto editCategory,
-            int pageNumber = 1,
-            string sortBy = "",
-            string sortDirection = "")
-        {
-            EditCategory = editCategory;
-            SetCurrentPage(pageNumber);
-            SetSortState(sortBy, sortDirection);
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
-
-            if (!ModelState.IsValid)
-            {
-                TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
-                StorePendingEditModal(EditCategory);
-                StorePendingValidationErrors(PendingEditErrorsSessionKey);
-                return RedirectToCurrentState();
-            }
-
-            try
-            {
-                await _categoryManagementUseCase.UpdateAsync(EditCategory, HttpContext.RequestAborted);
-                _logger.LogInformation("Categoría actualizada: {Id}", EditCategory.Id);
-                TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al actualizar categoría");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingEditModal(EditCategory);
-                return RedirectToCurrentState();
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al actualizar categoría");
-                TempData["ErrorMessage"] = "Error al actualizar la categoría. Intente nuevamente.";
-                StorePendingEditModal(EditCategory);
-                return RedirectToCurrentState();
-            }
-        }
-
-        public async Task<IActionResult> OnPostDeleteAsync(long id, int pageNumber = 1, string sortBy = "", string sortDirection = "")
-        {
-            SetCurrentPage(pageNumber);
-            SetSortState(sortBy, sortDirection);
-
-            ClearPendingEditCategoryId();
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
-
-            try
-            {
-                var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
-                if (wasDeleted)
-                {
-                    TempData["SuccessMessage"] = "Categoría desactivada.";
-                }
-                else
-                {
-                    TempData["ErrorMessage"] = "La categoría no existe o ya estaba desactivada.";
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al eliminar la categoría");
-                TempData["ErrorMessage"] = "No se pudo eliminar la categoría.";
-            }
-
-            return RedirectToCurrentState();
-        }
-
-        private RedirectToPageResult RedirectToCurrentState()
-        {
-            ClearPendingEditCategoryId();
-            SaveCurrentPageInSession();
-            SaveSortStateInSession();
-            return RedirectToPage();
-        }
-
-        private void StorePendingCreateModal(CreateCategoryDto draft)
-        {
-            HttpContext.Session.SetString(PendingCreateModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingCreateDraftSessionKey, JsonSerializer.Serialize(draft));
-        }
-
-        private void StorePendingEditModal(UpdateCategoryDto draft)
-        {
-            HttpContext.Session.SetString(PendingEditModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingEditDraftSessionKey, JsonSerializer.Serialize(draft));
-        }
-
-        private void RestorePendingPostbackState()
-        {
-            if (PopFlag(PendingCreateModalSessionKey))
-            {
-                ShowCreateCategoryModal = true;
-                var pendingCreateDraft = PopDraft<CreateCategoryDto>(PendingCreateDraftSessionKey);
-                if (pendingCreateDraft != null)
-                {
-                    NewCategory = pendingCreateDraft;
-                }
-            }
-            else
-            {
-                HttpContext.Session.Remove(PendingCreateDraftSessionKey);
-            }
-
-            if (PopFlag(PendingEditModalSessionKey))
-            {
-                ShowEditCategoryModal = true;
-                var pendingEditDraft = PopDraft<UpdateCategoryDto>(PendingEditDraftSessionKey);
-                if (pendingEditDraft != null)
-                {
-                    EditCategory = pendingEditDraft;
-                }
-            }
-            else
-            {
-                HttpContext.Session.Remove(PendingEditDraftSessionKey);
-            }
-        }
-
-        private bool PopFlag(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            return bool.TryParse(rawValue, out var parsedValue) && parsedValue;
-        }
-
-        private T? PopDraft<T>(string sessionKey) where T : class
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return null;
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<T>(rawValue);
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
-                return null;
-            }
-        }
-
-        private void StorePendingValidationErrors(string sessionKey)
-        {
-            var errors = ModelState
-                .Where(entry => entry.Value?.Errors.Count > 0)
-                .ToDictionary(
-                    entry => entry.Key,
-                    entry => entry.Value!.Errors
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor inválido." : error.ErrorMessage)
-                        .ToArray());
-
-            if (errors.Count == 0)
-            {
-                HttpContext.Session.Remove(sessionKey);
-                return;
-            }
-
-            HttpContext.Session.SetString(sessionKey, JsonSerializer.Serialize(errors));
-        }
-
-        private void RestorePendingValidationErrors(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return;
-            }
-
-            try
-            {
-                var errors = JsonSerializer.Deserialize<Dictionary<string, string[]>>(rawValue);
-                if (errors == null)
-                {
-                    return;
-                }
-
-                foreach (var (key, messages) in errors)
-                {
-                    if (messages == null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var message in messages)
-                    {
-                        if (!string.IsNullOrWhiteSpace(message))
-                        {
-                            ModelState.AddModelError(key, message);
-                        }
-                    }
-                }
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar errores de validación para key {SessionKey}", sessionKey);
-            }
-        }
-
-        public string GetSortIcon(string columnName)
-        {
-            var normalizedColumn = NormalizeSortBy(columnName);
-            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
-            {
-                return "bi-arrow-down-up";
-            }
-
-            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "bi-sort-down"
-                : "bi-sort-up";
-        }
-
-        private void LoadCurrentPageFromSession()
-        {
-            var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
-            if (!currentPageInSession.HasValue || currentPageInSession.Value <= 0)
-            {
-                CurrentPage = 1;
-                return;
-            }
-
-            CurrentPage = currentPageInSession.Value;
-        }
-
-        private void SetCurrentPage(int pageNumber)
-        {
-            CurrentPage = pageNumber > 0 ? pageNumber : 1;
-        }
-
-        private void SetSortState(string sortBy, string sortDirection)
-        {
-            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
-            {
-                LoadSortStateFromSession();
-                return;
-            }
-
-            SortBy = NormalizeSortBy(sortBy);
-            SortDirection = NormalizeSortDirection(sortDirection);
-        }
-
-        private void SaveCurrentPageInSession()
-        {
-            HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
-        }
-
-        private void LoadSortStateFromSession()
-        {
-            var sortByInSession = HttpContext.Session.GetString(SortBySessionKey);
-            var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
-
-            SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
-            SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
-        }
-
-        private void SaveSortStateInSession()
-        {
-            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
-            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
-        }
-
-        private void ToggleSort(string sortBy)
-        {
-            var normalizedSortBy = NormalizeSortBy(sortBy);
-            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
-            {
-                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-                return;
-            }
-
-            SortBy = normalizedSortBy;
-            SortDirection = DefaultSortDirection;
-        }
-
-        private static string NormalizeSortBy(string sortBy)
-        {
-            if (string.IsNullOrWhiteSpace(sortBy))
-            {
-                return DefaultSortBy;
-            }
-
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
-            return normalizedSortBy switch
-            {
-                "code" => "code",
-                "name" => "name",
-                "productcount" => "productcount",
-                _ => "name"
-            };
-        }
-
-        private static string NormalizeSortDirection(string sortDirection)
-        {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "desc"
-                : "asc";
-        }
-
-        private void SetPendingEditCategoryId(long categoryId)
-        {
-            HttpContext.Session.SetString(EditCategorySessionKey, categoryId.ToString(CultureInfo.InvariantCulture));
-        }
-
-        private long PopPendingEditCategoryId()
-        {
-            var rawEditCategoryId = HttpContext.Session.GetString(EditCategorySessionKey);
-            HttpContext.Session.Remove(EditCategorySessionKey);
-
-            return long.TryParse(rawEditCategoryId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var editCategoryId)
-                ? editCategoryId
-                : 0;
-        }
-
-        private void ClearPendingEditCategoryId()
-        {
-            HttpContext.Session.Remove(EditCategorySessionKey);
-        }
     }
 }
+

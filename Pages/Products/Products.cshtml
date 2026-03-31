@@ -20,6 +20,8 @@
     var isAlphabeticalDescOrderPreset = string.Equals(Model.OrderPreset, "za");
     var selectedOrderPresetValue = "custom";
     var selectedOrderPresetName = "Personalizado";
+    var firstPageProductId = Model.Products.Count > 0 ? Model.Products[0].Id : 0;
+    var lastPageProductId = Model.Products.Count > 0 ? Model.Products[Model.Products.Count - 1].Id : 0;
     var minAllowedExpirationDate = DateTime.Today.ToString("yyyy-MM-dd");
     if (isRecentOrderPreset)
     {
@@ -355,7 +357,6 @@
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
                                     <form method="post" asp-page-handler="StartEdit" class="d-inline">
                                         <input type="hidden" name="id" value="@product.Id" />
-                                        <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                                         <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
@@ -392,37 +393,31 @@
     <section class="d-flex justify-content-center mt-4">
         <nav aria-label="Paginación de productos">
             <ul class="pagination">
-                <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                <li class="page-item @((!Model.HasPreviousPage || Model.CurrentPage <= 1) ? "disabled" : "")">
                     <form method="post" asp-page-handler="Navigate" class="d-inline">
-                        <input type="hidden" name="pageNumber" value="@(Model.CurrentPage - 1)" />
                         <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                        <button type="submit" class="page-link" disabled="@(Model.CurrentPage == 1)">
+                        <input type="hidden" name="navigationMode" value="prev" />
+                        <input type="hidden" name="cursorProductId" value="@firstPageProductId" />
+                        <button type="submit" class="page-link" disabled="@(!Model.HasPreviousPage || Model.CurrentPage <= 1)">
                             <i class="bi bi-chevron-left me-1"></i>Anterior
                         </button>
                     </form>
                 </li>
 
-                @for (int i = 1; i <= Model.TotalPages; i++)
-                {
-                    <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                        <form method="post" asp-page-handler="Navigate" class="d-inline">
-                            <input type="hidden" name="pageNumber" value="@i" />
-                            <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
-                            <input type="hidden" name="sortBy" value="@Model.SortBy" />
-                            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <button type="submit" class="page-link">@i</button>
-                        </form>
-                    </li>
-                }
-                <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+                <li class="page-item active">
+                    <button type="button" class="page-link">@Model.CurrentPage</button>
+                </li>
+
+                <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
                     <form method="post" asp-page-handler="Navigate" class="d-inline">
-                        <input type="hidden" name="pageNumber" value="@(Model.CurrentPage + 1)" />
                         <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                        <button type="submit" class="page-link" disabled="@(Model.CurrentPage == Model.TotalPages)">
+                        <input type="hidden" name="navigationMode" value="next" />
+                        <input type="hidden" name="cursorProductId" value="@lastPageProductId" />
+                        <button type="submit" class="page-link" disabled="@(!Model.HasNextPage)">
                             Siguiente<i class="bi bi-chevron-right ms-1"></i>
                         </button>
                     </form>
@@ -437,7 +432,6 @@
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Delete" id="deleteProductForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
@@ -475,7 +469,6 @@
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Create" class="needs-validation" novalidate id="createProductForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
@@ -497,7 +490,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                                 <span asp-validation-for="NewProduct.Name" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewProduct.Name" class="form-control" required />
+                            <input asp-for="NewProduct.Name" class="form-control" />
                         </section>
 
                         <section class="col-md-6 mb-3">
@@ -558,7 +551,7 @@
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir stock">
                                     <i class="bi bi-dash-lg"></i>
                                 </button>
-                                <input asp-for="NewProduct.Stock" type="number" class="form-control text-center px-0" min="0" required />
+                                <input asp-for="NewProduct.Stock" type="number" class="form-control text-center px-0" />
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar stock">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
@@ -570,7 +563,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
                                 <span asp-validation-for="NewProduct.Batch" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewProduct.Batch" type="text" class="form-control" inputmode="numeric" pattern="[0-9]{1,40}" maxlength="40" oninput="this.value=this.value.replace(/\D/g,'').slice(0,40)" required />
+                            <input asp-for="NewProduct.Batch" type="text" class="form-control" inputmode="numeric" />
                         </section>
 
                         <section class="col-md-4">
@@ -579,7 +572,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Debe ser una fecha válida desde hoy en adelante.">i</span>
                                 <span asp-validation-for="NewProduct.ExpirationDate" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" data-min-date="@minAllowedExpirationDate" required />
+                            <input asp-for="NewProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" data-min-date="@minAllowedExpirationDate" />
                         </section>
                     </section>
 
@@ -598,7 +591,7 @@
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir precio">
                                     <i class="bi bi-dash-lg"></i>
                                 </button>
-                                <input asp-for="NewProduct.Price" type="number" step="0.01" class="form-control text-center px-0" min="0.01" required />
+                                <input asp-for="NewProduct.Price" type="number" step="0.01" class="form-control text-center px-0" />
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar precio">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
@@ -622,7 +615,6 @@
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="updateProductForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
@@ -645,7 +637,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                                 <span asp-validation-for="EditProduct.Name" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditProduct.Name" class="form-control" required />
+                            <input asp-for="EditProduct.Name" class="form-control" />
                         </section>
 
                         <section class="col-md-6 mb-3">
@@ -707,7 +699,7 @@
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir stock">
                                     <i class="bi bi-dash-lg"></i>
                                 </button>
-                                <input asp-for="EditProduct.Stock" type="number" class="form-control text-center px-0" min="0" required />
+                                <input asp-for="EditProduct.Stock" type="number" class="form-control text-center px-0" />
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar stock">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
@@ -720,7 +712,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
                                 <span asp-validation-for="EditProduct.Batch" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditProduct.Batch" type="text" class="form-control" inputmode="numeric" pattern="[0-9]{1,40}" maxlength="40" oninput="this.value=this.value.replace(/\D/g,'').slice(0,40)" required />
+                            <input asp-for="EditProduct.Batch" type="text" class="form-control" inputmode="numeric" />
                         </section>
 
                         <section class="col-md-4">
@@ -729,7 +721,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Debe ser una fecha válida desde hoy en adelante.">i</span>
                                 <span asp-validation-for="EditProduct.ExpirationDate" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" data-min-date="@minAllowedExpirationDate" required />
+                            <input asp-for="EditProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" data-min-date="@minAllowedExpirationDate" />
                         </section>
                     </section>
 
@@ -748,7 +740,7 @@
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir precio">
                                     <i class="bi bi-dash-lg"></i>
                                 </button>
-                                <input asp-for="EditProduct.Price" type="number" step="0.01" class="form-control text-center px-0" min="0.01" required />
+                                <input asp-for="EditProduct.Price" type="number" step="0.01" class="form-control text-center px-0" />
                                 <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar precio">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>

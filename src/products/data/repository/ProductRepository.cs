@@ -7,6 +7,7 @@ using Mercadito.src.products.domain.model;
 using Mercadito.src.shared.domain.repository;
 using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace Mercadito.src.products.data.repository
 {
@@ -138,16 +139,16 @@ namespace Mercadito.src.products.data.repository
             CancellationToken cancellationToken)
         {
             const string query = @"SELECT COUNT(*)
-                    FROM categorias
-                    WHERE estado = @ActiveState
-                    AND id IN @CategoryIds";
+                    FROM JSON_TABLE(@CategoryIdsJson, '$[*]' COLUMNS (CategoryId BIGINT PATH '$')) requested
+                    INNER JOIN categorias c ON c.id = requested.CategoryId
+                    WHERE c.estado = @ActiveState";
 
             return new CommandDefinition(
                 query,
                 parameters: new
                 {
                     ActiveState,
-                    CategoryIds = normalizedCategoryIds
+                    CategoryIdsJson = JsonSerializer.Serialize(normalizedCategoryIds)
                 },
                 transaction: transaction,
                 cancellationToken: cancellationToken);
@@ -176,22 +177,188 @@ namespace Mercadito.src.products.data.repository
             }
         }
 
-        private static string BuildOrderByClause(string sortBy, string sortDirection)
+        private static CommandDefinition BuildRelatedCategoryIdsByProductCommand(
+            long productId,
+            IDbTransaction transaction,
+            CancellationToken cancellationToken)
+        {
+            const string query = @"SELECT DISTINCT categoriaId
+                    FROM categoriaDeProducto
+                    WHERE productId = @ProductId";
+
+            return new CommandDefinition(
+                query,
+                parameters: new { ProductId = productId },
+                transaction: transaction,
+                cancellationToken: cancellationToken);
+        }
+
+        private static IReadOnlyList<long> MergeCategoryIds(
+            IReadOnlyList<long> firstCategoryIds,
+            IReadOnlyList<long> secondCategoryIds)
+        {
+            var mergedCategoryIds = new List<long>(firstCategoryIds.Count + secondCategoryIds.Count);
+            var uniqueCategoryIds = new HashSet<long>();
+
+            foreach (var categoryId in firstCategoryIds)
+            {
+                if (categoryId <= 0 || !uniqueCategoryIds.Add(categoryId))
+                {
+                    continue;
+                }
+
+                mergedCategoryIds.Add(categoryId);
+            }
+
+            foreach (var categoryId in secondCategoryIds)
+            {
+                if (categoryId <= 0 || !uniqueCategoryIds.Add(categoryId))
+                {
+                    continue;
+                }
+
+                mergedCategoryIds.Add(categoryId);
+            }
+
+            return mergedCategoryIds;
+        }
+
+        private static async Task RecalculateCategoryProductCountsAsync(
+            IDbConnection connection,
+            IReadOnlyList<long> categoryIds,
+            IDbTransaction transaction,
+            CancellationToken cancellationToken)
+        {
+            if (categoryIds.Count == 0)
+            {
+                return;
+            }
+
+            const string query = @"UPDATE categorias c
+                    LEFT JOIN (
+                        SELECT
+                            cp.categoriaId AS CategoryId,
+                            COUNT(DISTINCT cp.productId) AS ActiveProductCount
+                        FROM categoriaDeProducto cp
+                        INNER JOIN products p ON p.id = cp.productId
+                        WHERE cp.categoriaId IN @CategoryIds
+                        AND p.estado = @ActiveState
+                        GROUP BY cp.categoriaId
+                    ) counts ON counts.CategoryId = c.id
+                    SET c.productosActivosCount = COALESCE(counts.ActiveProductCount, 0)
+                    WHERE c.id IN @CategoryIds";
+
+            var command = new CommandDefinition(
+                query,
+                parameters: new
+                {
+                    ActiveState,
+                    CategoryIds = categoryIds
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken);
+
+            await connection.ExecuteAsync(command);
+        }
+
+        private static string BuildOrderByClause(string sortBy, string sortDirection, bool reverse = false)
         {
             var direction = NormalizeSortDirection(sortDirection);
-            var normalizedSortBy = string.IsNullOrWhiteSpace(sortBy)
-                ? "name"
-                : sortBy.Trim().ToLowerInvariant();
+            var effectiveDirection = reverse
+                ? (string.Equals(direction, "ASC", StringComparison.Ordinal) ? "DESC" : "ASC")
+                : direction;
+            var idTieDirection = reverse ? "DESC" : "ASC";
+            var normalizedSortBy = NormalizeSortBy(sortBy);
 
             return normalizedSortBy switch
             {
-                "id" => $"p.id {direction}",
-                "stock" => $"p.stock {direction}, p.id ASC",
-                "batch" => $"p.lote {direction}, p.id ASC",
-                "expirationdate" => $"p.fechaCaducidad {direction}, p.id ASC",
-                "price" => $"p.precio {direction}, p.id ASC",
-                _ => $"p.nombre {direction}, p.id ASC"
+                "id" => $"p.id {effectiveDirection}",
+                "stock" => $"p.stock {effectiveDirection}, p.id {idTieDirection}",
+                "batch" => $"p.lote {effectiveDirection}, p.id {idTieDirection}",
+                "expirationdate" => $"p.fechaCaducidad {effectiveDirection}, p.id {idTieDirection}",
+                "price" => $"p.precio {effectiveDirection}, p.id {idTieDirection}",
+                _ => $"p.nombre {effectiveDirection}, p.id {idTieDirection}"
             };
+        }
+
+        private static string NormalizeSortBy(string sortBy)
+        {
+            if (string.IsNullOrWhiteSpace(sortBy))
+            {
+                return "name";
+            }
+
+            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            return normalizedSortBy switch
+            {
+                "id" => "id",
+                "stock" => "stock",
+                "batch" => "batch",
+                "expirationdate" => "expirationdate",
+                "price" => "price",
+                _ => "name"
+            };
+        }
+
+        private static string ResolveSortColumn(string normalizedSortBy)
+        {
+            return normalizedSortBy switch
+            {
+                "stock" => "stock",
+                "batch" => "lote",
+                "expirationdate" => "fechaCaducidad",
+                "price" => "precio",
+                _ => "nombre"
+            };
+        }
+
+        private static string BuildKeysetComparator(string sortBy, string sortDirection, bool isNextPage)
+        {
+            var normalizedSortBy = NormalizeSortBy(sortBy);
+            var direction = NormalizeSortDirection(sortDirection);
+            var isAscending = string.Equals(direction, "ASC", StringComparison.Ordinal);
+
+            if (string.Equals(normalizedSortBy, "id", StringComparison.Ordinal))
+            {
+                if (isNextPage)
+                {
+                    return isAscending ? "p.id > cursorProduct.id" : "p.id < cursorProduct.id";
+                }
+
+                return isAscending ? "p.id < cursorProduct.id" : "p.id > cursorProduct.id";
+            }
+
+            var sortColumn = ResolveSortColumn(normalizedSortBy);
+            var mainComparator = isNextPage
+                ? (isAscending ? ">" : "<")
+                : (isAscending ? "<" : ">");
+            var tieComparator = isNextPage ? ">" : "<";
+
+            return $@"(
+                p.{sortColumn} {mainComparator} cursorProduct.{sortColumn}
+                OR (p.{sortColumn} = cursorProduct.{sortColumn} AND p.id {tieComparator} cursorProduct.id)
+            )";
+        }
+
+        private static string BuildAnchorInclusiveComparator(string sortBy, string sortDirection)
+        {
+            var normalizedSortBy = NormalizeSortBy(sortBy);
+            var direction = NormalizeSortDirection(sortDirection);
+            var isAscending = string.Equals(direction, "ASC", StringComparison.Ordinal);
+
+            if (string.Equals(normalizedSortBy, "id", StringComparison.Ordinal))
+            {
+                return isAscending ? "p.id >= anchor.id" : "p.id <= anchor.id";
+            }
+
+            var sortColumn = ResolveSortColumn(normalizedSortBy);
+            var mainComparator = isAscending ? ">" : "<";
+            const string tieComparator = ">=";
+
+            return $@"(
+                p.{sortColumn} {mainComparator} anchor.{sortColumn}
+                OR (p.{sortColumn} = anchor.{sortColumn} AND p.id {tieComparator} anchor.id)
+            )";
         }
 
         private static string NormalizeSortDirection(string sortDirection)
@@ -224,21 +391,87 @@ namespace Mercadito.src.products.data.repository
             return $"%{escapedSearchTerm}%";
         }
 
-        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByPages(
-            int page,
-            int pageSize,
-            string sortBy,
-            string sortDirection,
-            string searchTerm = "",
-            CancellationToken cancellationToken = default)
+        private static string BuildFullTextSearchQuery(string normalizedSearchTerm)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var offset = (page - 1) * pageSize;
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
-            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
-            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
+            if (string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                return string.Empty;
+            }
 
-            var query = $@"
+            var terms = new List<string>();
+            var rawTerms = normalizedSearchTerm.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var rawTerm in rawTerms)
+            {
+                var sanitizedBuilder = new StringBuilder(rawTerm.Length);
+                foreach (var character in rawTerm)
+                {
+                    if (char.IsLetterOrDigit(character))
+                    {
+                        sanitizedBuilder.Append(character);
+                    }
+                }
+
+                var sanitizedTerm = sanitizedBuilder.ToString();
+                if (sanitizedTerm.Length < 3)
+                {
+                    continue;
+                }
+
+                terms.Add($"+{sanitizedTerm}*");
+            }
+
+            return terms.Count == 0
+                ? string.Empty
+                : string.Join(' ', terms);
+        }
+
+        private static void AppendSearchFilterByMatchedProductIds(StringBuilder queryBuilder, bool useFullTextSearch)
+        {
+            if (useFullTextSearch)
+            {
+                queryBuilder.Append(@" 
+                AND p.id IN (
+                    SELECT matched.ProductId
+                    FROM (
+                        SELECT p2.id AS ProductId
+                        FROM products p2
+                        WHERE p2.estado = @ActiveState
+                        AND MATCH(p2.nombre) AGAINST (@SearchFullTextQuery IN BOOLEAN MODE)
+                        UNION
+                        SELECT pc2.productId AS ProductId
+                        FROM categoriaDeProducto pc2
+                        INNER JOIN categorias c2 ON c2.id = pc2.categoriaId
+                        WHERE c2.estado = @ActiveState
+                        AND MATCH(c2.nombre) AGAINST (@SearchFullTextQuery IN BOOLEAN MODE)
+                    ) matched
+                )");
+                return;
+            }
+
+            queryBuilder.Append(@" 
+                AND p.id IN (
+                    SELECT matched.ProductId
+                    FROM (
+                        SELECT p2.id AS ProductId
+                        FROM products p2
+                        WHERE p2.estado = @ActiveState
+                        AND p2.nombre LIKE @SearchPattern ESCAPE '\\'
+                        UNION
+                        SELECT pc2.productId AS ProductId
+                        FROM categoriaDeProducto pc2
+                        INNER JOIN categorias c2 ON c2.id = pc2.categoriaId
+                        WHERE c2.estado = @ActiveState
+                        AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
+                    ) matched
+                )");
+        }
+
+        private static CommandDefinition BuildProductsByIdsCommand(
+            IReadOnlyList<long> productIds,
+            CancellationToken cancellationToken)
+        {
+            const string query = @"
                 SELECT 
                     p.id as Id,
                     p.nombre as Name,
@@ -252,99 +485,384 @@ namespace Mercadito.src.products.data.repository
                 LEFT JOIN categoriaDeProducto pc ON p.id = pc.productId
                 LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
                 WHERE p.estado = @ActiveState
-                AND (
-                    @SearchTerm = ''
-                    OR p.nombre LIKE @SearchPattern ESCAPE '\\'
-                    OR EXISTS (
-                        SELECT 1
-                        FROM categoriaDeProducto pc2
-                        INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
-                        WHERE pc2.productId = p.id
-                        AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
-                    )
-                )
-                GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
-                ORDER BY {orderByClause}
-                LIMIT @PageSize OFFSET @Offset";
+                AND p.id IN @ProductIds
+                GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio";
 
-            var command = new CommandDefinition(
+            return new CommandDefinition(
                 query,
                 parameters: new
                 {
                     ActiveState,
-                    Offset = offset,
-                    PageSize = pageSize,
-                    SearchTerm = normalizedSearchTerm,
-                    SearchPattern = searchPattern
+                    ProductIds = productIds
                 },
                 cancellationToken: cancellationToken);
-
-            var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
-                command)).AsList();
-
-            return [.. products.Select(ToProductWithCategoriesModel)];
         }
 
-        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesFilterByCategoryByPages(
-            int page,
-            long categoryId,
+        private static IReadOnlyList<ProductWithCategoriesModel> MapProductsWithCategoriesByIdOrder(
+            IReadOnlyList<(
+                long Id,
+                string Name,
+                string Description,
+                int Stock,
+                string Batch,
+                DateTime ExpirationDate,
+                decimal Price,
+                string CategoriesString)> rows,
+            IReadOnlyList<long> orderedProductIds)
+        {
+            var productsById = new Dictionary<long, ProductWithCategoriesModel>(rows.Count);
+            foreach (var row in rows)
+            {
+                productsById[row.Id] = ToProductWithCategoriesModel(row);
+            }
+
+            var orderedProducts = new List<ProductWithCategoriesModel>(orderedProductIds.Count);
+            foreach (var productId in orderedProductIds)
+            {
+                if (productsById.TryGetValue(productId, out var product))
+                {
+                    orderedProducts.Add(product);
+                }
+            }
+
+            return orderedProducts;
+        }
+
+        private async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByCursorInternalAsync(
+            IDbConnection connection,
             int pageSize,
             string sortBy,
             string sortDirection,
+            long cursorProductId,
+            bool isNextPage,
+            string searchTerm,
+            long categoryId,
+            bool filterByCategory,
+            CancellationToken cancellationToken)
+        {
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var hasSearch = normalizedSearchTerm.Length > 0;
+            var fullTextSearchQuery = hasSearch ? BuildFullTextSearchQuery(normalizedSearchTerm) : string.Empty;
+            var useFullTextSearch = !string.IsNullOrWhiteSpace(fullTextSearchQuery);
+            var searchPattern = hasSearch ? BuildSearchPattern(normalizedSearchTerm) : string.Empty;
+            var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
+            var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+
+            var productIdsQueryBuilder = new StringBuilder(@"
+                SELECT p.id
+                FROM products p
+                INNER JOIN products cursorProduct ON cursorProduct.id = @CursorProductId");
+
+            if (filterByCategory)
+            {
+                productIdsQueryBuilder.Append(@"
+                INNER JOIN categoriaDeProducto pc ON p.id = pc.productId");
+            }
+
+            productIdsQueryBuilder.Append(@"
+                WHERE p.estado = @ActiveState
+                AND cursorProduct.estado = @ActiveState");
+
+            if (filterByCategory)
+            {
+                productIdsQueryBuilder.Append(@"
+                AND pc.categoriaId = @CategoryId");
+            }
+
+            if (hasSearch)
+            {
+                AppendSearchFilterByMatchedProductIds(productIdsQueryBuilder, useFullTextSearch);
+            }
+
+            productIdsQueryBuilder.Append(@"
+                AND ");
+            productIdsQueryBuilder.Append(keysetComparator);
+            productIdsQueryBuilder.Append($@"
+                ORDER BY {orderByClause}
+                LIMIT @PageSize");
+
+            var parameters = new DynamicParameters();
+            parameters.Add("ActiveState", ActiveState);
+            parameters.Add("CursorProductId", cursorProductId);
+            parameters.Add("PageSize", pageSize);
+
+            if (filterByCategory)
+            {
+                parameters.Add("CategoryId", categoryId);
+            }
+
+            if (hasSearch)
+            {
+                if (useFullTextSearch)
+                {
+                    parameters.Add("SearchFullTextQuery", fullTextSearchQuery);
+                }
+                else
+                {
+                    parameters.Add("SearchPattern", searchPattern);
+                }
+            }
+
+            var productIdsCommand = new CommandDefinition(
+                productIdsQueryBuilder.ToString(),
+                parameters: parameters,
+                cancellationToken: cancellationToken);
+
+            var productIds = (await connection.QueryAsync<long>(productIdsCommand)).AsList();
+            if (productIds.Count == 0)
+            {
+                return [];
+            }
+
+            if (!isNextPage)
+            {
+                productIds.Reverse();
+            }
+
+            var productsCommand = BuildProductsByIdsCommand(productIds, cancellationToken);
+            var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+                productsCommand)).AsList();
+
+            return MapProductsWithCategoriesByIdOrder(products, productIds);
+        }
+
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByCursorAsync(
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long cursorProductId,
+            bool isNextPage,
             string searchTerm = "",
             CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var offset = (page - 1) * pageSize;
+            return await GetProductsWithCategoriesByCursorInternalAsync(
+                connection,
+                pageSize,
+                sortBy,
+                sortDirection,
+                cursorProductId,
+                isNextPage,
+                searchTerm,
+                categoryId: 0,
+                filterByCategory: false,
+                cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesByCategoryCursorAsync(
+            long categoryId,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long cursorProductId,
+            bool isNextPage,
+            string searchTerm = "",
+            CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            return await GetProductsWithCategoriesByCursorInternalAsync(
+                connection,
+                pageSize,
+                sortBy,
+                sortDirection,
+                cursorProductId,
+                isNextPage,
+                searchTerm,
+                categoryId,
+                filterByCategory: true,
+                cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetProductsWithCategoriesFromAnchorAsync(
+            long categoryId,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long anchorProductId,
+            string searchTerm = "",
+            CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            var hasAnchor = anchorProductId > 0;
+            var filterByCategory = categoryId > 0;
             var orderByClause = BuildOrderByClause(sortBy, sortDirection);
             var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
-            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
-            var query = $@"
-                SELECT 
-                    p.id as Id,
-                    p.nombre as Name,
-                    p.descripcion as Description,
-                    p.stock as Stock,
-                    p.lote as Batch,
-                    p.fechaCaducidad as ExpirationDate,
-                    p.precio as Price,
-                    COALESCE(GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ','), '') as CategoriesString
-                FROM products p
-                INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
-                LEFT JOIN categorias c ON pc.categoriaId = c.id AND c.estado = @ActiveState
-                WHERE pc.categoriaId = @CategoryId AND p.estado = @ActiveState
-                AND (
-                    @SearchTerm = ''
-                    OR p.nombre LIKE @SearchPattern ESCAPE '\\'
-                    OR EXISTS (
-                        SELECT 1
-                        FROM categoriaDeProducto pc2
-                        INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
-                        WHERE pc2.productId = p.id
-                        AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
-                    )
-                )
-                GROUP BY p.id, p.nombre, p.descripcion, p.stock, p.lote, p.fechaCaducidad, p.precio
-                ORDER BY {orderByClause}
-                LIMIT @PageSize OFFSET @Offset";
+            var hasSearch = normalizedSearchTerm.Length > 0;
+            var fullTextSearchQuery = hasSearch ? BuildFullTextSearchQuery(normalizedSearchTerm) : string.Empty;
+            var useFullTextSearch = !string.IsNullOrWhiteSpace(fullTextSearchQuery);
+            var searchPattern = hasSearch ? BuildSearchPattern(normalizedSearchTerm) : string.Empty;
 
-            var command = new CommandDefinition(
-                query,
-                parameters: new
+            var productIdsQueryBuilder = new StringBuilder(@"
+                SELECT p.id
+                FROM products p");
+
+            if (hasAnchor)
+            {
+                productIdsQueryBuilder.Append(@"
+                INNER JOIN products anchor ON anchor.id = @AnchorProductId");
+            }
+
+            if (filterByCategory)
+            {
+                productIdsQueryBuilder.Append(@"
+                INNER JOIN categoriaDeProducto pc ON p.id = pc.productId");
+            }
+
+            productIdsQueryBuilder.Append(@"
+                WHERE p.estado = @ActiveState");
+
+            if (hasAnchor)
+            {
+                productIdsQueryBuilder.Append(@"
+                AND anchor.estado = @ActiveState
+                AND ");
+                productIdsQueryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
+            }
+
+            if (filterByCategory)
+            {
+                productIdsQueryBuilder.Append(@"
+                AND pc.categoriaId = @CategoryId");
+            }
+
+            if (hasSearch)
+            {
+                AppendSearchFilterByMatchedProductIds(productIdsQueryBuilder, useFullTextSearch);
+            }
+
+            productIdsQueryBuilder.Append($@"
+                ORDER BY {orderByClause}
+                LIMIT @PageSize");
+
+            var parameters = new DynamicParameters();
+            parameters.Add("ActiveState", ActiveState);
+            parameters.Add("PageSize", pageSize);
+
+            if (hasAnchor)
+            {
+                parameters.Add("AnchorProductId", anchorProductId);
+            }
+
+            if (filterByCategory)
+            {
+                parameters.Add("CategoryId", categoryId);
+            }
+
+            if (hasSearch)
+            {
+                if (useFullTextSearch)
                 {
-                    ActiveState,
-                    CategoryId = categoryId,
-                    Offset = offset,
-                    PageSize = pageSize,
-                    SearchTerm = normalizedSearchTerm,
-                    SearchPattern = searchPattern
-                },
+                    parameters.Add("SearchFullTextQuery", fullTextSearchQuery);
+                }
+                else
+                {
+                    parameters.Add("SearchPattern", searchPattern);
+                }
+            }
+
+            var productIdsCommand = new CommandDefinition(
+                productIdsQueryBuilder.ToString(),
+                parameters: parameters,
                 cancellationToken: cancellationToken);
 
-            var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
-                command)).AsList();
+            var productIds = (await connection.QueryAsync<long>(productIdsCommand)).AsList();
+            if (productIds.Count == 0)
+            {
+                return [];
+            }
 
-            return [.. products.Select(ToProductWithCategoriesModel)];
+            var productsCommand = BuildProductsByIdsCommand(productIds, cancellationToken);
+            var products = (await connection.QueryAsync<(long Id, string Name, string Description, int Stock, string Batch, DateTime ExpirationDate, decimal Price, string CategoriesString)>(
+                productsCommand)).AsList();
+
+            return MapProductsWithCategoriesByIdOrder(products, productIds);
+        }
+
+        public async Task<bool> HasProductsByCursorAsync(
+            long categoryId,
+            string sortBy,
+            string sortDirection,
+            long cursorProductId,
+            bool isNextPage,
+            string searchTerm = "",
+            CancellationToken cancellationToken = default)
+        {
+            if (cursorProductId <= 0)
+            {
+                return false;
+            }
+
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            var filterByCategory = categoryId > 0;
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var hasSearch = normalizedSearchTerm.Length > 0;
+            var fullTextSearchQuery = hasSearch ? BuildFullTextSearchQuery(normalizedSearchTerm) : string.Empty;
+            var useFullTextSearch = !string.IsNullOrWhiteSpace(fullTextSearchQuery);
+            var searchPattern = hasSearch ? BuildSearchPattern(normalizedSearchTerm) : string.Empty;
+            var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+            var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
+
+            var queryBuilder = new StringBuilder(@"
+                SELECT p.id
+                FROM products p
+                INNER JOIN products cursorProduct ON cursorProduct.id = @CursorProductId");
+
+            if (filterByCategory)
+            {
+                queryBuilder.Append(@"
+                INNER JOIN categoriaDeProducto pc ON p.id = pc.productId");
+            }
+
+            queryBuilder.Append(@"
+                WHERE p.estado = @ActiveState
+                AND cursorProduct.estado = @ActiveState");
+
+            if (filterByCategory)
+            {
+                queryBuilder.Append(@"
+                AND pc.categoriaId = @CategoryId");
+            }
+
+            if (hasSearch)
+            {
+                AppendSearchFilterByMatchedProductIds(queryBuilder, useFullTextSearch);
+            }
+
+            queryBuilder.Append(@"
+                AND ");
+            queryBuilder.Append(keysetComparator);
+            queryBuilder.Append($@"
+                ORDER BY {orderByClause}
+                LIMIT 1");
+
+            var parameters = new DynamicParameters();
+            parameters.Add("CursorProductId", cursorProductId);
+            parameters.Add("ActiveState", ActiveState);
+
+            if (filterByCategory)
+            {
+                parameters.Add("CategoryId", categoryId);
+            }
+
+            if (hasSearch)
+            {
+                if (useFullTextSearch)
+                {
+                    parameters.Add("SearchFullTextQuery", fullTextSearchQuery);
+                }
+                else
+                {
+                    parameters.Add("SearchPattern", searchPattern);
+                }
+            }
+
+            var command = new CommandDefinition(
+                queryBuilder.ToString(),
+                parameters: parameters,
+                cancellationToken: cancellationToken);
+
+            var nextProductId = await connection.QueryFirstOrDefaultAsync<long?>(command);
+            return nextProductId.HasValue;
         }
 
         public async Task<ProductForEditModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
@@ -441,6 +959,12 @@ namespace Mercadito.src.products.data.repository
                     await connection.ExecuteAsync(insertCategoriesCommand);
                 }
 
+                await RecalculateCategoryProductCountsAsync(
+                    connection,
+                    normalizedCategoryIds,
+                    transaction,
+                    cancellationToken);
+
                 transaction.Commit();
                 return createdProductId;
             }
@@ -470,6 +994,12 @@ namespace Mercadito.src.products.data.repository
             {
                 var product = productWithCategories.Product;
                 var normalizedCategoryIds = NormalizeCategoryIds(productWithCategories.CategoryIds);
+                var currentCategoryIdsCommand = BuildRelatedCategoryIdsByProductCommand(
+                    product.Id,
+                    transaction,
+                    cancellationToken);
+                var currentCategoryIds = (await connection.QueryAsync<long>(currentCategoryIdsCommand)).AsList();
+                var touchedCategoryIds = MergeCategoryIds(currentCategoryIds, normalizedCategoryIds);
 
                 const string updateProductQuery = @"UPDATE products
                     SET nombre = @Name,
@@ -532,6 +1062,12 @@ namespace Mercadito.src.products.data.repository
                     await connection.ExecuteAsync(insertCategoriesCommand);
                 }
 
+                await RecalculateCategoryProductCountsAsync(
+                    connection,
+                    touchedCategoryIds,
+                    transaction,
+                    cancellationToken);
+
                 transaction.Commit();
                 return affectedRows;
             }
@@ -555,84 +1091,48 @@ namespace Mercadito.src.products.data.repository
         public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"UPDATE products
-                SET estado = @InactiveState
-                WHERE id = @Id AND estado = @ActiveState";
+            using var transaction = connection.BeginTransaction();
 
-            var command = new CommandDefinition(
-                query,
-                parameters: new { Id = id, ActiveState, InactiveState },
-                cancellationToken: cancellationToken);
+            try
+            {
+                var relatedCategoryIdsCommand = BuildRelatedCategoryIdsByProductCommand(
+                    id,
+                    transaction,
+                    cancellationToken);
+                var relatedCategoryIds = (await connection.QueryAsync<long>(relatedCategoryIdsCommand)).AsList();
 
-            return await connection.ExecuteAsync(command);
-        }
+                const string query = @"UPDATE products
+                    SET estado = @InactiveState
+                    WHERE id = @Id AND estado = @ActiveState";
 
-        public async Task<int> GetTotalProductsCountAsync(string searchTerm = "", CancellationToken cancellationToken = default)
-        {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
-            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
-            const string query = @"SELECT COUNT(*)
-                    FROM products p
-                    WHERE p.estado = @ActiveState
-                    AND (
-                        @SearchTerm = ''
-                        OR p.nombre LIKE @SearchPattern ESCAPE '\\'
-                        OR EXISTS (
-                            SELECT 1
-                            FROM categoriaDeProducto pc2
-                            INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
-                            WHERE pc2.productId = p.id
-                            AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
-                        )
-                    )";
+                var command = new CommandDefinition(
+                    query,
+                    parameters: new { Id = id, ActiveState, InactiveState },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
 
-            var command = new CommandDefinition(
-                query,
-                parameters: new
+                var affectedRows = await connection.ExecuteAsync(command);
+                if (affectedRows == 0)
                 {
-                    ActiveState,
-                    SearchTerm = normalizedSearchTerm,
-                    SearchPattern = searchPattern
-                },
-                cancellationToken: cancellationToken);
-            return await connection.ExecuteScalarAsync<int>(command);
+                    transaction.Rollback();
+                    return 0;
+                }
+
+                await RecalculateCategoryProductCountsAsync(
+                    connection,
+                    relatedCategoryIds,
+                    transaction,
+                    cancellationToken);
+
+                transaction.Commit();
+                return affectedRows;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
 
-        public async Task<int> GetTotalProductsCountByCategoryAsync(long categoryId, string searchTerm = "", CancellationToken cancellationToken = default)
-        {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
-            var searchPattern = BuildSearchPattern(normalizedSearchTerm);
-            const string query = @"SELECT COUNT(DISTINCT p.id)
-                    FROM products p
-                    INNER JOIN categoriaDeProducto pc ON p.id = pc.productId
-                    WHERE pc.categoriaId = @CategoryId
-                    AND p.estado = @ActiveState
-                    AND (
-                        @SearchTerm = ''
-                        OR p.nombre LIKE @SearchPattern ESCAPE '\\'
-                        OR EXISTS (
-                            SELECT 1
-                            FROM categoriaDeProducto pc2
-                            INNER JOIN categorias c2 ON c2.id = pc2.categoriaId AND c2.estado = @ActiveState
-                            WHERE pc2.productId = p.id
-                            AND c2.nombre LIKE @SearchPattern ESCAPE '\\'
-                        )
-                    )";
-
-            var command = new CommandDefinition(
-                query,
-                parameters: new
-                {
-                    CategoryId = categoryId,
-                    ActiveState,
-                    SearchTerm = normalizedSearchTerm,
-                    SearchPattern = searchPattern
-                },
-                cancellationToken: cancellationToken);
-
-            return await connection.ExecuteScalarAsync<int>(command);
-        }
     }
 }

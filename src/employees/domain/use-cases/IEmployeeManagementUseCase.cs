@@ -5,11 +5,24 @@ namespace Mercadito.src.employees.domain.usecases
 {
     public interface IEmployeeManagementUseCase
     {
-        Task<(IReadOnlyList<EmployeeModel> Employees, int TotalPages)> GetPageAsync(
-            int currentPage,
+        Task<IReadOnlyList<EmployeeModel>> GetPageByCursorAsync(
             int pageSize,
             string sortBy,
             string sortDirection,
+            long cursorEmployeeId,
+            bool isNextPage,
+            CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<EmployeeModel>> GetPageFromAnchorAsync(
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long anchorEmployeeId,
+            CancellationToken cancellationToken = default);
+        Task<bool> HasEmployeesByCursorAsync(
+            string sortBy,
+            string sortDirection,
+            long cursorEmployeeId,
+            bool isNextPage,
             CancellationToken cancellationToken = default);
         Task<UpdateEmployeeDto?> GetForEditAsync(long employeeId, CancellationToken cancellationToken = default);
         Task CreateAsync(CreateEmployeeDto employee, CancellationToken cancellationToken = default);

@@ -44,9 +44,9 @@ builder.Services.AddScoped<EmployeeRepository>();
 builder.Services.AddScoped<RepositoryCreator<ProductRepository>, ProductRepositoryCreator>();
 builder.Services.AddScoped<RepositoryCreator<CategoryRepository>, CategoryRepositoryCreator>();
 builder.Services.AddScoped<RepositoryCreator<EmployeeRepository>, EmployeeRepositoryCreator>();
-builder.Services.AddScoped<IProductFactory, ProductFactory>();
-builder.Services.AddScoped<ICategoryFactory, CategoryFactory>();
-builder.Services.AddScoped<IEmployeeFactory, EmployeeFactory>();
+builder.Services.AddSingleton<IProductFactory, ProductFactory>();
+builder.Services.AddSingleton<ICategoryFactory, CategoryFactory>();
+builder.Services.AddSingleton<IEmployeeFactory, EmployeeFactory>();
 
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
 builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();

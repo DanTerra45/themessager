@@ -25,36 +25,96 @@ namespace Mercadito.src.products.domain.usecases
             return categories;
         }
 
-        public async Task<(IReadOnlyList<ProductWithCategoriesModel> Products, int TotalPages)> GetPageAsync(
-            int currentPage,
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetPageByCursorAsync(
             long categoryFilter,
             int pageSize,
             string sortBy,
             string sortDirection,
+            long cursorProductId,
+            bool isNextPage,
             string searchTerm = "",
             CancellationToken cancellationToken = default)
         {
-            var productRepository = _productRepositoryCreator.Create();
+            if (cursorProductId <= 0)
+            {
+                var productRepository = _productRepositoryCreator.Create();
+                var anchorProducts = await productRepository.GetProductsWithCategoriesFromAnchorAsync(
+                    categoryFilter,
+                    pageSize,
+                    sortBy,
+                    sortDirection,
+                    anchorProductId: 0,
+                    searchTerm,
+                    cancellationToken);
+                return anchorProducts;
+            }
+
+            var productRepositoryForCursor = _productRepositoryCreator.Create();
 
             if (categoryFilter == 0)
             {
-                var totalCount = await productRepository.GetTotalProductsCountAsync(searchTerm, cancellationToken);
-                var totalPages = CalculateTotalPages(totalCount, pageSize);
-                var products = await productRepository.GetProductsWithCategoriesByPages(currentPage, pageSize, sortBy, sortDirection, searchTerm, cancellationToken);
-                return (products, totalPages);
+                var products = await productRepositoryForCursor.GetProductsWithCategoriesByCursorAsync(
+                    pageSize,
+                    sortBy,
+                    sortDirection,
+                    cursorProductId,
+                    isNextPage,
+                    searchTerm,
+                    cancellationToken);
+                return products;
             }
 
-            var filteredTotalCount = await productRepository.GetTotalProductsCountByCategoryAsync(categoryFilter, searchTerm, cancellationToken);
-            var filteredTotalPages = CalculateTotalPages(filteredTotalCount, pageSize);
-            var filteredProducts = await productRepository.GetProductsWithCategoriesFilterByCategoryByPages(
-                currentPage,
+            var filteredProducts = await productRepositoryForCursor.GetProductsWithCategoriesByCategoryCursorAsync(
                 categoryFilter,
                 pageSize,
                 sortBy,
                 sortDirection,
+                cursorProductId,
+                isNextPage,
                 searchTerm,
                 cancellationToken);
-            return (filteredProducts, filteredTotalPages);
+
+            return filteredProducts;
+        }
+
+        public async Task<IReadOnlyList<ProductWithCategoriesModel>> GetPageFromAnchorAsync(
+            long categoryFilter,
+            int pageSize,
+            string sortBy,
+            string sortDirection,
+            long anchorProductId,
+            string searchTerm = "",
+            CancellationToken cancellationToken = default)
+        {
+            var productRepository = _productRepositoryCreator.Create();
+            return await productRepository.GetProductsWithCategoriesFromAnchorAsync(
+                categoryFilter,
+                pageSize,
+                sortBy,
+                sortDirection,
+                anchorProductId,
+                searchTerm,
+                cancellationToken);
+        }
+
+        public async Task<bool> HasProductsByCursorAsync(
+            long categoryFilter,
+            string sortBy,
+            string sortDirection,
+            long cursorProductId,
+            bool isNextPage,
+            string searchTerm = "",
+            CancellationToken cancellationToken = default)
+        {
+            var productRepository = _productRepositoryCreator.Create();
+            return await productRepository.HasProductsByCursorAsync(
+                categoryFilter,
+                sortBy,
+                sortDirection,
+                cursorProductId,
+                isNextPage,
+                searchTerm,
+                cancellationToken);
         }
 
         public async Task CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default)
@@ -86,12 +146,6 @@ namespace Mercadito.src.products.domain.usecases
             {
                 throw new ValidationException("Producto no encontrado.");
             }
-        }
-
-        private static int CalculateTotalPages(int totalItems, int pageSize)
-        {
-            if (totalItems == 0 || pageSize <= 0) return 1;
-            return (totalItems + pageSize - 1) / pageSize;
         }
 
         public async Task<UpdateProductDto?> GetForEditAsync(long productId, CancellationToken cancellationToken = default)

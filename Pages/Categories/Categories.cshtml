@@ -5,6 +5,8 @@
     ViewData["Title"] = "Categorías";
     ViewData["UseToasts"] = true;
     var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
+    var firstPageCategoryId = Model.Categories.Count > 0 ? Model.Categories[0].Id : 0;
+    var lastPageCategoryId = Model.Categories.Count > 0 ? Model.Categories[Model.Categories.Count - 1].Id : 0;
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -118,7 +120,6 @@
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
                                     <form method="post" asp-page-handler="StartEdit" class="d-inline">
                                         <input type="hidden" name="id" value="@category.Id" />
-                                        <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                                         <button type="submit" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;"
@@ -150,33 +151,29 @@
         <section class="d-flex justify-content-center mt-4">
             <nav aria-label="Paginación de categorías">
                 <ul class="pagination">
-                    <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+                    <li class="page-item @((!Model.HasPreviousPage || Model.CurrentPage <= 1) ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
-                            <input type="hidden" name="pageNumber" value="@(Model.CurrentPage - 1)" />
                             <input type="hidden" name="sortBy" value="@Model.SortBy" />
                             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <button type="submit" class="page-link" disabled="@(Model.CurrentPage == 1)">
+                            <input type="hidden" name="navigationMode" value="prev" />
+                            <input type="hidden" name="cursorCategoryId" value="@firstPageCategoryId" />
+                            <button type="submit" class="page-link" disabled="@(!Model.HasPreviousPage || Model.CurrentPage <= 1)">
                                 <i class="bi bi-chevron-left me-1"></i>Anterior
                             </button>
                         </form>
                     </li>
-                    @for (int i = 1; i <= Model.TotalPages; i++)
-                    {
-                        <li class="page-item @(Model.CurrentPage == i ? "active" : "")">
-                            <form method="post" asp-page-handler="Navigate" class="d-inline">
-                                <input type="hidden" name="pageNumber" value="@i" />
-                                <input type="hidden" name="sortBy" value="@Model.SortBy" />
-                                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                                <button type="submit" class="page-link">@i</button>
-                            </form>
-                        </li>
-                    }
-                    <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+
+                    <li class="page-item active">
+                        <button type="button" class="page-link">@Model.CurrentPage</button>
+                    </li>
+
+                    <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
-                            <input type="hidden" name="pageNumber" value="@(Model.CurrentPage + 1)" />
                             <input type="hidden" name="sortBy" value="@Model.SortBy" />
                             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                            <button type="submit" class="page-link" disabled="@(Model.CurrentPage == Model.TotalPages)">
+                            <input type="hidden" name="navigationMode" value="next" />
+                            <input type="hidden" name="cursorCategoryId" value="@lastPageCategoryId" />
+                            <button type="submit" class="page-link" disabled="@(!Model.HasNextPage)">
                                 Siguiente<i class="bi bi-chevron-right ms-1"></i>
                             </button>
                         </form>
@@ -198,7 +195,6 @@
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Delete" id="deleteCategoryForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <input type="hidden" name="id" id="DeleteCategoryId" />
@@ -232,7 +228,6 @@
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Create" class="needs-validation" novalidate autocomplete="off" id="createCategoryForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
 
@@ -262,7 +257,7 @@
                             <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                             <span asp-validation-for="NewCategory.Name" class="validation-icon-inline"></span>
                         </label>
-                        <input asp-for="NewCategory.Name" class="form-control fw-bold" autocomplete="off" required />
+                        <input asp-for="NewCategory.Name" class="form-control fw-bold" autocomplete="off" />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
@@ -292,7 +287,6 @@
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
             <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate autocomplete="off" id="updateCategoryForm">
-                <input type="hidden" name="pageNumber" value="@Model.CurrentPage" />
                 <input type="hidden" name="sortBy" value="@Model.SortBy" />
                 <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                 <input type="hidden" asp-for="EditCategory.Id" />
@@ -323,7 +317,7 @@
                             <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                             <span asp-validation-for="EditCategory.Name" class="validation-icon-inline"></span>
                         </label>
-                        <input asp-for="EditCategory.Name" class="form-control fw-bold" autocomplete="off" required />
+                        <input asp-for="EditCategory.Name" class="form-control fw-bold" autocomplete="off" />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
