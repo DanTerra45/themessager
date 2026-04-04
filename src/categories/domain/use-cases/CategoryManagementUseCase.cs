@@ -4,6 +4,11 @@ using Mercadito.src.categories.domain.dto;
 using Mercadito.src.categories.domain.factory;
 using Mercadito.src.categories.domain.model;
 using Mercadito.src.shared.domain.factory;
+using Shared.Domain;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Mercadito.src.categories.data.entity;
 
 namespace Mercadito.src.categories.domain.usecases
 {
@@ -88,37 +93,50 @@ namespace Mercadito.src.categories.domain.usecases
             };
         }
 
-        public async Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default)
+        public async Task<Result> CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default)
         {
+            Category category;
+            try
+            {
+                category = _categoryFactory.CreateForInsert(newCategory);
+            }
+            catch (ValidationException ex)
+            {
+                return Result.Failure(ex.Message);
+            }
+
             var categoryRepository = _categoryRepositoryCreator.Create();
-            var category = _categoryFactory.CreateForInsert(newCategory);
+
             await categoryRepository.CreateAsync(category, cancellationToken);
+            return Result.Success();
         }
 
-        public async Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default)
+        public async Task<Result> UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default)
         {
             var categoryRepository = _categoryRepositoryCreator.Create();
             var existingCategory = await categoryRepository.GetByIdAsync(editCategory.Id, cancellationToken);
             if (existingCategory == null)
             {
-                throw new ValidationException("Categoría no encontrada.");
+                return Result.Failure("Categoría no encontrada.");
             }
 
-            var categoryToUpdate = new UpdateCategoryDto
+            Category categoryToUpdate;
+            try
             {
-                Id = editCategory.Id,
-                Code = editCategory.Code,
-                Name = editCategory.Name,
-                Description = editCategory.Description
-            };
+                categoryToUpdate = _categoryFactory.CreateForUpdate(editCategory);
+            }
+            catch (ValidationException ex)
+            {
+                return Result.Failure(ex.Message);
+            }
 
-            var category = _categoryFactory.CreateForUpdate(categoryToUpdate);
-            var affectedRows = await categoryRepository.UpdateAsync(category, cancellationToken);
-
+            var affectedRows = await categoryRepository.UpdateAsync(categoryToUpdate, cancellationToken);
             if (affectedRows == 0)
             {
-                throw new ValidationException("Categoría no encontrada.");
+                return Result.Failure("Categoría no encontrada.");
             }
+
+            return Result.Success();
         }
 
         public async Task<bool> DeleteAsync(long categoryId, CancellationToken cancellationToken = default)

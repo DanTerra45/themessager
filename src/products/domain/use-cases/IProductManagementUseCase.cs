@@ -1,6 +1,9 @@
 using Mercadito.src.categories.domain.model;
 using Mercadito.src.products.domain.dto;
 using Mercadito.src.products.domain.model;
+using Shared.Domain;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Mercadito.src.products.domain.usecases
 {
@@ -32,8 +35,13 @@ namespace Mercadito.src.products.domain.usecases
             bool isNextPage,
             string searchTerm = "",
             CancellationToken cancellationToken = default);
-        Task CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default);
-        Task UpdateAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default);
+
+        // changed to Result to represent validation outcomes
+        Task<Result> CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default);
+
+        // changed to Result to represent validation outcomes
+        Task<Result> UpdateAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default);
+
         Task<UpdateProductDto?> GetForEditAsync(long productId, CancellationToken cancellationToken = default);
         Task<bool> DeleteAsync(long productId, CancellationToken cancellationToken = default);
     }

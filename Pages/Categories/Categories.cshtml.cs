@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MySqlConnector;
+using Shared.Domain;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text.Json;
@@ -144,7 +145,47 @@ namespace Mercadito.Pages.Categories
             return RedirectToPage();
         }
 
+        public async Task<IActionResult> OnPostCreateAsync(CancellationToken ct = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                ShowCreateCategoryModal = true;
+                return Page();
+            }
 
+            var result = await _categoryManagementUseCase.CreateAsync(NewCategory, ct);
+            if (result.IsFailure)
+            {
+                ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                ShowCreateCategoryModal = true;
+                await LoadNextCategoryCodePreviewAsync();
+                NewCategory.Code = NextCategoryCodePreview;
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = "Categoría creada correctamente.";
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostEditAsync(CancellationToken ct = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                ShowEditCategoryModal = true;
+                return Page();
+            }
+
+            var result = await _categoryManagementUseCase.UpdateAsync(EditCategory, ct);
+            if (result.IsFailure)
+            {
+                ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                ShowEditCategoryModal = true;
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
+            return RedirectToPage();
+        }
     }
 }
 

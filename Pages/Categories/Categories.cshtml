@@ -28,7 +28,7 @@
                     <tr>
                         @if (showIdColumn)
                         {
-                            <th class="sortable-header" title="Ordenar por ID">
+                            <th class="sortable-header text-center fw-normal" title="Ordenar por ID">
                                 <form method="post" asp-page-handler="Sort" class="d-inline">
                                     <input type="hidden" name="sortBy" value="id" />
                                     <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -39,7 +39,7 @@
                                 </form>
                             </th>
                         }
-                        <th class="sortable-header" title="Ordenar por Código">
+                        <th class="sortable-header text-center fw-normal" title="Ordenar por Código">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="code" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -49,7 +49,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="sortable-header" title="Ordenar por Nombre">
+                        <th class="sortable-header text-center fw-normal" title="Ordenar por Nombre">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="name" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -59,8 +59,8 @@
                                 </button>
                             </form>
                         </th>
-                        <th>Descripción</th>
-                        <th class="sortable-header" title="Ordenar por Productos Asociados">
+                        <th class="text-center fw-normal">Descripción</th>
+                        <th class="sortable-header text-center fw-normal" title="Ordenar por Productos Asociados">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="productCount" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -70,7 +70,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="text-center" style="width: 170px;">Acciones</th>
+                        <th class="text-center fw-normal" style="width: 170px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -79,20 +79,20 @@
                         <tr>
                             @if (showIdColumn)
                             {
-                                <td class="small text-muted" style="font-family: var(--font-mono);">
+                                <td class="small text-muted text-center" style="font-family: var(--font-mono);">
                                     @category.Id
                                 </td>
                             }
-                            <td class="text-center">
+                            <td class="text-center fw-normal">
                                 <mark class="badge bg-secondary" style="font-family: var(--font-mono); font-size: 0.9rem;">@category.Code</mark>
                             </td>
-                            <td class="fw-bold" style="font-family: var(--font-display); font-size: 1.1rem;">
+                            <td class="text-center fw-normal" style="font-family: var(--font-display); font-size: 1.1rem;">
                                 <span class="table-ellipsis table-ellipsis-category-name" title="@category.Name">@category.Name</span>
                             </td>
-                            <td>
+                            <td class="text-center fw-normal">
                                 <span class="table-ellipsis table-ellipsis-category-description" title="@category.Description">@category.Description</span>
                             </td>
-                            <td class="text-center">
+                            <td class="text-center fw-normal">
                                 @{
                                     var productStatus = category.ProductCount == 0
                                         ? "danger"
@@ -116,7 +116,7 @@
                                     </form>
                                 }
                             </td>
-                            <td class="text-center">
+                            <td class="text-center fw-normal">
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
                                     <form method="post" asp-page-handler="StartEdit" class="d-inline">
                                         <input type="hidden" name="id" value="@category.Id" />
@@ -241,29 +241,29 @@
                 <section class="modal-body p-4 category-modal-body">
 
                     <section class="mb-3">
-                        <label asp-for="NewCategory.Code" class="form-label fw-bold">
+                        <label asp-for="NewCategory.Code" class="form-label fw-normal">
                             Código
                             <span class="info-tooltip" tabindex="0" data-info-message="Autogenerado al guardar. Esta es una vista previa del siguiente código disponible.">i</span>
                             <span asp-validation-for="NewCategory.Code" class="validation-icon-inline"></span>
                         </label>
-                        <input asp-for="NewCategory.Code" class="form-control fw-bold category-code-readonly" value="@Model.NextCategoryCodePreview" readonly autocomplete="off" />
+                        <input asp-for="NewCategory.Code" class="form-control category-code-readonly" value="@Model.NextCategoryCodePreview" readonly autocomplete="off" />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
 
                     <section class="mb-3">
-                        <label asp-for="NewCategory.Name" class="form-label fw-bold">
+                        <label asp-for="NewCategory.Name" class="form-label fw-normal">
                             Nombre
                             <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                             <span asp-validation-for="NewCategory.Name" class="validation-icon-inline"></span>
                         </label>
-                        <input asp-for="NewCategory.Name" class="form-control fw-bold" autocomplete="off" />
+                        <input asp-for="NewCategory.Name" class="form-control" autocomplete="off" />
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
 
                     <section class="mb-3">
-                        <label asp-for="NewCategory.Description" class="form-label fw-bold">
+                        <label asp-for="NewCategory.Description" class="form-label fw-normal">
                             Descripción
                             <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                             <span asp-validation-for="NewCategory.Description" class="validation-icon-inline"></span>

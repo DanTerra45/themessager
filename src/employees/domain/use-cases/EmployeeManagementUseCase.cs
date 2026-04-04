@@ -2,11 +2,18 @@ using Mercadito.src.employees.data.repository;
 using Mercadito.src.employees.domain.dto;
 using Mercadito.src.employees.domain.factory;
 using Mercadito.src.employees.domain.model;
-using Mercadito.src.shared.domain.factory;
+using Shared.Domain;
 using System.ComponentModel.DataAnnotations;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using Mercadito.src.shared.domain.factory;
+using Mercadito.src.employees.data.entity;
 
 namespace Mercadito.src.employees.domain.usecases
 {
+    // keep the terse primary-constructor style used previously
     public class EmployeeManagementUseCase(
         RepositoryCreator<EmployeeRepository> employeeRepositoryCreator,
         IEmployeeFactory employeeFactory) : IEmployeeManagementUseCase
@@ -86,23 +93,55 @@ namespace Mercadito.src.employees.domain.usecases
             };
         }
 
-        public async Task CreateAsync(CreateEmployeeDto employee, CancellationToken cancellationToken = default)
+        public async Task<Result> CreateAsync(CreateEmployeeDto employee, CancellationToken cancellationToken = default)
         {
+            Employee employeeToCreate;
+            try
+            {
+                employeeToCreate = _employeeFactory.CreateForInsert(employee);
+            }
+            catch (ValidationException ex)
+            {
+                return Result.Failure(ex.Message);
+            }
+
             var employeeRepository = _employeeRepositoryCreator.Create();
-            var employeeToCreate = _employeeFactory.CreateForInsert(employee);
-            await employeeRepository.CreateAsync(employeeToCreate, cancellationToken);
+
+            try
+            {
+                await employeeRepository.CreateAsync(employeeToCreate, cancellationToken);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                // Unexpected infra error — keep throwing so infrastructure can handle it.
+                // We only use Result for expected validation outcomes.
+                throw;
+            }
         }
 
-        public async Task UpdateAsync(UpdateEmployeeDto employee, CancellationToken cancellationToken = default)
+        public async Task<Result> UpdateAsync(UpdateEmployeeDto employee, CancellationToken cancellationToken = default)
         {
+            Employee employeeToUpdate;
+            try
+            {
+                employeeToUpdate = _employeeFactory.CreateForUpdate(employee);
+            }
+            catch (ValidationException ex)
+            {
+                return Result.Failure(ex.Message);
+            }
+
             var employeeRepository = _employeeRepositoryCreator.Create();
-            var employeeToUpdate = _employeeFactory.CreateForUpdate(employee);
 
             var affectedRows = await employeeRepository.UpdateAsync(employeeToUpdate, cancellationToken);
             if (affectedRows == 0)
             {
-                throw new ValidationException("Empleado no encontrado.");
+                // expected validation-like outcome (not found) — return Result failure
+                return Result.Failure("Empleado no encontrado.");
             }
+
+            return Result.Success();
         }
 
         public async Task<bool> DeleteAsync(long employeeId, CancellationToken cancellationToken = default)
@@ -119,7 +158,7 @@ namespace Mercadito.src.employees.domain.usecases
                 return string.Empty;
             }
 
-            var digitsOnly = new List<char>(11);
+            var digitsOnly = new List<char>();
             foreach (var character in value)
             {
                 if (char.IsDigit(character))
@@ -133,7 +172,7 @@ namespace Mercadito.src.employees.domain.usecases
                 return new string(digitsOnly.GetRange(digitsOnly.Count - 8, 8).ToArray());
             }
 
-            return new string([.. digitsOnly]);
+            return new string(digitsOnly.ToArray());
         }
     }
 }
