@@ -1,9 +1,37 @@
 -- Mercadito (MySQL 8+)
+-- Sample data para pruebas
 -- Usage (CLI): mysql -u <user> -p < schema/mercadito_sample.sql
 
 SET NAMES utf8mb4;
 
 START TRANSACTION;
+
+-- ============================================================
+-- USUARIOS (para login)
+-- ============================================================
+-- Password hash para 'admin123' (SHA-256 simplificado para testing)
+-- En producción usar bcrypt/Argon2真实的hash
+INSERT INTO `usuarios` (`username`, `passwordHash`, `email`, `rol`, `estado`)
+VALUES
+  ('admin', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'admin@mercadito.local', 'Admin', 'A'),
+  ('cajero1', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'cajero1@mercadito.local', 'Cajero', 'A'),
+  ('inventario1', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'inventario1@mercadito.local', 'Inventario', 'A')
+ON DUPLICATE KEY UPDATE `username` = `username`;
+
+-- ============================================================
+-- PROVEEDORES
+-- ============================================================
+INSERT INTO `proveedores` (`codigo`, `razonSocial`, `direccion`, `contacto`, `telefono`, `rubro`, `estado`)
+VALUES
+  ('PRV001', 'Distribuidora Norte', 'Av. Principale No.123', 'Carlos Paredes', '78901234', 'Alimentos secos', 'A'),
+  ('PRV002', 'Lacteos del Valle', 'Zona Mercado No.45', 'Mariela Quispe', '71234567', 'Lacteos y refrigerados', 'A'),
+  ('PRV003', 'Aseo Hogar SRL', 'Av. Industrial No.78', 'Luis Romero', '76543210', 'Limpieza y desinfeccion', 'A'),
+  ('PRV004', 'Panificadora Central', 'Calle Pan No.12', 'Diana Rios', '79887766', 'Panaderia', 'A'),
+  ('PRV005', 'Bebidas Bolivia', 'Av. Libertador No.567', 'Roberto Perez', '72345678', 'Bebidas', 'A'),
+  ('PRV006', 'Carnes del Oriente', 'Zona Ramada No.23', 'Maria Lopez', '73456789', 'Carnes y embutidos', 'A'),
+  ('PRV007', 'Congelados Uyuni', 'Av. Fabrica No.90', 'Pedro Gomez', '74567890', 'Congelados', 'A'),
+  ('PRV008', 'Snacks Importados', 'Zona Shopping No.34', 'Ana Torres', '75678901', 'Snacks y golosinas', 'A')
+ON DUPLICATE KEY UPDATE `razonSocial` = `razonSocial`;
 
 -- CATEGORIAS
 INSERT INTO `categorias` (`codigo`, `nombre`, `descripcion`, `estado`)

@@ -10,8 +10,14 @@ using Mercadito.src.products.data.repository;
 using Mercadito.src.products.domain.factory;
 using Mercadito.src.products.domain.usecases;
 using Mercadito.src.shared.domain.factory;
+using Mercadito.src.shared.domain.validator;
+using Mercadito.src.domain.provedores.validator;
+using Mercadito.src.domain.provedores.dto;
 
 using System.Globalization;
+using Mercadito.src.application.suppliers.use_cases;
+using Mercadito.src.domain.provedores.repository;
+using Mercadito.src.domain.provedores.factory;
 
 var culture = new CultureInfo("es-BO");
 CultureInfo.DefaultThreadCurrentCulture = culture;
@@ -41,17 +47,26 @@ builder.Services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddScoped<CategoryRepository>();
 builder.Services.AddScoped<EmployeeRepository>();
+builder.Services.AddScoped<SupplierRepository>();
 builder.Services.AddScoped<RepositoryCreator<ProductRepository>, ProductRepositoryCreator>();
 builder.Services.AddScoped<RepositoryCreator<CategoryRepository>, CategoryRepositoryCreator>();
 builder.Services.AddScoped<RepositoryCreator<EmployeeRepository>, EmployeeRepositoryCreator>();
+builder.Services.AddScoped<RepositoryCreator<SupplierRepository>, SupplierRepositoryCreator>();
+
 builder.Services.AddSingleton<IProductFactory, ProductFactory>();
 builder.Services.AddSingleton<ICategoryFactory, CategoryFactory>();
 builder.Services.AddSingleton<IEmployeeFactory, EmployeeFactory>();
+builder.Services.AddSingleton<ISupplierFactory, SupplierFactory>();
+
+builder.Services.AddSingleton<IValidator<CreateSupplierDto, SupplierDto>, CreateSupplierValidator>();
+builder.Services.AddSingleton<IValidator<UpdateSupplierDto, SupplierDto>, UpdateSupplierValidator>();
 
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
 builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();
 
 builder.Services.AddScoped<IEmployeeManagementUseCase, EmployeeManagementUseCase>();
+
+builder.Services.AddScoped<IRegisterSupplierUseCase, RegisterSupplierUseCase>();
 
 var app = builder.Build();
 
