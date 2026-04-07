@@ -5,7 +5,11 @@ using Mercadito.src.products.domain.factory;
 using Mercadito.src.products.domain.model;
 using Mercadito.src.products.data.repository;
 using Mercadito.src.shared.domain.factory;
+using Shared.Domain;
 using System.ComponentModel.DataAnnotations;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace Mercadito.src.products.domain.usecases
 {
@@ -117,37 +121,6 @@ namespace Mercadito.src.products.domain.usecases
                 cancellationToken);
         }
 
-        public async Task CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default)
-        {
-            var productRepository = _productRepositoryCreator.Create();
-            await productRepository.CreateAsync(
-                new ProductWithCategoriesWriteModel
-                {
-                    Product = _productFactory.CreateForInsert(newProduct),
-                    CategoryIds = newProduct.CategoryIds
-                },
-                cancellationToken);
-        }
-
-        public async Task UpdateAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default)
-        {
-            var productRepository = _productRepositoryCreator.Create();
-            var productToUpdate = _productFactory.CreateForUpdate(updateProduct);
-
-            var affectedRows = await productRepository.UpdateAsync(
-                new ProductWithCategoriesWriteModel
-                {
-                    Product = productToUpdate,
-                    CategoryIds = updateProduct.CategoryIds
-                },
-                cancellationToken);
-
-            if (affectedRows == 0)
-            {
-                throw new ValidationException("Producto no encontrado.");
-            }
-        }
-
         public async Task<UpdateProductDto?> GetForEditAsync(long productId, CancellationToken cancellationToken = default)
         {
             var productRepository = _productRepositoryCreator.Create();
@@ -175,6 +148,34 @@ namespace Mercadito.src.products.domain.usecases
             var productRepository = _productRepositoryCreator.Create();
             var affectedRows = await productRepository.DeleteAsync(productId, cancellationToken);
             return affectedRows > 0;
+        }
+
+        public async Task<Result> CreateAsync(CreateProductDto newProduct, CancellationToken cancellationToken = default)
+        {
+            var productRepository = _productRepositoryCreator.Create();
+            var product = _productFactory.CreateForInsert(newProduct);
+            var writeModel = new ProductWithCategoriesWriteModel
+            {
+                Product = product,
+                CategoryIds = newProduct.CategoryIds // Use CategoryIds from the DTO, not Product
+            };
+
+            var productId = await productRepository.CreateAsync(writeModel, cancellationToken);
+            return productId > 0 ? Result.Success() : Result.Failure("Failed to create product.");
+        }
+
+        public async Task<Result> UpdateAsync(UpdateProductDto updateProduct, CancellationToken cancellationToken = default)
+        {
+            var productRepository = _productRepositoryCreator.Create();
+            var product = _productFactory.CreateForUpdate(updateProduct);
+            var writeModel = new ProductWithCategoriesWriteModel
+            {
+                Product = product,
+                CategoryIds = updateProduct.CategoryIds // Use CategoryIds from the DTO, not Product
+            };
+
+            var affectedRows = await productRepository.UpdateAsync(writeModel, cancellationToken);
+            return affectedRows > 0 ? Result.Success() : Result.Failure("Failed to update product.");
         }
     }
 }

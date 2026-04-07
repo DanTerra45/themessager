@@ -6,6 +6,7 @@ using Mercadito.src.products.domain.usecases;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Shared.Domain;
 
 namespace Mercadito.Pages.Products
 {
@@ -200,6 +201,50 @@ namespace Mercadito.Pages.Products
                 SetPendingEditProductId(id);
             }
 
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostCreateAsync(CancellationToken ct = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                ShowModal = true;
+                await LoadCategoriesAsync();
+                return Page();
+            }
+
+            var result = await _productManagementUseCase.CreateAsync(NewProduct, ct);
+            if (result.IsFailure)
+            {
+                ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                ShowModal = true;
+                await LoadCategoriesAsync();
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = "Producto creado correctamente.";
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostEditAsync(CancellationToken ct = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                ShowEditModal = true;
+                await LoadCategoriesAsync();
+                return Page();
+            }
+
+            var result = await _productManagementUseCase.UpdateAsync(EditProduct, ct);
+            if (result.IsFailure)
+            {
+                ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                ShowEditModal = true;
+                await LoadCategoriesAsync();
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = "Producto actualizado correctamente.";
             return RedirectToPage();
         }
     }

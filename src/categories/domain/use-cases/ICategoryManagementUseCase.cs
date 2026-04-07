@@ -1,5 +1,8 @@
 using Mercadito.src.categories.domain.dto;
 using Mercadito.src.categories.domain.model;
+using Shared.Domain;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Mercadito.src.categories.domain.usecases
 {
@@ -26,8 +29,13 @@ namespace Mercadito.src.categories.domain.usecases
             CancellationToken cancellationToken = default);
         Task<string> GetNextCategoryCodePreviewAsync(CancellationToken cancellationToken = default);
         Task<UpdateCategoryDto?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default);
-        Task CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default);
-        Task UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default);
+
+        // Changed to Task<Result> to represent expected validation outcomes without exceptions
+        Task<Result> CreateAsync(CreateCategoryDto newCategory, CancellationToken cancellationToken = default);
+
+        // Changed to Task<Result> to represent expected validation outcomes without exceptions
+        Task<Result> UpdateAsync(UpdateCategoryDto editCategory, CancellationToken cancellationToken = default);
+
         Task<bool> DeleteAsync(long categoryId, CancellationToken cancellationToken = default);
     }
 }

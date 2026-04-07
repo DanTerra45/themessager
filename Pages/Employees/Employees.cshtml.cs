@@ -141,7 +141,50 @@ namespace Mercadito.Pages.Employees
             return RedirectToPage();
         }
 
+        public async Task<IActionResult> OnPostCreateAsync(CancellationToken ct = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                // preserve modal open state and show validation errors
+                ShowCreateEmployeeModal = true;
+                return Page();
+            }
 
+            var result = await _employeeManagementUseCase.CreateAsync(NewEmployee, ct);
+            if (result.IsFailure)
+            {
+                // show validation failure to the user
+                ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                ShowCreateEmployeeModal = true;
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = "Empleado creado correctamente.";
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostEditAsync(CancellationToken ct = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                ShowEditEmployeeModal = true;
+                return Page();
+            }
+
+            var result = await _employeeManagementUseCase.UpdateAsync(EditEmployee, ct);
+            if (result.IsFailure)
+            {
+                ModelState.AddModelError(string.Empty, result.ErrorMessage);
+                ShowEditEmployeeModal = true;
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
+            return RedirectToPage();
+        }
     }
 }
+
+
+
 

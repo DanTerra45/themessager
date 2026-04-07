@@ -69,7 +69,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th>Contacto</th>
+                        <th>Teléfono</th>
                         <th class="sortable-header" title="Ordenar por Rol">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="rol" />
@@ -89,28 +89,30 @@
                         <tr>
                             @if (showIdColumn)
                             {
-                                <td class="small text-muted" style="font-family: var(--font-mono);">@emp.Id</td>
+                                <td class="small text-muted text-center" style="font-family: var(--font-mono);">@emp.Id</td>
                             }
-                            <td class="fw-bold" style="font-family: var(--font-mono); text-align: center;">
+                            <td class="text-center" style="font-family: var(--font-mono);">
                                 @{
-                                    var employeeCiDisplay = emp.Ci.ToString();
-                                    if (!string.IsNullOrWhiteSpace(emp.Complemento))
+                                    // hide CI when zero
+                                    var ciPart = emp.Ci != 0 ? emp.Ci.ToString() : string.Empty;
+                                    var employeeCiDisplay = ciPart;
+                                    if (!string.IsNullOrWhiteSpace(emp.Complemento) && !string.IsNullOrEmpty(ciPart))
                                     {
                                         employeeCiDisplay += "-" + emp.Complemento;
                                     }
                                 }
                                 <span class="table-ellipsis table-ellipsis-employee-ci" title="@employeeCiDisplay">@employeeCiDisplay</span>
                             </td>
-                            <td>
+                            <td class="text-center" style="font-family: var(--font-display); font-size: 1.1rem;">
                                 @{
                                     var employeeLastNamesDisplay = (emp.PrimerApellido + " " + emp.SegundoApellido).Trim();
                                 }
                                 <span class="table-ellipsis table-ellipsis-employee-surnames" title="@employeeLastNamesDisplay">@employeeLastNamesDisplay</span>
                             </td>
-                            <td class="" style="font-family: var(--font-display); font-size: 1.1rem;">
+                            <td class="text-center" style="font-family: var(--font-display); font-size: 1.1rem;">
                                 <span class="table-ellipsis table-ellipsis-employee-name" title="@emp.Nombres">@emp.Nombres</span>
                             </td>
-                            <td style="font-family: var(--font-mono); text-align: center;">
+                            <td class="text-center" style="font-family: var(--font-mono);">
                                 <span class="table-ellipsis table-ellipsis-employee-contact" title="@emp.NumeroContacto">@emp.NumeroContacto</span>
                             </td>
                             <td class="text-center">
@@ -189,39 +191,6 @@
 </section>
 
 <!-- Modals -->
-<section class="modal fade" id="deleteEmployeeModal" tabindex="-1" aria-labelledby="deleteEmployeeModalLabel" aria-hidden="true">
-    <section class="modal-dialog modal-dialog-centered">
-        <article class="modal-content">
-            <form method="post" asp-page-handler="Delete" id="deleteEmployeeForm">
-                <input type="hidden" name="sortBy" value="@Model.SortBy" />
-                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-                <input type="hidden" name="id" id="DeleteEmployeeId" />
-
-                <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
-                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; color: white;" id="deleteEmployeeModalLabel">
-                        <i class="bi bi-exclamation-triangle me-2"></i> Confirmar eliminación
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </header>
-
-                <section class="modal-body p-4">
-                    <p class="mb-3" style="font-size: 1.1rem;">¿Está seguro de eliminar al empleado seleccionado?</p>
-                    <p class="mb-0" style="font-family: var(--font-mono); padding: 1rem; background-color: var(--mrc-surface-alt); border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm);">
-                        Empleado: <strong id="deleteEmployeeName" style="font-size: 1.2rem;">-</strong>
-                    </p>
-                </section>
-
-                <footer class="modal-footer">
-                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="b-btn b-btn-danger">
-                        <i class="bi bi-trash me-1"></i> Eliminar
-                    </button>
-                </footer>
-            </form>
-        </article>
-    </section>
-</section>
-
 <section class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
@@ -244,7 +213,8 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 7 y 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="NewEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off" />
+                            <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off"
+                                   value="@(Model?.NewEmployee != null && Model.NewEmployee.Ci.HasValue && Model.NewEmployee.Ci.Value != 0 ? Model.NewEmployee.Ci.Value.ToString() : string.Empty)" />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">
@@ -332,6 +302,7 @@
     </section>
 </section>
 
+<!-- Edit modal: render empty value if CI is null or 0 -->
 <section class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
@@ -346,7 +317,6 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
                 <section class="modal-body p-4 employee-modal-body">
-
                     <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
                     <section class="row g-3 mb-4">
                         <section class="col-md-5 mb-2 mb-md-0">
@@ -355,7 +325,8 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 7 y 8 dígitos, sin puntos ni espacios.">i</span>
                                 <span asp-validation-for="EditEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off" />
+                            <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off"
+                                   value="@(Model?.EditEmployee != null && Model.EditEmployee.Ci.HasValue && Model.EditEmployee.Ci.Value != 0 ? Model.EditEmployee.Ci.Value.ToString() : string.Empty)" />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">

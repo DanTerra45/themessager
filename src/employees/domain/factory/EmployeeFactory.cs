@@ -1,5 +1,7 @@
 using Mercadito.src.employees.data.entity;
 using Mercadito.src.employees.domain.dto;
+using Shared.Domain;
+using System;
 
 namespace Mercadito.src.employees.domain.factory
 {
@@ -32,6 +34,66 @@ namespace Mercadito.src.employees.domain.factory
                 Rol = NormalizeRequired(dto.Rol),
                 NumeroContacto = NormalizeContact(dto.NumeroContacto)
             };
+        }
+
+        // New: TryCreateForInsert validates and returns Result<Employee>
+        public Result<Employee> TryCreateForInsert(CreateEmployeeDto dto)
+        {
+            if (dto == null) return Result<Employee>.Failure("Employee data is required.");
+
+            // Example validations — keep small and domain-focused
+            if (dto.Ci.HasValue && dto.Ci.Value == 0)
+            {
+                return Result<Employee>.Failure("CI cannot be 0.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Nombres))
+            {
+                return Result<Employee>.Failure("Nombres are required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.PrimerApellido))
+            {
+                return Result<Employee>.Failure("Primer apellido is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Rol))
+            {
+                return Result<Employee>.Failure("Rol is required.");
+            }
+
+            // All good — create entity
+            var entity = CreateForInsert(dto);
+            return Result<Employee>.Success(entity);
+        }
+
+        // New: TryCreateForUpdate validates and returns Result<Employee>
+        public Result<Employee> TryCreateForUpdate(UpdateEmployeeDto dto)
+        {
+            if (dto == null) return Result<Employee>.Failure("Employee data is required.");
+            if (dto.Id <= 0) return Result<Employee>.Failure("Employee Id is required for update.");
+            if (dto.Ci.HasValue && dto.Ci.Value == 0)
+            {
+                return Result<Employee>.Failure("CI cannot be 0.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Nombres))
+            {
+                return Result<Employee>.Failure("Nombres are required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.PrimerApellido))
+            {
+                return Result<Employee>.Failure("Primer apellido is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Rol))
+            {
+                return Result<Employee>.Failure("Rol is required.");
+            }
+
+            var entity = CreateForUpdate(dto);
+            return Result<Employee>.Success(entity);
         }
 
         private static string NormalizeRequired(string value)
