@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Products
 {
-    public partial class ProductsModel : AppPageModel
+    public partial class ProductsModel : AppPageModel, IProductListingPageModel
     {
         private const string CurrentPageSessionKey = "Products.CurrentPage";
         private const string CategoryFilterSessionKey = "Products.CategoryFilter";

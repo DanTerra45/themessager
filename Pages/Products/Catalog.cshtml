@@ -1,0 +1,27 @@
+@page
+@model Mercadito.Pages.Products.CatalogModel
+@{
+    ViewData["Title"] = "Catálogo";
+    var listingViewData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        ["ShowIdColumn"] = false,
+        ["ShowActionsColumn"] = false,
+        ["ShowStockColumn"] = false,
+        ["ShowBatchColumn"] = false,
+        ["ShowExpirationColumn"] = true,
+        ["ShowPriceColumn"] = true
+    };
+}
+
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>CATÁLOGO</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Consulta pública del catálogo de productos</p>
+    </section>
+</header>
+
+<partial name="_ProductListing" model="(Mercadito.Pages.Products.IProductListingPageModel)Model" view-data="listingViewData" />
+
+@section Scripts {
+    <script src="~/js/pages/products-page.js" asp-append-version="true"></script>
+}

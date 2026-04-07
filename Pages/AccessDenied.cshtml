@@ -1,0 +1,23 @@
+@page "/AccessDenied"
+@{
+    ViewData["Title"] = "Acceso denegado";
+}
+
+<section class="mx-auto" style="max-width: 640px;">
+    <header class="dash-header mb-4">
+        <section>
+            <h1>ACCESO DENEGADO</h1>
+            <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Tu rol no tiene permiso para entrar a esta sección.</p>
+        </section>
+    </header>
+
+    <section class="b-card p-4">
+        <p style="font-family: var(--font-mono); margin-bottom: 1.5rem;">
+            Si necesitas acceso adicional, solicita el cambio a un administrador del sistema.
+        </p>
+
+        <footer class="d-flex justify-content-end">
+            <a class="b-btn" asp-page="/Index">Volver al inicio</a>
+        </footer>
+    </section>
+</section>

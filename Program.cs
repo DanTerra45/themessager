@@ -53,10 +53,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AddPageRoute("/Products/Products", "/Products/{handler?}");
+    options.Conventions.AddPageRoute("/Products/Catalog", "/Catalog/{handler?}");
     options.Conventions.AddPageRoute("/Categories/Categories", "/Categories/{handler?}");
+    options.Conventions.AddPageRoute("/Categories/Browse", "/CategoryCatalog/{handler?}");
     options.Conventions.AddPageRoute("/Employees/Employees", "/Employees/{handler?}");
     options.Conventions.AddPageRoute("/Suppliers/Suppliers", "/Suppliers/{handler?}");
     options.Conventions.AddPageRoute("/Users/Users", "/Users/{handler?}");
+    options.Conventions.AuthorizePage("/Products/Products", "OperatorOrAdmin");
+    options.Conventions.AuthorizePage("/Categories/Categories", "AdminOnly");
+    options.Conventions.AuthorizePage("/Categories/Browse", "AuditorOrAdmin");
+    options.Conventions.AuthorizePage("/Employees/Employees", "AdminOnly");
+    options.Conventions.AuthorizePage("/Suppliers/Suppliers", "OperatorOrAdmin");
     options.Conventions.AuthorizePage("/Users/Users", "AdminOnly");
     options.Conventions.AddPageRoute("/Account/Login", "/Login");
     options.Conventions.AddPageRoute("/Account/ForgotPassword", "/ForgotPassword");
@@ -64,6 +71,9 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Sales", "/Sales/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Cancellation", "/Sales/Cancellation/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Reports", "/Sales/Reports/{handler?}");
+    options.Conventions.AuthorizePage("/Sales/Sales", "OperatorOrAdmin");
+    options.Conventions.AuthorizePage("/Sales/Cancellation", "OperatorOrAdmin");
+    options.Conventions.AuthorizePage("/Sales/Reports", "AuditorOrAdmin");
 });
 
 builder.Services.AddDistributedMemoryCache();
@@ -79,7 +89,7 @@ builder.Services
     .AddCookie(options =>
     {
         options.LoginPath = "/Login";
-        options.AccessDeniedPath = "/Login";
+        options.AccessDeniedPath = "/AccessDenied";
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
         options.SlidingExpiration = true;
@@ -89,6 +99,8 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("OperatorOrAdmin", policy => policy.RequireRole("Admin", "Operador"));
+    options.AddPolicy("AuditorOrAdmin", policy => policy.RequireRole("Admin", "Auditor"));
 });
 
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Email"));
