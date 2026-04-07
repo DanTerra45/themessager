@@ -8,6 +8,8 @@ namespace Shared.Domain
     /// </summary>
     public class Result
     {
+        private readonly Dictionary<string, List<string>> _errors = new();
+
         /// <summary>
         /// True when operation succeeded.
         /// </summary>
@@ -25,16 +27,24 @@ namespace Shared.Domain
         public string ErrorMessage { get; }
 
         /// <summary>
+        /// Optional field-level errors for validation scenarios.
+        /// </summary>
+        public IReadOnlyDictionary<string, List<string>> Errors => _errors;
+
+        /// <summary>
         /// Protected constructor enforces invariants for derived types.
         /// Use the static factory methods to create instances.
         /// </summary>
         /// <param name="isSuccess">Indicates success.</param>
         /// <param name="errorMessage">Error message or empty for success.</param>
         /// <exception cref="ArgumentException">Thrown when invariants are violated.</exception>
-        protected Result(bool isSuccess, string errorMessage)
+        protected Result(bool isSuccess, string errorMessage, IReadOnlyDictionary<string, List<string>>? errors = null)
         {
             // Normalize null to empty to avoid nulls leaking.
-            errorMessage ??= string.Empty;
+            if (errorMessage == null)
+            {
+                errorMessage = string.Empty;
+            }
 
             if (isSuccess && !string.IsNullOrEmpty(errorMessage))
             {
@@ -48,6 +58,16 @@ namespace Shared.Domain
 
             IsSuccess = isSuccess;
             ErrorMessage = errorMessage;
+
+            if (errors == null)
+            {
+                return;
+            }
+
+            foreach (var error in errors)
+            {
+                _errors[error.Key] = new List<string>(error.Value);
+            }
         }
 
         /// <summary>
@@ -60,7 +80,29 @@ namespace Shared.Domain
         /// </summary>
         /// <param name="errorMessage">Non-empty error message.</param>
         /// <returns>Failed <see cref="Result"/>.</returns>
-        public static Result Failure(string errorMessage) => new Result(false, errorMessage ?? string.Empty);
+        public static Result Failure(string errorMessage)
+        {
+            return new Result(false, errorMessage == null ? string.Empty : errorMessage);
+        }
+
+        /// <summary>
+        /// Create a failed Result with field-level validation errors.
+        /// </summary>
+        public static Result Failure(IReadOnlyDictionary<string, List<string>> errors) =>
+            new Result(false, BuildErrorMessage(errors), errors);
+
+        protected static string BuildErrorMessage(IReadOnlyDictionary<string, List<string>> errors)
+        {
+            foreach (var error in errors)
+            {
+                if (error.Value.Count > 0 && !string.IsNullOrWhiteSpace(error.Value[0]))
+                {
+                    return error.Value[0];
+                }
+            }
+
+            return "La operación no pudo completarse por errores de validación.";
+        }
 
         /// <summary>
         /// Deconstruct support for convenient usage: (isSuccess, errorMessage) = result;
@@ -115,8 +157,8 @@ namespace Shared.Domain
         /// <summary>
         /// Internal constructor enforces invariants via base ctor.
         /// </summary>
-        protected internal Result(bool isSuccess, T value, string errorMessage)
-            : base(isSuccess, errorMessage)
+        protected internal Result(bool isSuccess, T value, string errorMessage, IReadOnlyDictionary<string, List<string>>? errors = null)
+            : base(isSuccess, errorMessage, errors)
         {
             _value = value!;
         }
@@ -130,7 +172,16 @@ namespace Shared.Domain
         /// Create a failed Result with a non-empty error message.
         /// Value is ignored and will be default(T).
         /// </summary>
-        public static Result<T> Failure(string errorMessage) => new Result<T>(false, default!, errorMessage ?? string.Empty);
+        public new static Result<T> Failure(string errorMessage)
+        {
+            return new Result<T>(false, default!, errorMessage == null ? string.Empty : errorMessage);
+        }
+
+        /// <summary>
+        /// Create a failed Result with field-level validation errors.
+        /// </summary>
+        public new static Result<T> Failure(IReadOnlyDictionary<string, List<string>> errors) =>
+            new Result<T>(false, default!, BuildErrorMessage(errors), errors);
 
         /// <summary>
         /// Try to get the value; returns true if the result is success and outputs the value.

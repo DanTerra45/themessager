@@ -39,7 +39,7 @@
                                 </form>
                             </th>
                         }
-                        <th class="sortable-header text-center fw-normal" title="Ordenar por Código">
+                        <th class="sortable-header text-center fw-bold" title="Ordenar por Código">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="code" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -49,7 +49,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="sortable-header text-center fw-normal" title="Ordenar por Nombre">
+                        <th class="sortable-header text-center fw-bold" title="Ordenar por Nombre">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="name" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -59,8 +59,8 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="text-center fw-normal">Descripción</th>
-                        <th class="sortable-header text-center fw-normal" title="Ordenar por Productos Asociados">
+                        <th class="text-center fw-bold">Descripción</th>
+                        <th class="sortable-header text-center fw-bold" title="Ordenar por Productos Asociados">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
                                 <input type="hidden" name="sortBy" value="productCount" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
@@ -70,7 +70,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="text-center fw-normal" style="width: 170px;">Acciones</th>
+                        <th class="text-center fw-bold" style="width: 170px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>

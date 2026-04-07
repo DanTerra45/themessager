@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace Mercadito.Pages.Employees
 {
@@ -110,7 +110,8 @@ namespace Mercadito.Pages.Employees
                 "id" => "id",
                 "ci" => "ci",
                 "nombres" => "nombres",
-                "rol" => "rol",
+                "rol" => "cargo",
+                "cargo" => "cargo",
                 _ => "apellidos"
             };
         }

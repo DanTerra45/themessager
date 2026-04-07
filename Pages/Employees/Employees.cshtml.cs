@@ -1,17 +1,15 @@
-﻿using Mercadito.src.employees.domain.dto;
-using Mercadito.src.employees.domain.model;
-using Mercadito.src.employees.domain.usecases;
+using Mercadito.src.employees.application.models;
+using Mercadito.src.employees.application.ports.input;
+using Mercadito.Pages.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using MySqlConnector;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text.Json;
 
 namespace Mercadito.Pages.Employees
 {
-    public partial class EmployeesModel : PageModel
+    public partial class EmployeesModel : AppPageModel
     {
         private const string CurrentPageSessionKey = "Employees.CurrentPage";
         private const string CurrentAnchorEmployeeIdSessionKey = "Employees.CurrentAnchorEmployeeId";
@@ -76,8 +74,8 @@ namespace Mercadito.Pages.Employees
 
             SaveStateInSession();
             RestorePendingPostbackState();
-            RestorePendingValidationErrors(PendingCreateErrorsSessionKey);
-            RestorePendingValidationErrors(PendingEditErrorsSessionKey);
+            RestoreModelStateErrors(PendingCreateErrorsSessionKey, _logger);
+            RestoreModelStateErrors(PendingEditErrorsSessionKey, _logger);
 
             if (ShowCreateEmployeeModal || ShowEditEmployeeModal)
             {
@@ -141,49 +139,9 @@ namespace Mercadito.Pages.Employees
             return RedirectToPage();
         }
 
-        public async Task<IActionResult> OnPostCreateAsync(CancellationToken ct = default)
-        {
-            if (!ModelState.IsValid)
-            {
-                // preserve modal open state and show validation errors
-                ShowCreateEmployeeModal = true;
-                return Page();
-            }
-
-            var result = await _employeeManagementUseCase.CreateAsync(NewEmployee, ct);
-            if (result.IsFailure)
-            {
-                // show validation failure to the user
-                ModelState.AddModelError(string.Empty, result.ErrorMessage);
-                ShowCreateEmployeeModal = true;
-                return Page();
-            }
-
-            TempData["SuccessMessage"] = "Empleado creado correctamente.";
-            return RedirectToPage();
-        }
-
-        public async Task<IActionResult> OnPostEditAsync(CancellationToken ct = default)
-        {
-            if (!ModelState.IsValid)
-            {
-                ShowEditEmployeeModal = true;
-                return Page();
-            }
-
-            var result = await _employeeManagementUseCase.UpdateAsync(EditEmployee, ct);
-            if (result.IsFailure)
-            {
-                ModelState.AddModelError(string.Empty, result.ErrorMessage);
-                ShowEditEmployeeModal = true;
-                return Page();
-            }
-
-            TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
-            return RedirectToPage();
-        }
     }
 }
+
 
 
 

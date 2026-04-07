@@ -1,18 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mercadito.src.domain.provedores.dto;
-using Mercadito.src.domain.provedores.validator;
+using Mercadito.src.suppliers.application.models;
+using Mercadito.src.suppliers.application.ports.input;
+using Mercadito.src.suppliers.application.validation;
 using Mercadito.src.shared.domain.validator;
-using Mercadito.src.application.suppliers.use_cases;
 
 namespace Mercadito.Pages.Suppliers
 {
     public partial class SuppliersModel : PageModel
     {
         private readonly IValidator<CreateSupplierDto, SupplierDto> _createValidator;
-        private readonly IValidator<UpdateSupplierDto, SupplierDto> _updateValidator;
         private readonly ILogger<SuppliersModel> _logger;
         private readonly IRegisterSupplierUseCase _register;
+        private readonly IUpdateSupplierUseCase _update;
+        private readonly IGetAllSuppliersUseCase _getAll;
+        private readonly IGetSupplierByIdUseCase _getById;
+        private readonly IGetNextSupplierCodeUseCase _getNextSupplierCode;
 
         public bool ShowModalOnError { get; set; }
         public string ActiveModal { get; set; } = "";
@@ -56,6 +59,9 @@ namespace Mercadito.Pages.Suppliers
         [BindProperty]
         public string EditRubro { get; set; } = "";
 
+        [BindProperty]
+        public string EditTelefono { get; set; } = "";
+
         public List<string>? EditRazonSocialErrors { get; set; }
         public List<string>? EditCodigoErrors { get; set; }
         public List<string>? EditDireccionErrors { get; set; }
@@ -65,60 +71,143 @@ namespace Mercadito.Pages.Suppliers
         public Dictionary<string, List<string>> FieldHints { get; private set; } = new();
 
         public List<SupplierRow> ActiveSuppliers { get; private set; } = [];
+        public string NextSupplierCodePreview { get; private set; } = "PRV001";
 
         public SuppliersModel(
             IValidator<CreateSupplierDto, SupplierDto> createValidator,
-            IValidator<UpdateSupplierDto, SupplierDto> updateValidator,
             ILogger<SuppliersModel> logger,
-            IRegisterSupplierUseCase register)
+            IRegisterSupplierUseCase register,
+            IUpdateSupplierUseCase update,
+            IGetAllSuppliersUseCase getAll,
+            IGetSupplierByIdUseCase getById,
+            IGetNextSupplierCodeUseCase getNextSupplierCode)
         {
             _createValidator = createValidator;
-            _updateValidator = updateValidator;
             _logger = logger;
             _register = register;
-            
+            _update = update;
+            _getAll = getAll;
+            _getById = getById;
+            _getNextSupplierCode = getNextSupplierCode;
+
             if (_createValidator is SupplierValidator supplierValidator)
             {
                 FieldHints = supplierValidator.hints;
             }
         }
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
             ShowModalOnError = false;
             ActiveModal = "";
-            LoadSuppliersStub();
-        } 
-
-        private void LoadSuppliersStub()
-        {
-            ActiveSuppliers =
-            [
-                new SupplierRow(1, "PRV-001", "Distribuidora Norte", "Carlos Paredes", "78901234", "Alimentos secos"),
-                new SupplierRow(2, "PRV-002", "Lacteos del Valle", "Mariela Quispe", "71234567", "Lacteos y refrigerados"),
-                new SupplierRow(3, "PRV-003", "Aseo Hogar SRL", "Luis Romero", "76543210", "Limpieza y desinfeccion"),
-                new SupplierRow(4, "PRV-004", "Panificadora Central", "Diana Rios", "79887766", "Panaderia")
-            ];
+            await LoadSuppliersAsync();
+            await LoadNextSupplierCodePreviewAsync();
+            Codigo = NextSupplierCodePreview;
         }
 
-        private async Task SaveSupplierStub(CreateSupplierDto supplier)
+        public async Task<IActionResult> OnGetDetailsAsync(long id)
         {
-            long newId = ActiveSuppliers.Count > 0 ? ActiveSuppliers.Max(s => s.Id) + 1 : 1;
-            ActiveSuppliers.Add(new SupplierRow(newId, supplier.Codigo, supplier.Nombre, supplier.Contacto, "79887766", supplier.Rubro));
-            
-            await Task.CompletedTask;
-        }
-
-        private async Task UpdateSupplierStub(UpdateSupplierDto supplier)
-        {
-            var existing = ActiveSuppliers.FirstOrDefault(s => s.Id == supplier.Id);
-            if (existing != null)
+            var result = await _getById.ExecuteAsync(id, HttpContext.RequestAborted);
+            if (result.IsFailure)
             {
-                ActiveSuppliers.Remove(existing);
-                ActiveSuppliers.Add(new SupplierRow(supplier.Id, supplier.Codigo, supplier.Nombre, supplier.Contacto, existing.Telefono, supplier.Rubro));
+                _logger.LogWarning("No se pudo cargar el proveedor {SupplierId}: {Message}", id, result.ErrorMessage);
+                return NotFound(new { message = result.ErrorMessage });
             }
-            
-            await Task.CompletedTask;
+
+            return new JsonResult(result.Value);
+        }
+
+        private async Task LoadSuppliersAsync()
+        {
+            var result = await _getAll.ExecuteAsync(HttpContext.RequestAborted);
+            if (result.IsFailure)
+            {
+                _logger.LogError("No se pudo cargar el listado de proveedores: {Message}", result.ErrorMessage);
+                TempData["ErrorMessage"] = "No se pudo cargar el listado de proveedores.";
+                ActiveSuppliers = [];
+                return;
+            }
+
+            ActiveSuppliers = result.Value.Select(MapToRow).ToList();
+        }
+
+        private async Task LoadNextSupplierCodePreviewAsync()
+        {
+            var result = await _getNextSupplierCode.ExecuteAsync(HttpContext.RequestAborted);
+            if (result.IsFailure || string.IsNullOrWhiteSpace(result.Value))
+            {
+                NextSupplierCodePreview = "PRV001";
+                return;
+            }
+
+            NextSupplierCodePreview = result.Value;
+        }
+
+        private static SupplierRow MapToRow(SupplierDto supplier)
+        {
+            return new SupplierRow(
+                supplier.Id,
+                supplier.Codigo,
+                supplier.Nombre,
+                supplier.Contacto,
+                supplier.Telefono,
+                supplier.Rubro);
+        }
+
+        private void ApplyCreateErrors(IReadOnlyDictionary<string, List<string>> errors)
+        {
+            if (errors.TryGetValue("Nombre", out var nombreErrors))
+            {
+                RazonSocialErrors = nombreErrors;
+            }
+
+            if (errors.TryGetValue("Codigo", out var codigoErrors))
+            {
+                CodigoErrors = codigoErrors;
+            }
+
+            if (errors.TryGetValue("Direccion", out var direccionErrors))
+            {
+                DireccionErrors = direccionErrors;
+            }
+
+            if (errors.TryGetValue("Contacto", out var contactoErrors))
+            {
+                ContactoErrors = contactoErrors;
+            }
+
+            if (errors.TryGetValue("Rubro", out var rubroErrors))
+            {
+                RubroErrors = rubroErrors;
+            }
+        }
+
+        private void ApplyEditErrors(IReadOnlyDictionary<string, List<string>> errors)
+        {
+            if (errors.TryGetValue("Nombre", out var nombreErrors))
+            {
+                EditRazonSocialErrors = nombreErrors;
+            }
+
+            if (errors.TryGetValue("Codigo", out var codigoErrors))
+            {
+                EditCodigoErrors = codigoErrors;
+            }
+
+            if (errors.TryGetValue("Direccion", out var direccionErrors))
+            {
+                EditDireccionErrors = direccionErrors;
+            }
+
+            if (errors.TryGetValue("Contacto", out var contactoErrors))
+            {
+                EditContactoErrors = contactoErrors;
+            }
+
+            if (errors.TryGetValue("Rubro", out var rubroErrors))
+            {
+                EditRubroErrors = rubroErrors;
+            }
         }
     }
 

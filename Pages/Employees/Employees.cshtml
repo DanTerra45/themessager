@@ -70,13 +70,13 @@
                             </form>
                         </th>
                         <th>Teléfono</th>
-                        <th class="sortable-header" title="Ordenar por Rol">
+                        <th class="sortable-header" title="Ordenar por Cargo">
                             <form method="post" asp-page-handler="Sort" class="d-inline">
-                                <input type="hidden" name="sortBy" value="rol" />
+                                <input type="hidden" name="sortBy" value="cargo" />
                                 <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
                                 <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
                                 <button type="submit" class="sort-button">
-                                    Rol <i class="bi @Model.GetSortIcon("rol")" style="font-size: 0.8em;"></i>
+                                    Cargo <i class="bi @Model.GetSortIcon("cargo")" style="font-size: 0.8em;"></i>
                                 </button>
                             </form>
                         </th>
@@ -116,7 +116,7 @@
                                 <span class="table-ellipsis table-ellipsis-employee-contact" title="@emp.NumeroContacto">@emp.NumeroContacto</span>
                             </td>
                             <td class="text-center">
-                                <mark class="status-badge" data-status="good">@emp.Rol</mark>
+                                <mark class="status-badge" data-status="good">@emp.Cargo</mark>
                             </td>
                             <td class="text-center">
                                 <menu class="d-flex justify-content-center gap-2 m-0 p-0" style="list-style: none;">
@@ -205,7 +205,7 @@
                 </header>
                 <section class="modal-body p-4 employee-modal-body">
 
-                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Cargo</h6>
                     <section class="row g-3 mb-4">
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Ci" class="form-label fw-bold">
@@ -225,12 +225,12 @@
                             <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" />
                         </section>
                         <section class="col-md-5 mb-2 mb-md-0">
-                            <label asp-for="NewEmployee.Rol" class="form-label fw-bold">
-                                Rol
+                            <label asp-for="NewEmployee.Cargo" class="form-label fw-bold">
+                                Cargo
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Valores permitidos: Cajero o Inventario.">i</span>
-                                <span asp-validation-for="NewEmployee.Rol" class="validation-icon-inline"></span>
+                                <span asp-validation-for="NewEmployee.Cargo" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Rol" type="hidden" />
+                            <input asp-for="NewEmployee.Cargo" type="hidden" />
                             <section class="dropdown">
                                 <button class="form-select text-start category-select-trigger" type="button" id="newRoleDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 1rem;">
                                     <span id="newRoleDropdownText" class="dropdown-fade-container">Cajero</span>
@@ -317,7 +317,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
                 <section class="modal-body p-4 employee-modal-body">
-                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Rol</h6>
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Identificación & Cargo</h6>
                     <section class="row g-3 mb-4">
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Ci" class="form-label fw-bold">
@@ -337,12 +337,12 @@
                             <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" />
                         </section>
                         <section class="col-md-5 mb-2 mb-md-0">
-                            <label asp-for="EditEmployee.Rol" class="form-label fw-bold">
-                                Rol
+                            <label asp-for="EditEmployee.Cargo" class="form-label fw-bold">
+                                Cargo
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Valores permitidos: Cajero o Inventario.">i</span>
-                                <span asp-validation-for="EditEmployee.Rol" class="validation-icon-inline"></span>
+                                <span asp-validation-for="EditEmployee.Cargo" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Rol" type="hidden" />
+                            <input asp-for="EditEmployee.Cargo" type="hidden" />
                             <section class="dropdown">
                                 <button class="form-select text-start category-select-trigger" type="button" id="editRoleDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 1rem;">
                                     <span id="editRoleDropdownText" class="dropdown-fade-container">Cajero</span>

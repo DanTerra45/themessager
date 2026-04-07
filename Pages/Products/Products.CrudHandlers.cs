@@ -1,6 +1,5 @@
-using Mercadito.src.products.domain.dto;
+using Mercadito.src.products.application.models;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Products
 {
@@ -25,13 +24,30 @@ namespace Mercadito.Pages.Products
                 _logger.LogWarning("ModelState inválido al crear producto");
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
                 StorePendingCreateModal(NewProduct);
-                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
+                StoreModelStateErrors(PendingCreateErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
             try
             {
-                await _productManagementUseCase.CreateAsync(NewProduct, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var result = await _productManagementUseCase.CreateAsync(NewProduct, actor, HttpContext.RequestAborted);
+                if (result.IsFailure)
+                {
+                    if (result.Errors.Count > 0)
+                    {
+                        ApplyValidationErrors("NewProduct", result.Errors);
+                        StoreModelStateErrors(PendingCreateErrorsSessionKey);
+                        TempData["ErrorMessage"] = "Corrige los errores del formulario.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                    }
+
+                    StorePendingCreateModal(NewProduct);
+                    return RedirectToCurrentState();
+                }
 
                 if (IsRecentOrderPreset(OrderPreset))
                 {
@@ -39,13 +55,6 @@ namespace Mercadito.Pages.Products
                 }
 
                 TempData["SuccessMessage"] = "Producto agregado exitosamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al crear producto");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingCreateModal(NewProduct);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
@@ -73,22 +82,32 @@ namespace Mercadito.Pages.Products
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
                 StorePendingEditModal(EditProduct);
-                StorePendingValidationErrors(PendingEditErrorsSessionKey);
+                StoreModelStateErrors(PendingEditErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
             try
             {
-                await _productManagementUseCase.UpdateAsync(EditProduct, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var result = await _productManagementUseCase.UpdateAsync(EditProduct, actor, HttpContext.RequestAborted);
+                if (result.IsFailure)
+                {
+                    if (result.Errors.Count > 0)
+                    {
+                        ApplyValidationErrors("EditProduct", result.Errors);
+                        StoreModelStateErrors(PendingEditErrorsSessionKey);
+                        TempData["ErrorMessage"] = "Corrige los errores del formulario.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                    }
+
+                    StorePendingEditModal(EditProduct);
+                    return RedirectToCurrentState();
+                }
 
                 TempData["SuccessMessage"] = "Producto actualizado correctamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al actualizar producto");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingEditModal(EditProduct);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
@@ -113,7 +132,8 @@ namespace Mercadito.Pages.Products
 
             try
             {
-                var wasDeleted = await _productManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var wasDeleted = await _productManagementUseCase.DeleteAsync(id, actor, HttpContext.RequestAborted);
                 if (wasDeleted)
                 {
                     TempData["SuccessMessage"] = "Producto desactivado.";
@@ -133,3 +153,5 @@ namespace Mercadito.Pages.Products
         }
     }
 }
+
+
