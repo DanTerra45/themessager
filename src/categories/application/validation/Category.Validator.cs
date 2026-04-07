@@ -41,6 +41,8 @@ namespace Mercadito.src.categories.application.validation
             AddStringRule("Name", value => Required(value, "El nombre es obligatorio"));
             AddStringRule("Name", value => MaxLength(value, 150, "El nombre no puede exceder 150 caracteres"));
             AddStringRule("Name", value => ControlCharacters(value, "El nombre contiene caracteres no permitidos"));
+            AddStringRule("Name", value => value != null && value.Trim().Length == 0 ? "El nombre no puede ser solo espacios" : string.Empty);
+            AddStringRule("Name", value =>RegexMatch(value,"^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$", "El nombre solo puede contener letras y espacios entre palabras")) ;
         }
 
         private void ConfigureDescriptionRules()
@@ -48,6 +50,8 @@ namespace Mercadito.src.categories.application.validation
             AddStringRule("Description", value => Required(value, "La descripción es obligatoria"));
             AddStringRule("Description", value => MaxLength(value, 150, "La descripción no puede exceder 150 caracteres"));
             AddStringRule("Description", value => ControlCharacters(value, "La descripción contiene caracteres no permitidos"));
+            AddStringRule("Description", value => value != null && value.Trim().Length == 0 ? "La descripción no puede ser solo espacios" : string.Empty);
+            AddStringRule("Description", value => RegexMatch(value, "^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$", "La descripción solo puede contener letras y espacios entre palabras"));
         }
 
         protected void ValidateCreateFields(CreateCategoryDto dto)

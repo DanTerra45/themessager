@@ -34,6 +34,7 @@ namespace Mercadito.src.products.application.validation
             AddStringRule("Name", value => Required(value, "El nombre es obligatorio"));
             AddStringRule("Name", value => MaxLength(value, 150, "El nombre no puede exceder 150 caracteres"));
             AddStringRule("Name", value => ControlCharacters(value, "El nombre contiene caracteres no permitidos"));
+            AddStringRule("Name", value => RegexMatch(value, @"^[\p{L}\p{N} .,'-]+$", "El nombre solo permite letras, números y separadores válidos (espacio, punto, apóstrofe o guion)"));
         }
 
         private void ConfigureDescriptionRules()
@@ -41,6 +42,7 @@ namespace Mercadito.src.products.application.validation
             AddStringRule("Description", value => Required(value, "La descripción es obligatoria"));
             AddStringRule("Description", value => MaxLength(value, 150, "La descripción no puede exceder 150 caracteres"));
             AddStringRule("Description", value => ControlCharacters(value, "La descripción contiene caracteres no permitidos"));
+            AddStringRule("Description", value => RegexMatch(value, @"^[\p{L}\p{N} .,'-]+$", "La descripción solo permite letras, números y separadores válidos (espacio, punto, apóstrofe o guion)"));
         }
 
         private void ConfigureBatchRules()
