@@ -1,7 +1,34 @@
 -- Mercadito (MySQL 8+)
+-- Schema con auditoría
 
 SET NAMES utf8mb4;
 
+
+-- ============================================================
+-- TABLA DE PROVEEDORES
+-- ============================================================
+CREATE TABLE `proveedores` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `codigo` VARCHAR(6) NOT NULL,
+  `razonSocial` VARCHAR(150) NOT NULL,
+  `direccion` VARCHAR(150),
+  `contacto` VARCHAR(100),
+  `telefono` VARCHAR(20),
+  `rubro` VARCHAR(50),
+  `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_proveedores_codigo` UNIQUE (`codigo`),
+  CONSTRAINT `chk_proveedores_codigo_formato` CHECK (`codigo` REGEXP '^PRV[0-9]{3}$'),
+  CONSTRAINT `chk_proveedores_razon_social_no_vacia` CHECK (TRIM(`razonSocial`) <> '')
+);
+
+CREATE INDEX `proveedores_idx_estado_codigo` ON `proveedores` (`estado`, `codigo`);
+CREATE INDEX `proveedores_idx_estado_razon` ON `proveedores` (`estado`, `razonSocial`);
+
+-- ============================================================
+-- TABLA DE CATEGORÍAS
+-- ============================================================
 CREATE TABLE `categorias` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `codigo` VARCHAR(6) NOT NULL,
@@ -25,6 +52,9 @@ CREATE TABLE `category_code_sequence` (
   CONSTRAINT `chk_category_code_sequence_next_value` CHECK (`nextValue` BETWEEN 1 AND 100000)
 );
 
+-- ============================================================
+-- TABLA DE PRODUCTOS
+-- ============================================================
 CREATE TABLE `products` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `nombre` VARCHAR(150) NOT NULL,
@@ -42,12 +72,13 @@ CREATE TABLE `products` (
   CONSTRAINT `chk_products_descripcion_no_vacia` CHECK (TRIM(`descripcion`) <> ''),
   CONSTRAINT `chk_products_lote_no_vacio` CHECK (TRIM(`lote`) <> ''),
   CONSTRAINT `chk_products_lote_formato` CHECK (`lote` REGEXP '^[0-9]{1,40}$'),
-  -- Nota: MySQL no permite funciones no determinísticas (como CURRENT_DATE/CURDATE)
-  -- dentro de CHECK. La validación dinámica de fecha se aplica con triggers.
   CONSTRAINT `chk_products_stock_positivo` CHECK (`stock` >= 0),
   CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01)
 );
 
+-- ============================================================
+-- TABLA DE EMPLEADOS
+-- ============================================================
 CREATE TABLE `empleados` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
   `ci` BIGINT NOT NULL,
@@ -71,6 +102,9 @@ CREATE TABLE `empleados` (
   CONSTRAINT `chk_empleados_complemento_formato` CHECK (`complemento` IS NULL OR `complemento` REGEXP '^[0-9][A-Z]$')
 );
 
+-- ============================================================
+-- TABLA RELACIONAL: Categoría de Producto
+-- ============================================================
 CREATE TABLE `categoriaDeProducto` (
   `productId` BIGINT NOT NULL,
   `categoriaId` BIGINT NOT NULL,
@@ -79,6 +113,53 @@ CREATE TABLE `categoriaDeProducto` (
   CONSTRAINT `fk_categoriaDeProducto_categoriaId` FOREIGN KEY (`categoriaId`) REFERENCES `categorias` (`id`) ON DELETE CASCADE
 );
 
+-- ============================================================
+-- TABLA DE USUARIOS (para login)
+-- ============================================================
+CREATE TABLE `usuarios` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL,
+  `passwordHash` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(100),
+  `empleadoId` BIGINT,
+  `rol` ENUM ('Admin', 'Cajero', 'Inventario') NOT NULL DEFAULT 'Cajero',
+  `estado` ENUM ('A', 'I', 'B') NOT NULL DEFAULT 'A',
+  `ultimoLogin` DATETIME,
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_usuarios_username` UNIQUE (`username`),
+  CONSTRAINT `uq_usuarios_email` UNIQUE (`email`),
+  CONSTRAINT `chk_usuarios_username_no_vacio` CHECK (TRIM(`username`) <> ''),
+  CONSTRAINT `fk_usuarios_empleadoId` FOREIGN KEY (`empleadoId`) REFERENCES `empleados` (`id`) ON DELETE SET NULL
+);
+
+-- ============================================================
+-- TABLA DE AUDITORÍA (log de operaciones C/U/D)
+-- ============================================================
+CREATE TABLE `auditoria` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `usuarioId` BIGINT NOT NULL,
+  `usuarioUsername` VARCHAR(50) NOT NULL,
+  `accion` ENUM('C', 'U', 'D') NOT NULL,
+  `tabla` VARCHAR(64) NOT NULL,
+  `registroId` BIGINT NOT NULL,
+  `ipAddress` VARCHAR(45),
+  `userAgent` VARCHAR(255),
+  `datosAnteriores` JSON,
+  `datosNuevos` JSON,
+  `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_auditoria_usuarioId` FOREIGN KEY (`usuarioId`) REFERENCES `usuarios` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_auditoria_accion_valida` CHECK (`accion` IN ('C', 'U', 'D'))
+);
+
+CREATE INDEX `auditoria_idx_tabla_registro` ON `auditoria` (`tabla`, `registroId`);
+CREATE INDEX `auditoria_idx_usuario` ON `auditoria` (`usuarioId`, `timestamp`);
+CREATE INDEX `auditoria_idx_timestamp` ON `auditoria` (`timestamp`);
+
+
+-- ============================================================
+-- ÍNDICES
+-- ============================================================
 CREATE INDEX `categorias_index_1` ON `categorias` (`estado`, `nombre`);
 CREATE INDEX `categorias_index_2` ON `categorias` (`estado`, `id`);
 CREATE INDEX `categorias_index_3` ON `categorias` (`estado`, `codigo`);
@@ -100,11 +181,25 @@ CREATE INDEX `empleados_index_7` ON `empleados` (`estado`, `id`);
 CREATE INDEX `categoriaDeProducto_idx_categoria` ON `categoriaDeProducto` (`categoriaId`);
 CREATE FULLTEXT INDEX `categorias_ft_nombre` ON `categorias` (`nombre`);
 
+CREATE INDEX `usuarios_idx_estado` ON `usuarios` (`estado`, `username`);
+CREATE INDEX `usuarios_idx_empleado` ON `usuarios` (`empleadoId`);
+
+-- ============================================================
+-- DATOS INICIALES
+-- ============================================================
 INSERT INTO `category_code_sequence` (`id`, `nextValue`)
 VALUES (1, 1)
 ON DUPLICATE KEY UPDATE `nextValue` = `nextValue`;
 
--- Evita warnings de "trigger no existe" en primeras ejecuciones.
+-- Usuario admin por defecto (password: admin123 - hash SHA-256)
+-- Nota: En producción usar password hashing seguro (bcrypt, Argon2)
+INSERT INTO `usuarios` (`id`, `username`, `passwordHash`, `email`, `empleadoId`, `rol`, `estado`)
+VALUES (1, 'admin', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'admin@mercadito.local', NULL, 'Admin', 'A')
+ON DUPLICATE KEY UPDATE `username` = `username`;
+
+-- ============================================================
+-- TRIGGERS
+-- ============================================================
 SET @prev_sql_notes := @@sql_notes;
 SET sql_notes = 0;
 DROP TRIGGER IF EXISTS `trg_products_validate_expiration_insert`;
