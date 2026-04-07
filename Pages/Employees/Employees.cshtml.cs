@@ -24,6 +24,7 @@ namespace Mercadito.Pages.Employees
         private const string PendingEditErrorsSessionKey = "Employees.PendingEditErrors";
         private const string SortBySessionKey = "Employees.SortBy";
         private const string SortDirectionSessionKey = "Employees.SortDirection";
+        private const string SearchTermSessionKey = "Employees.SearchTerm";
         private const string DefaultSortBy = "apellidos";
         private const string DefaultSortDirection = "asc";
         private const string NavigationModeNext = "next";
@@ -40,6 +41,7 @@ namespace Mercadito.Pages.Employees
         public long CurrentAnchorEmployeeId { get; set; }
         public string SortBy { get; set; } = DefaultSortBy;
         public string SortDirection { get; set; } = DefaultSortDirection;
+        public string SearchTerm { get; set; } = string.Empty;
 
         public CreateEmployeeDto NewEmployee { get; set; } = new CreateEmployeeDto();
         public UpdateEmployeeDto EditEmployee { get; set; } = new UpdateEmployeeDto();
@@ -96,6 +98,19 @@ namespace Mercadito.Pages.Employees
             }
         }
 
+        public IActionResult OnPostFilter(string sortBy = "", string sortDirection = "", string searchTerm = "", bool clear = false)
+        {
+            LoadStateFromSession();
+            SetSearchAndSortState(clear ? string.Empty : searchTerm, sortBy, sortDirection);
+            CurrentPage = 1;
+            CurrentAnchorEmployeeId = 0;
+
+            ClearPendingEditEmployeeId();
+            ClearPendingNavigation();
+            SaveStateInSession();
+            return RedirectToPage();
+        }
+
         public IActionResult OnPostNavigate(
             string navigationMode = "",
             long cursorEmployeeId = 0,
@@ -103,7 +118,7 @@ namespace Mercadito.Pages.Employees
             string sortDirection = "")
         {
             LoadStateFromSession();
-            SetSortState(sortBy, sortDirection);
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             SetPendingNavigation(navigationMode, cursorEmployeeId);
 
             ClearPendingEditEmployeeId();
@@ -113,7 +128,8 @@ namespace Mercadito.Pages.Employees
 
         public IActionResult OnPostSort(string sortBy = "", string currentSortBy = "", string currentSortDirection = "")
         {
-            SetSortState(currentSortBy, currentSortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, currentSortBy, currentSortDirection);
             ToggleSort(sortBy);
             CurrentPage = 1;
             CurrentAnchorEmployeeId = 0;
@@ -127,7 +143,7 @@ namespace Mercadito.Pages.Employees
         public IActionResult OnPostStartEdit(long id, string sortBy = "", string sortDirection = "")
         {
             LoadStateFromSession();
-            SetSortState(sortBy, sortDirection);
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             ClearPendingNavigation();
             SaveStateInSession();
 

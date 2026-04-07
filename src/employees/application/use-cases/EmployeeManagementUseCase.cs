@@ -28,19 +28,19 @@ namespace Mercadito.src.employees.application.use_cases
             _auditTrailService = auditTrailService;
         }
 
-        public async Task<IReadOnlyList<EmployeeModel>> GetPageByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<EmployeeModel>> GetPageByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.GetEmployeesByCursorAsync(pageSize, sortBy, sortDirection, cursorEmployeeId, isNextPage, cancellationToken);
+            return await _employeeRepository.GetEmployeesByCursorAsync(pageSize, sortBy, sortDirection, cursorEmployeeId, isNextPage, searchTerm, cancellationToken);
         }
 
-        public async Task<IReadOnlyList<EmployeeModel>> GetPageFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorEmployeeId, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<EmployeeModel>> GetPageFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorEmployeeId, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.GetEmployeesFromAnchorAsync(pageSize, sortBy, sortDirection, anchorEmployeeId, cancellationToken);
+            return await _employeeRepository.GetEmployeesFromAnchorAsync(pageSize, sortBy, sortDirection, anchorEmployeeId, searchTerm, cancellationToken);
         }
 
-        public async Task<bool> HasEmployeesByCursorAsync(string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, CancellationToken cancellationToken = default)
+        public async Task<bool> HasEmployeesByCursorAsync(string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.HasEmployeesByCursorAsync(sortBy, sortDirection, cursorEmployeeId, isNextPage, cancellationToken);
+            return await _employeeRepository.HasEmployeesByCursorAsync(sortBy, sortDirection, cursorEmployeeId, isNextPage, searchTerm, cancellationToken);
         }
 
         public async Task<UpdateEmployeeDto?> GetForEditAsync(long employeeId, CancellationToken cancellationToken = default)

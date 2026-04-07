@@ -32,9 +32,9 @@ namespace Mercadito.src.employees.infrastructure.persistence
             public SortFieldDirection Direction { get; } = direction;
         }
 
-        private static string BuildEmployeeRowsQuery()
+        private static string BuildEmployeeRowsQuery(bool hasSearchTerm)
         {
-            return @"SELECT
+            var queryBuilder = new StringBuilder(@"SELECT
                     id AS Id,
                     ci AS Ci,
                     COALESCE(complemento, '') AS Complemento,
@@ -44,7 +44,65 @@ namespace Mercadito.src.employees.infrastructure.persistence
                     cargo AS Cargo,
                     numeroContacto AS NumeroContacto
                     FROM empleados
-                    WHERE estado = @ActiveState";
+                    WHERE estado = @ActiveState");
+
+            if (hasSearchTerm)
+            {
+                queryBuilder.Append(@"
+                    AND (
+                        CAST(ci AS CHAR) LIKE @SearchPattern
+                        OR COALESCE(complemento, '') LIKE @SearchPattern
+                        OR CONCAT(CAST(ci AS CHAR), IF(COALESCE(complemento, '') = '', '', CONCAT('-', complemento))) LIKE @SearchPattern
+                        OR nombres LIKE @SearchPattern
+                        OR primerApellido LIKE @SearchPattern
+                        OR COALESCE(segundoApellido, '') LIKE @SearchPattern
+                        OR TRIM(CONCAT(primerApellido, ' ', COALESCE(segundoApellido, ''), ' ', nombres)) LIKE @SearchPattern
+                        OR TRIM(CONCAT(nombres, ' ', primerApellido, ' ', COALESCE(segundoApellido, ''))) LIKE @SearchPattern
+                        OR numeroContacto LIKE @SearchPattern
+                        OR cargo LIKE @SearchPattern
+                    )");
+            }
+
+            return queryBuilder.ToString();
+        }
+
+        private static string NormalizeSearchTerm(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return string.Empty;
+            }
+
+            return searchTerm.Trim();
+        }
+
+        private static DynamicParameters BuildEmployeeQueryParameters(string searchTerm, int? pageSize = null, long? cursorEmployeeId = null, long? anchorEmployeeId = null)
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("ActiveState", ActiveState);
+
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                parameters.Add("SearchPattern", "%" + normalizedSearchTerm + "%");
+            }
+
+            if (pageSize.HasValue)
+            {
+                parameters.Add("PageSize", pageSize.Value);
+            }
+
+            if (cursorEmployeeId.HasValue)
+            {
+                parameters.Add("CursorEmployeeId", cursorEmployeeId.Value);
+            }
+
+            if (anchorEmployeeId.HasValue)
+            {
+                parameters.Add("AnchorEmployeeId", anchorEmployeeId.Value);
+            }
+
+            return parameters;
         }
 
         private static SortField[] GetSortFields(string normalizedSortBy)
@@ -290,6 +348,7 @@ namespace Mercadito.src.employees.infrastructure.persistence
             string sortDirection,
             long cursorEmployeeId,
             bool isNextPage,
+            string searchTerm,
             CancellationToken cancellationToken = default)
         {
             if (cursorEmployeeId <= 0)
@@ -300,12 +359,13 @@ namespace Mercadito.src.employees.infrastructure.persistence
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
             var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
 
             var queryBuilder = new StringBuilder();
             queryBuilder.Append("SELECT currentEmployee.Id, currentEmployee.Ci, currentEmployee.Complemento, currentEmployee.Nombres, currentEmployee.PrimerApellido, currentEmployee.SegundoApellido, currentEmployee.Cargo, currentEmployee.NumeroContacto FROM (");
-            queryBuilder.Append(BuildEmployeeRowsQuery());
+            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
             queryBuilder.Append(") currentEmployee INNER JOIN (");
-            queryBuilder.Append(BuildEmployeeRowsQuery());
+            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
             queryBuilder.Append(") cursorEmployee ON cursorEmployee.Id = @CursorEmployeeId WHERE ");
             queryBuilder.Append(keysetComparator);
             queryBuilder.Append($@" ORDER BY {orderByClause}
@@ -313,12 +373,7 @@ namespace Mercadito.src.employees.infrastructure.persistence
 
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: new
-                {
-                    ActiveState,
-                    CursorEmployeeId = cursorEmployeeId,
-                    PageSize = pageSize
-                },
+                parameters: BuildEmployeeQueryParameters(searchTerm, pageSize, cursorEmployeeId: cursorEmployeeId),
                 cancellationToken: cancellationToken);
 
             var employees = (await connection.QueryAsync<EmployeeModel>(command)).AsList();
@@ -335,21 +390,23 @@ namespace Mercadito.src.employees.infrastructure.persistence
             string sortBy,
             string sortDirection,
             long anchorEmployeeId,
+            string searchTerm,
             CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var hasAnchor = anchorEmployeeId > 0;
             var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
 
             var queryBuilder = new StringBuilder();
             queryBuilder.Append("SELECT currentEmployee.Id, currentEmployee.Ci, currentEmployee.Complemento, currentEmployee.Nombres, currentEmployee.PrimerApellido, currentEmployee.SegundoApellido, currentEmployee.Cargo, currentEmployee.NumeroContacto FROM (");
-            queryBuilder.Append(BuildEmployeeRowsQuery());
+            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
             queryBuilder.Append(") currentEmployee");
 
             if (hasAnchor)
             {
                 queryBuilder.Append(" INNER JOIN (");
-                queryBuilder.Append(BuildEmployeeRowsQuery());
+                queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
                 queryBuilder.Append(") anchorEmployee ON anchorEmployee.Id = @AnchorEmployeeId WHERE ");
                 queryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
             }
@@ -357,17 +414,9 @@ namespace Mercadito.src.employees.infrastructure.persistence
             queryBuilder.Append($@" ORDER BY {orderByClause}
                     LIMIT @PageSize");
 
-            var parameters = new DynamicParameters();
-            parameters.Add("ActiveState", ActiveState);
-            parameters.Add("PageSize", pageSize);
-            if (hasAnchor)
-            {
-                parameters.Add("AnchorEmployeeId", anchorEmployeeId);
-            }
-
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: parameters,
+                parameters: BuildEmployeeQueryParameters(searchTerm, pageSize, anchorEmployeeId: hasAnchor ? anchorEmployeeId : null),
                 cancellationToken: cancellationToken);
 
             var employees = await connection.QueryAsync<EmployeeModel>(command);
@@ -379,6 +428,7 @@ namespace Mercadito.src.employees.infrastructure.persistence
             string sortDirection,
             long cursorEmployeeId,
             bool isNextPage,
+            string searchTerm,
             CancellationToken cancellationToken = default)
         {
             if (cursorEmployeeId <= 0)
@@ -389,12 +439,13 @@ namespace Mercadito.src.employees.infrastructure.persistence
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
             var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
 
             var queryBuilder = new StringBuilder();
             queryBuilder.Append("SELECT currentEmployee.Id FROM (");
-            queryBuilder.Append(BuildEmployeeRowsQuery());
+            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
             queryBuilder.Append(") currentEmployee INNER JOIN (");
-            queryBuilder.Append(BuildEmployeeRowsQuery());
+            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
             queryBuilder.Append(") cursorEmployee ON cursorEmployee.Id = @CursorEmployeeId WHERE ");
             queryBuilder.Append(keysetComparator);
             queryBuilder.Append($@" ORDER BY {orderByClause}
@@ -402,11 +453,7 @@ namespace Mercadito.src.employees.infrastructure.persistence
 
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: new
-                {
-                    ActiveState,
-                    CursorEmployeeId = cursorEmployeeId
-                },
+                parameters: BuildEmployeeQueryParameters(searchTerm, cursorEmployeeId: cursorEmployeeId),
                 cancellationToken: cancellationToken);
 
             var nextEmployeeId = await connection.QueryFirstOrDefaultAsync<long?>(command);

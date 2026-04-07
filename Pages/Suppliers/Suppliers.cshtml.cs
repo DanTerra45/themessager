@@ -4,11 +4,13 @@ using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.validation;
 using Mercadito.src.shared.domain.validator;
+using System.Globalization;
 
 namespace Mercadito.Pages.Suppliers
 {
     public partial class SuppliersModel : PageModel
     {
+        private const string SearchTermSessionKey = "Suppliers.SearchTerm";
         private readonly IValidator<CreateSupplierDto, SupplierDto> _createValidator;
         private readonly ILogger<SuppliersModel> _logger;
         private readonly IRegisterSupplierUseCase _register;
@@ -68,6 +70,7 @@ namespace Mercadito.Pages.Suppliers
         public List<string>? EditContactoErrors { get; set; }
         public List<string>? EditRubroErrors { get; set; }
 
+        public string SearchTerm { get; set; } = string.Empty;
         public Dictionary<string, List<string>> FieldHints { get; private set; } = new();
 
         public List<SupplierRow> ActiveSuppliers { get; private set; } = [];
@@ -100,9 +103,17 @@ namespace Mercadito.Pages.Suppliers
         {
             ShowModalOnError = false;
             ActiveModal = "";
+            LoadStateFromSession();
             await LoadSuppliersAsync();
             await LoadNextSupplierCodePreviewAsync();
             Codigo = NextSupplierCodePreview;
+        }
+
+        public IActionResult OnPostFilter(string searchTerm = "", bool clear = false)
+        {
+            SearchTerm = clear ? string.Empty : NormalizeSearchTerm(searchTerm);
+            SaveStateInSession();
+            return RedirectToPage();
         }
 
         public async Task<IActionResult> OnGetDetailsAsync(long id)
@@ -128,7 +139,16 @@ namespace Mercadito.Pages.Suppliers
                 return;
             }
 
-            ActiveSuppliers = result.Value.Select(MapToRow).ToList();
+            var suppliers = result.Value.Select(MapToRow).ToList();
+            var normalizedSearchTerm = NormalizeSearchTerm(SearchTerm);
+            if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                suppliers = suppliers
+                    .Where(supplier => MatchesSearch(supplier, normalizedSearchTerm))
+                    .ToList();
+            }
+
+            ActiveSuppliers = suppliers;
         }
 
         private async Task LoadNextSupplierCodePreviewAsync()
@@ -152,6 +172,41 @@ namespace Mercadito.Pages.Suppliers
                 supplier.Contacto,
                 supplier.Telefono,
                 supplier.Rubro);
+        }
+
+        private void LoadStateFromSession()
+        {
+            var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
+            SearchTerm = NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
+        }
+
+        private void SaveStateInSession()
+        {
+            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
+        }
+
+        private static string NormalizeSearchTerm(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return string.Empty;
+            }
+
+            return searchTerm.Trim();
+        }
+
+        private static bool MatchesSearch(SupplierRow supplier, string searchTerm)
+        {
+            return ContainsIgnoreCase(supplier.Codigo, searchTerm)
+                || ContainsIgnoreCase(supplier.RazonSocial, searchTerm)
+                || ContainsIgnoreCase(supplier.Contacto, searchTerm)
+                || ContainsIgnoreCase(supplier.Telefono, searchTerm)
+                || ContainsIgnoreCase(supplier.Rubro, searchTerm);
+        }
+
+        private static bool ContainsIgnoreCase(string value, string searchTerm)
+        {
+            return value.Contains(searchTerm, StringComparison.OrdinalIgnoreCase);
         }
 
         private void ApplyCreateErrors(IReadOnlyDictionary<string, List<string>> errors)

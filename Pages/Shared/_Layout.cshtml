@@ -183,13 +183,6 @@
                             <section class="nav-auth-actions">
                                 @if (User.Identity?.IsAuthenticated == true)
                                 {
-                                    if (canManageUsers)
-                                    {
-                                        <a class="b-btn b-btn-secondary nav-auth-icon-btn" asp-area="" asp-page="/Users/Users" title="Administrar usuarios" aria-label="Administrar usuarios">
-                                            <i class="bi bi-people"></i>
-                                        </a>
-                                    }
-
                                     <span class="b-btn b-btn-secondary nav-auth-chip">
                                         <i class="bi bi-person-circle"></i>
                                         <span style="font-family: var(--font-mono);">@User.Identity.Name</span>

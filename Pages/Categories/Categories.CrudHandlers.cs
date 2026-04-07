@@ -11,7 +11,8 @@ namespace Mercadito.Pages.Categories
             string sortDirection = "")
         {
             NewCategory = newCategory;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             ClearPendingNavigation();
@@ -66,7 +67,8 @@ namespace Mercadito.Pages.Categories
             string sortDirection = "")
         {
             EditCategory = editCategory;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             ClearPendingNavigation();
             SaveStateInSession();
 
@@ -114,7 +116,8 @@ namespace Mercadito.Pages.Categories
 
         public async Task<IActionResult> OnPostDeleteAsync(long id, string sortBy = "", string sortDirection = "")
         {
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             ClearPendingNavigation();

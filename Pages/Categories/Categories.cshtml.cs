@@ -24,6 +24,7 @@ namespace Mercadito.Pages.Categories
         private const string PendingEditErrorsSessionKey = "Categories.PendingEditErrors";
         private const string SortBySessionKey = "Categories.SortBy";
         private const string SortDirectionSessionKey = "Categories.SortDirection";
+        private const string SearchTermSessionKey = "Categories.SearchTerm";
         private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
         private const string NavigationModeNext = "next";
@@ -40,6 +41,7 @@ namespace Mercadito.Pages.Categories
         public long CurrentAnchorCategoryId { get; set; }
         public string SortBy { get; set; } = DefaultSortBy;
         public string SortDirection { get; set; } = DefaultSortDirection;
+        public string SearchTerm { get; set; } = string.Empty;
         public string NextCategoryCodePreview { get; private set; } = "C00001";
 
         public CreateCategoryDto NewCategory { get; set; } = new CreateCategoryDto { Name = string.Empty, Description = string.Empty, Code = string.Empty };
@@ -99,6 +101,19 @@ namespace Mercadito.Pages.Categories
             }
         }
 
+        public IActionResult OnPostFilter(string sortBy = "", string sortDirection = "", string searchTerm = "", bool clear = false)
+        {
+            LoadStateFromSession();
+            SetSearchAndSortState(clear ? string.Empty : searchTerm, sortBy, sortDirection);
+            CurrentPage = 1;
+            CurrentAnchorCategoryId = 0;
+
+            ClearPendingEditCategoryId();
+            ClearPendingNavigation();
+            SaveStateInSession();
+            return RedirectToPage();
+        }
+
         public IActionResult OnPostNavigate(
             string navigationMode = "",
             long cursorCategoryId = 0,
@@ -106,7 +121,7 @@ namespace Mercadito.Pages.Categories
             string sortDirection = "")
         {
             LoadStateFromSession();
-            SetSortState(sortBy, sortDirection);
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             SetPendingNavigation(navigationMode, cursorCategoryId);
 
             ClearPendingEditCategoryId();
@@ -116,7 +131,8 @@ namespace Mercadito.Pages.Categories
 
         public IActionResult OnPostSort(string sortBy = "", string currentSortBy = "", string currentSortDirection = "")
         {
-            SetSortState(currentSortBy, currentSortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, currentSortBy, currentSortDirection);
             ToggleSort(sortBy);
             CurrentPage = 1;
             CurrentAnchorCategoryId = 0;
@@ -130,7 +146,7 @@ namespace Mercadito.Pages.Categories
         public IActionResult OnPostStartEdit(long id, string sortBy = "", string sortDirection = "")
         {
             LoadStateFromSession();
-            SetSortState(sortBy, sortDirection);
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             ClearPendingNavigation();
             SaveStateInSession();
 

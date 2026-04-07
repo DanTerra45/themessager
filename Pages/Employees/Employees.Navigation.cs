@@ -15,6 +15,7 @@ namespace Mercadito.Pages.Employees
                     SortBy,
                     SortDirection,
                     CurrentAnchorEmployeeId,
+                    SearchTerm,
                     cancellationToken)).ToList();
 
                 if (loadedEmployees.Count == 0 && CurrentAnchorEmployeeId > 0)
@@ -25,6 +26,7 @@ namespace Mercadito.Pages.Employees
                         SortDirection,
                         CurrentAnchorEmployeeId,
                         isNextPage: false,
+                        SearchTerm,
                         cancellationToken)).ToList();
 
                     if (loadedEmployees.Count > 0 && CurrentPage > 1)
@@ -42,6 +44,7 @@ namespace Mercadito.Pages.Employees
                         SortBy,
                         SortDirection,
                         CurrentAnchorEmployeeId,
+                        SearchTerm,
                         cancellationToken)).ToList();
                 }
 
@@ -87,6 +90,7 @@ namespace Mercadito.Pages.Employees
                     SortDirection,
                     cursorEmployeeId,
                     isNextPage,
+                    SearchTerm,
                     HttpContext.RequestAborted);
 
                 if (employees.Count == 0)
@@ -142,6 +146,7 @@ namespace Mercadito.Pages.Employees
                 SortDirection,
                 firstEmployeeId,
                 isNextPage: false,
+                SearchTerm,
                 HttpContext.RequestAborted);
 
             HasNextPage = await _employeeManagementUseCase.HasEmployeesByCursorAsync(
@@ -149,6 +154,7 @@ namespace Mercadito.Pages.Employees
                 SortDirection,
                 lastEmployeeId,
                 isNextPage: true,
+                SearchTerm,
                 HttpContext.RequestAborted);
 
             if (CurrentPage <= 1)

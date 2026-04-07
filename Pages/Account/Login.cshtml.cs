@@ -86,6 +86,7 @@ namespace Mercadito.Pages.Account
                     AllowRefresh = true
                 });
 
+            TempData["SuccessMessage"] = "Sesión iniciada.";
             return LocalRedirect(ReturnUrl);
         }
 

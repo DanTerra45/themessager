@@ -110,16 +110,67 @@ namespace Mercadito.src.categories.infrastructure.persistence
             }
         }
 
-        private static string BuildCategoryRowsQuery()
+        private static string BuildCategoryRowsQuery(bool hasSearchTerm)
         {
-            return @"SELECT
+            var queryBuilder = new StringBuilder(@"SELECT
                         c.id AS Id,
                         c.codigo AS Code,
                         c.nombre AS Name,
                         c.descripcion AS Description,
                         c.productosActivosCount AS ProductCount
                     FROM categorias c
-                    WHERE c.estado = @ActiveState";
+                    WHERE c.estado = @ActiveState");
+
+            if (hasSearchTerm)
+            {
+                queryBuilder.Append(@"
+                    AND (
+                        c.codigo LIKE @SearchPattern
+                        OR c.nombre LIKE @SearchPattern
+                        OR c.descripcion LIKE @SearchPattern
+                    )");
+            }
+
+            return queryBuilder.ToString();
+        }
+
+        private static string NormalizeSearchTerm(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return string.Empty;
+            }
+
+            return searchTerm.Trim();
+        }
+
+        private static DynamicParameters BuildCategoryQueryParameters(string searchTerm, int? pageSize = null, long? cursorCategoryId = null, long? anchorCategoryId = null)
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("ActiveState", ActiveState);
+
+            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                parameters.Add("SearchPattern", "%" + normalizedSearchTerm + "%");
+            }
+
+            if (pageSize.HasValue)
+            {
+                parameters.Add("PageSize", pageSize.Value);
+            }
+
+            if (cursorCategoryId.HasValue)
+            {
+                parameters.Add("CursorCategoryId", cursorCategoryId.Value);
+            }
+
+            if (anchorCategoryId.HasValue)
+            {
+                parameters.Add("AnchorCategoryId", anchorCategoryId.Value);
+            }
+
+            return parameters;
         }
 
         private static string NormalizeSortDirection(string sortDirection)
@@ -284,6 +335,7 @@ namespace Mercadito.src.categories.infrastructure.persistence
             string sortDirection,
             long cursorCategoryId,
             bool isNextPage,
+            string searchTerm,
             CancellationToken cancellationToken = default)
         {
             if (cursorCategoryId <= 0)
@@ -294,12 +346,13 @@ namespace Mercadito.src.categories.infrastructure.persistence
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
             var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
 
             var queryBuilder = new StringBuilder();
             queryBuilder.Append("SELECT currentCategory.Id, currentCategory.Code, currentCategory.Name, currentCategory.Description, currentCategory.ProductCount FROM (");
-            queryBuilder.Append(BuildCategoryRowsQuery());
+            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
             queryBuilder.Append(") currentCategory INNER JOIN (");
-            queryBuilder.Append(BuildCategoryRowsQuery());
+            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
             queryBuilder.Append(") cursorCategory ON cursorCategory.Id = @CursorCategoryId WHERE ");
             queryBuilder.Append(keysetComparator);
             queryBuilder.Append($@" ORDER BY {orderByClause}
@@ -307,12 +360,7 @@ namespace Mercadito.src.categories.infrastructure.persistence
 
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: new
-                {
-                    ActiveState,
-                    CursorCategoryId = cursorCategoryId,
-                    PageSize = pageSize
-                },
+                parameters: BuildCategoryQueryParameters(searchTerm, pageSize, cursorCategoryId: cursorCategoryId),
                 cancellationToken: cancellationToken);
 
             var categories = (await connection.QueryAsync<CategoryModel>(command)).AsList();
@@ -329,21 +377,23 @@ namespace Mercadito.src.categories.infrastructure.persistence
             string sortBy,
             string sortDirection,
             long anchorCategoryId,
+            string searchTerm,
             CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var hasAnchor = anchorCategoryId > 0;
             var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
 
             var queryBuilder = new StringBuilder();
             queryBuilder.Append("SELECT currentCategory.Id, currentCategory.Code, currentCategory.Name, currentCategory.Description, currentCategory.ProductCount FROM (");
-            queryBuilder.Append(BuildCategoryRowsQuery());
+            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
             queryBuilder.Append(") currentCategory");
 
             if (hasAnchor)
             {
                 queryBuilder.Append(" INNER JOIN (");
-                queryBuilder.Append(BuildCategoryRowsQuery());
+                queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
                 queryBuilder.Append(") anchorCategory ON anchorCategory.Id = @AnchorCategoryId WHERE ");
                 queryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
             }
@@ -351,17 +401,9 @@ namespace Mercadito.src.categories.infrastructure.persistence
             queryBuilder.Append($@" ORDER BY {orderByClause}
                 LIMIT @PageSize");
 
-            var parameters = new DynamicParameters();
-            parameters.Add("ActiveState", ActiveState);
-            parameters.Add("PageSize", pageSize);
-            if (hasAnchor)
-            {
-                parameters.Add("AnchorCategoryId", anchorCategoryId);
-            }
-
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: parameters,
+                parameters: BuildCategoryQueryParameters(searchTerm, pageSize, anchorCategoryId: hasAnchor ? anchorCategoryId : null),
                 cancellationToken: cancellationToken);
 
             var categories = await connection.QueryAsync<CategoryModel>(command);
@@ -373,6 +415,7 @@ namespace Mercadito.src.categories.infrastructure.persistence
             string sortDirection,
             long cursorCategoryId,
             bool isNextPage,
+            string searchTerm,
             CancellationToken cancellationToken = default)
         {
             if (cursorCategoryId <= 0)
@@ -383,12 +426,13 @@ namespace Mercadito.src.categories.infrastructure.persistence
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
             var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
 
             var queryBuilder = new StringBuilder();
             queryBuilder.Append("SELECT currentCategory.Id FROM (");
-            queryBuilder.Append(BuildCategoryRowsQuery());
+            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
             queryBuilder.Append(") currentCategory INNER JOIN (");
-            queryBuilder.Append(BuildCategoryRowsQuery());
+            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
             queryBuilder.Append(") cursorCategory ON cursorCategory.Id = @CursorCategoryId WHERE ");
             queryBuilder.Append(keysetComparator);
             queryBuilder.Append($@" ORDER BY {orderByClause}
@@ -396,11 +440,7 @@ namespace Mercadito.src.categories.infrastructure.persistence
 
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: new
-                {
-                    ActiveState,
-                    CursorCategoryId = cursorCategoryId
-                },
+                parameters: BuildCategoryQueryParameters(searchTerm, cursorCategoryId: cursorCategoryId),
                 cancellationToken: cancellationToken);
 
             var nextCategoryId = await connection.QueryFirstOrDefaultAsync<long?>(command);

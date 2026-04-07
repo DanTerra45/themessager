@@ -37,10 +37,15 @@ namespace Mercadito.Pages.Users
         [BindProperty]
         public ResetUserPasswordDto ResetPassword { get; set; } = new();
 
+        [BindProperty]
+        public long DeactivateUserId { get; set; }
+
         public IReadOnlyList<UserListItem> ActiveUsers { get; private set; } = [];
         public IReadOnlyList<AvailableEmployeeOption> AvailableEmployees { get; private set; } = [];
         public bool ShowCreateModal { get; private set; }
         public bool ShowResetPasswordModal { get; private set; }
+        public bool ShowDeactivateModal { get; private set; }
+        public string DeactivateUsername { get; private set; } = string.Empty;
 
         public async Task OnGetAsync()
         {
@@ -94,13 +99,22 @@ namespace Mercadito.Pages.Users
             return RedirectToPage();
         }
 
-        public async Task<IActionResult> OnPostDeactivateAsync(long userId)
+        public async Task<IActionResult> OnPostDeactivateAsync()
         {
+            var userId = DeactivateUserId;
             var actor = BuildAuditActor();
             var result = await _deactivateUserUseCase.ExecuteAsync(userId, actor, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 TempData["ErrorMessage"] = result.ErrorMessage;
+
+                if (NeedsDeactivateModal(result.ErrorMessage))
+                {
+                    ShowDeactivateModal = true;
+                    await LoadPageDataAsync();
+                    return Page();
+                }
+
                 return RedirectToPage();
             }
 
@@ -122,6 +136,8 @@ namespace Mercadito.Pages.Users
                 ActiveUsers = usersResult.Value;
             }
 
+            DeactivateUsername = ResolveUsername(DeactivateUserId);
+
             var employeesResult = await _getAvailableEmployeesUseCase.ExecuteAsync(HttpContext.RequestAborted);
             if (employeesResult.IsFailure)
             {
@@ -137,6 +153,28 @@ namespace Mercadito.Pages.Users
         private string BuildResetUrlBase()
         {
             return BuildAbsolutePathUrl("/ResetPassword");
+        }
+
+        private string ResolveUsername(long userId)
+        {
+            if (userId <= 0)
+            {
+                return string.Empty;
+            }
+
+            var matchedUser = ActiveUsers.FirstOrDefault(user => user.Id == userId);
+            return matchedUser?.Username ?? string.Empty;
+        }
+
+        private static bool NeedsDeactivateModal(string errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(errorMessage))
+            {
+                return false;
+            }
+
+            return !errorMessage.Contains("propio usuario", StringComparison.OrdinalIgnoreCase)
+                && !errorMessage.Contains("administrador", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

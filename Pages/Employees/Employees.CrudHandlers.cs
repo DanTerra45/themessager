@@ -11,7 +11,8 @@ namespace Mercadito.Pages.Employees
             string sortDirection = "")
         {
             NewEmployee = newEmployee;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             ClearPendingNavigation();
@@ -64,7 +65,8 @@ namespace Mercadito.Pages.Employees
             string sortDirection = "")
         {
             EditEmployee = editEmployee;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             ClearPendingNavigation();
             SaveStateInSession();
 
@@ -111,7 +113,8 @@ namespace Mercadito.Pages.Employees
 
         public async Task<IActionResult> OnPostDeleteAsync(long id, string sortBy = "", string sortDirection = "")
         {
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             ClearPendingNavigation();

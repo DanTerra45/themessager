@@ -20,6 +20,34 @@
 </header>
 
 <section>
+    <section class="mb-4 listing-filter-wrap">
+        <form method="post" asp-page-handler="Filter" class="listing-filter-form">
+            <input type="hidden" name="sortBy" value="@Model.SortBy" />
+            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+            <section class="listing-search-field">
+                <label for="employeesSearchTerm" class="visually-hidden">Buscar empleado</label>
+                <input type="search"
+                       id="employeesSearchTerm"
+                       name="searchTerm"
+                       class="form-control listing-search-input"
+                       value="@Model.SearchTerm"
+                       placeholder="Buscar empleado..."
+                       autocomplete="off" />
+            </section>
+            <section class="listing-filter-actions">
+                <button type="submit" class="b-btn b-btn-secondary listing-icon-btn" title="Buscar empleados" aria-label="Buscar empleados">
+                    <i class="bi bi-search"></i>
+                </button>
+                @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+                {
+                    <button type="submit" name="clear" value="true" class="b-btn b-btn-secondary listing-icon-btn" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                }
+            </section>
+        </form>
+    </section>
+
     @if (Model.Employees.Count > 0)
     {
         <section class="table-responsive table-shadow-safe-wrap">
@@ -185,7 +213,14 @@
     else
     {
         <aside class="text-center text-muted py-5" style="font-family: var(--font-mono); border: 2px dashed var(--mrc-ink); border-radius: var(--radius-md);">
-            No hay empleados registrados en el sistema.
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+            {
+                <span>No se encontraron empleados para la búsqueda actual.</span>
+            }
+            else
+            {
+                <span>No hay empleados registrados en el sistema.</span>
+            }
         </aside>
     }
 </section>

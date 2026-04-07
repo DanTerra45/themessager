@@ -44,6 +44,11 @@ namespace Mercadito.src.users.application.use_cases
                 return Result<bool>.Failure("El usuario no existe o ya está inactivo.");
             }
 
+            if (previousUser.Role == domain.entities.UserRole.Admin)
+            {
+                return Result<bool>.Failure("No se puede dar de baja un usuario administrador.");
+            }
+
             var wasDeactivated = await _userRepository.DeactivateAsync(userId, cancellationToken);
             if (!wasDeactivated)
             {

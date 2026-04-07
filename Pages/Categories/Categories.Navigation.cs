@@ -15,6 +15,7 @@ namespace Mercadito.Pages.Categories
                     SortBy,
                     SortDirection,
                     CurrentAnchorCategoryId,
+                    SearchTerm,
                     cancellationToken)).ToList();
 
                 if (loadedCategories.Count == 0 && CurrentAnchorCategoryId > 0)
@@ -25,6 +26,7 @@ namespace Mercadito.Pages.Categories
                         SortDirection,
                         CurrentAnchorCategoryId,
                         isNextPage: false,
+                        SearchTerm,
                         cancellationToken)).ToList();
 
                     if (loadedCategories.Count > 0 && CurrentPage > 1)
@@ -42,6 +44,7 @@ namespace Mercadito.Pages.Categories
                         SortBy,
                         SortDirection,
                         CurrentAnchorCategoryId,
+                        SearchTerm,
                         cancellationToken)).ToList();
                 }
 
@@ -87,6 +90,7 @@ namespace Mercadito.Pages.Categories
                     SortDirection,
                     cursorCategoryId,
                     isNextPage,
+                    SearchTerm,
                     HttpContext.RequestAborted);
 
                 if (categories.Count == 0)
@@ -142,6 +146,7 @@ namespace Mercadito.Pages.Categories
                 SortDirection,
                 firstCategoryId,
                 isNextPage: false,
+                SearchTerm,
                 HttpContext.RequestAborted);
 
             HasNextPage = await _categoryManagementUseCase.HasCategoriesByCursorAsync(
@@ -149,6 +154,7 @@ namespace Mercadito.Pages.Categories
                 SortDirection,
                 lastCategoryId,
                 isNextPage: true,
+                SearchTerm,
                 HttpContext.RequestAborted);
 
             if (CurrentPage <= 1)

@@ -28,19 +28,19 @@ namespace Mercadito.src.categories.application.use_cases
             _auditTrailService = auditTrailService;
         }
 
-        public async Task<IReadOnlyList<CategoryModel>> GetPageByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<CategoryModel>> GetPageByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _categoryRepository.GetCategoriesByCursorAsync(pageSize, sortBy, sortDirection, cursorCategoryId, isNextPage, cancellationToken);
+            return await _categoryRepository.GetCategoriesByCursorAsync(pageSize, sortBy, sortDirection, cursorCategoryId, isNextPage, searchTerm, cancellationToken);
         }
 
-        public async Task<IReadOnlyList<CategoryModel>> GetPageFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorCategoryId, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<CategoryModel>> GetPageFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorCategoryId, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _categoryRepository.GetCategoriesFromAnchorAsync(pageSize, sortBy, sortDirection, anchorCategoryId, cancellationToken);
+            return await _categoryRepository.GetCategoriesFromAnchorAsync(pageSize, sortBy, sortDirection, anchorCategoryId, searchTerm, cancellationToken);
         }
 
-        public async Task<bool> HasCategoriesByCursorAsync(string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, CancellationToken cancellationToken = default)
+        public async Task<bool> HasCategoriesByCursorAsync(string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _categoryRepository.HasCategoriesByCursorAsync(sortBy, sortDirection, cursorCategoryId, isNextPage, cancellationToken);
+            return await _categoryRepository.HasCategoriesByCursorAsync(sortBy, sortDirection, cursorCategoryId, isNextPage, searchTerm, cancellationToken);
         }
 
         public async Task<string> GetNextCategoryCodePreviewAsync(CancellationToken cancellationToken = default)

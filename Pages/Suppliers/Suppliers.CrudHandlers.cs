@@ -6,6 +6,8 @@ namespace Mercadito.Pages.Suppliers
     {
         public async Task<IActionResult> OnPostCreate()
         {
+            LoadStateFromSession();
+
             var createDto = new CreateSupplierDto
             {
                 Nombre = RazonSocial,
@@ -36,6 +38,8 @@ namespace Mercadito.Pages.Suppliers
         }
         public async Task<IActionResult> OnPostEdit()
         {
+            LoadStateFromSession();
+
             var updateDto = new UpdateSupplierDto
             {
                 Id = EditId,
