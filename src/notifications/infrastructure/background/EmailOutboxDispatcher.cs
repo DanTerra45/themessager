@@ -1,0 +1,107 @@
+using Mercadito.src.notifications.application.exceptions;
+using Mercadito.src.notifications.application.models;
+using Mercadito.src.notifications.application.ports.output;
+using Mercadito.src.notifications.infrastructure.options;
+using Microsoft.Extensions.Options;
+
+namespace Mercadito.src.notifications.infrastructure.background
+{
+    public sealed class EmailOutboxDispatcher : BackgroundService
+    {
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly EmailOutboxOptions _options;
+        private readonly ILogger<EmailOutboxDispatcher> _logger;
+
+        public EmailOutboxDispatcher(
+            IServiceScopeFactory serviceScopeFactory,
+            IOptions<EmailOutboxOptions> options,
+            ILogger<EmailOutboxDispatcher> logger)
+        {
+            _serviceScopeFactory = serviceScopeFactory;
+            _options = options.Value;
+            _logger = logger;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await DispatchBatchAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, "Error al procesar la cola de correos.");
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, _options.PollIntervalSeconds)), stoppingToken);
+            }
+        }
+
+        private async Task DispatchBatchAsync(CancellationToken cancellationToken)
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+            var emailOutboxRepository = scope.ServiceProvider.GetRequiredService<IEmailOutboxRepository>();
+
+            try
+            {
+                emailSender.EnsureAvailable();
+            }
+            catch (EmailDeliveryException exception)
+            {
+                _logger.LogWarning(exception, "La cola de correos está activa, pero SMTP no está disponible.");
+                return;
+            }
+
+            var currentUtc = DateTime.UtcNow;
+            var batchSize = Math.Max(1, _options.BatchSize);
+            var messages = await emailOutboxRepository.ReservePendingBatchAsync(batchSize, currentUtc, cancellationToken);
+
+            foreach (var message in messages)
+            {
+                try
+                {
+                    await emailSender.SendAsync(
+                        new EmailMessage
+                        {
+                            ToAddress = message.ToAddress,
+                            ToName = message.ToName is null ? string.Empty : message.ToName,
+                            Subject = message.Subject,
+                            PlainTextBody = message.PlainTextBody,
+                            HtmlBody = message.HtmlBody is null ? string.Empty : message.HtmlBody
+                        },
+                        cancellationToken);
+
+                    await emailOutboxRepository.MarkSentAsync(message.Id, DateTime.UtcNow, cancellationToken);
+                }
+                catch (EmailDeliveryException exception)
+                {
+                    await HandleDeliveryFailureAsync(emailOutboxRepository, message, exception.Message, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    await HandleDeliveryFailureAsync(emailOutboxRepository, message, exception.Message, cancellationToken);
+                }
+            }
+        }
+
+        private async Task HandleDeliveryFailureAsync(IEmailOutboxRepository emailOutboxRepository, EmailOutboxItem message, string errorMessage, CancellationToken cancellationToken)
+        {
+            if (message.Attempts >= Math.Max(1, _options.MaxAttempts))
+            {
+                await emailOutboxRepository.MarkExhaustedAsync(message.Id, DateTime.UtcNow, errorMessage, cancellationToken);
+                return;
+            }
+
+            var delaySeconds = Math.Max(1, _options.BaseRetryDelaySeconds) * Math.Max(1, message.Attempts);
+            var nextAttemptAtUtc = DateTime.UtcNow.AddSeconds(delaySeconds);
+            await emailOutboxRepository.MarkForRetryAsync(message.Id, nextAttemptAtUtc, errorMessage, cancellationToken);
+        }
+    }
+}

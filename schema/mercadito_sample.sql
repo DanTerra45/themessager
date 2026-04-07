@@ -9,13 +9,13 @@ START TRANSACTION;
 -- ============================================================
 -- USUARIOS (para login)
 -- ============================================================
--- Password hash para 'admin123' (SHA-256 simplificado para testing)
--- En producción usar bcrypt/Argon2真实的hash
-INSERT INTO `usuarios` (`username`, `passwordHash`, `email`, `rol`, `estado`)
+-- Password hash Argon2id para 'admin123' generado con Sodium.Core
+INSERT INTO `usuarios` (`username`, `passwordHash`, `email`, `rol`, `estado`, `ultimoLogin`)
 VALUES
-  ('admin', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'admin@mercadito.local', 'Admin', 'A'),
-  ('cajero1', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'cajero1@mercadito.local', 'Cajero', 'A'),
-  ('inventario1', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'inventario1@mercadito.local', 'Inventario', 'A')
+  ('admin', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'admin@mercadito.local', 'Admin', 'A', NOW()),
+  ('operador.caja', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'operador.caja@mercadito.local', 'Operador', 'A', NOW()),
+  ('operador.inventario', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'operador.inventario@mercadito.local', 'Operador', 'A', NOW()),
+  ('auditoria', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'auditoria@mercadito.local', 'Auditor', 'A', NOW())
 ON DUPLICATE KEY UPDATE `username` = `username`;
 
 -- ============================================================
@@ -32,6 +32,10 @@ VALUES
   ('PRV007', 'Congelados Uyuni', 'Av. Fabrica No.90', 'Pedro Gomez', '74567890', 'Congelados', 'A'),
   ('PRV008', 'Snacks Importados', 'Zona Shopping No.34', 'Ana Torres', '75678901', 'Snacks y golosinas', 'A')
 ON DUPLICATE KEY UPDATE `razonSocial` = `razonSocial`;
+
+UPDATE `supplier_code_sequence`
+SET `nextValue` = GREATEST(`nextValue`, 9)
+WHERE `id` = 1;
 
 -- CATEGORIAS
 INSERT INTO `categorias` (`codigo`, `nombre`, `descripcion`, `estado`)
@@ -55,11 +59,13 @@ ON DUPLICATE KEY UPDATE
   `descripcion` = `incoming_categoria`.`descripcion`,
   `estado` = 'A';
 
-REPLACE INTO `category_code_sequence` (`id`, `nextValue`)
-SELECT
-  1 AS `id`,
-  LEAST(COALESCE(MAX(CAST(SUBSTRING(`codigo`, 2, 5) AS UNSIGNED)), 0) + 1, 100000) AS `nextValue`
-FROM `categorias`;
+UPDATE `category_code_sequence` AS `sequence_row`
+INNER JOIN (
+  SELECT LEAST(COALESCE(MAX(CAST(SUBSTRING(`codigo`, 2, 5) AS UNSIGNED)), 0) + 1, 100000) AS `nextValue`
+  FROM `categorias`
+) AS `incoming_value`
+  ON `sequence_row`.`id` = 1
+SET `sequence_row`.`nextValue` = GREATEST(`sequence_row`.`nextValue`, `incoming_value`.`nextValue`);
 
 -- PRODUCTOS
 INSERT INTO `products`
@@ -220,18 +226,18 @@ SET c.`productosActivosCount` = COALESCE(counts.`ActiveProductCount`, 0);
 
 -- EMPLEADOS
 INSERT INTO `empleados`
-  (`ci`, `complemento`, `nombres`, `primerApellido`, `segundoApellido`, `rol`, `numeroContacto`, `estado`)
+  (`ci`, `complemento`, `nombres`, `primerApellido`, `segundoApellido`, `cargo`, `numeroContacto`, `estado`)
 SELECT
   e.`ci`,
   e.`complemento`,
   e.`nombres`,
   e.`primerApellido`,
   e.`segundoApellido`,
-  e.`rol`,
+  e.`cargo`,
   e.`numeroContacto`,
   'A'
 FROM (
-  SELECT 6845123 AS `ci`, '1A' AS `complemento`, 'Luz Maria' AS `nombres`, 'Quispe' AS `primerApellido`, 'Rojas' AS `segundoApellido`, 'Cajero' AS `rol`, '+59171234567' AS `numeroContacto`
+  SELECT 6845123 AS `ci`, '1A' AS `complemento`, 'Luz Maria' AS `nombres`, 'Quispe' AS `primerApellido`, 'Rojas' AS `segundoApellido`, 'Cajero' AS `cargo`, '+59171234567' AS `numeroContacto`
   UNION ALL SELECT 5901234, NULL, 'Carlos Alberto', 'Mamani', 'Lopez', 'Inventario', '+59172345678'
   UNION ALL SELECT 7312456, '2B', 'Ana Sofia', 'Perez', 'Guzman', 'Cajero', '+59177123456'
   UNION ALL SELECT 8023344, NULL, 'Jorge Luis', 'Vargas', 'Flores', 'Inventario', '+59122456789'
@@ -256,6 +262,54 @@ WHERE NOT EXISTS (
   WHERE ex.`ci` = e.`ci`
     AND COALESCE(ex.`complemento`, '') = COALESCE(e.`complemento`, '')
     AND ex.`estado` = 'A'
+);
+
+UPDATE `usuarios` u
+INNER JOIN `empleados` e
+  ON e.`ci` = 6845123
+ AND COALESCE(e.`complemento`, '') = '1A'
+SET u.`empleadoId` = e.`id`,
+    u.`rol` = 'Operador',
+    u.`estado` = 'A'
+WHERE u.`username` = 'operador.caja';
+
+UPDATE `usuarios` u
+INNER JOIN `empleados` e
+  ON e.`ci` = 5901234
+ AND COALESCE(e.`complemento`, '') = ''
+SET u.`empleadoId` = e.`id`,
+    u.`rol` = 'Operador',
+    u.`estado` = 'A'
+WHERE u.`username` = 'operador.inventario';
+
+UPDATE `usuarios` u
+INNER JOIN `empleados` e
+  ON e.`ci` = 9276543
+ AND COALESCE(e.`complemento`, '') = '3C'
+SET u.`empleadoId` = e.`id`,
+    u.`rol` = 'Auditor',
+    u.`estado` = 'A'
+WHERE u.`username` = 'auditoria';
+
+INSERT INTO `auditoria`
+  (`usuarioId`, `usuarioUsername`, `accion`, `tabla`, `registroId`, `ipAddress`, `userAgent`, `datosNuevos`)
+SELECT
+  u.`id`,
+  u.`username`,
+  'C',
+  'usuarios',
+  u.`id`,
+  '127.0.0.1',
+  'mercadito_sample.sql',
+  JSON_OBJECT('username', u.`username`, 'rol', u.`rol`, 'empleadoId', u.`empleadoId`)
+FROM `usuarios` u
+WHERE u.`username` IN ('admin', 'operador.caja', 'operador.inventario', 'auditoria')
+AND NOT EXISTS (
+  SELECT 1
+  FROM `auditoria` a
+  WHERE a.`tabla` = 'usuarios'
+    AND a.`registroId` = u.`id`
+    AND a.`accion` = 'C'
 );
 
 COMMIT;

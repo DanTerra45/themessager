@@ -1,6 +1,5 @@
-﻿using Mercadito.src.categories.domain.dto;
+using Mercadito.src.categories.application.models;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Categories
 {
@@ -12,7 +11,8 @@ namespace Mercadito.Pages.Categories
             string sortDirection = "")
         {
             NewCategory = newCategory;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             ClearPendingNavigation();
@@ -22,23 +22,34 @@ namespace Mercadito.Pages.Categories
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
                 StorePendingCreateModal(NewCategory);
-                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
+                StoreModelStateErrors(PendingCreateErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
             try
             {
-                await _categoryManagementUseCase.CreateAsync(NewCategory, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var result = await _categoryManagementUseCase.CreateAsync(NewCategory, actor, HttpContext.RequestAborted);
+                if (result.IsFailure)
+                {
+                    if (result.Errors.Count > 0)
+                    {
+                        ApplyValidationErrors("NewCategory", result.Errors);
+                        StoreModelStateErrors(PendingCreateErrorsSessionKey);
+                        TempData["ErrorMessage"] = "Corrige los errores del formulario.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                    }
+
+                    StorePendingCreateModal(NewCategory);
+                    return RedirectToCurrentState();
+                }
+
                 _logger.LogInformation("Categoría creada: {Name}", NewCategory.Name);
 
                 TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al crear categoría");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingCreateModal(NewCategory);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
@@ -56,7 +67,8 @@ namespace Mercadito.Pages.Categories
             string sortDirection = "")
         {
             EditCategory = editCategory;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             ClearPendingNavigation();
             SaveStateInSession();
 
@@ -64,22 +76,33 @@ namespace Mercadito.Pages.Categories
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
                 StorePendingEditModal(EditCategory);
-                StorePendingValidationErrors(PendingEditErrorsSessionKey);
+                StoreModelStateErrors(PendingEditErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
             try
             {
-                await _categoryManagementUseCase.UpdateAsync(EditCategory, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var result = await _categoryManagementUseCase.UpdateAsync(EditCategory, actor, HttpContext.RequestAborted);
+                if (result.IsFailure)
+                {
+                    if (result.Errors.Count > 0)
+                    {
+                        ApplyValidationErrors("EditCategory", result.Errors);
+                        StoreModelStateErrors(PendingEditErrorsSessionKey);
+                        TempData["ErrorMessage"] = "Corrige los errores del formulario.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                    }
+
+                    StorePendingEditModal(EditCategory);
+                    return RedirectToCurrentState();
+                }
+
                 _logger.LogInformation("Categoría actualizada: {Id}", EditCategory.Id);
                 TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al actualizar categoría");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingEditModal(EditCategory);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
@@ -93,7 +116,8 @@ namespace Mercadito.Pages.Categories
 
         public async Task<IActionResult> OnPostDeleteAsync(long id, string sortBy = "", string sortDirection = "")
         {
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditCategoryId();
             ClearPendingNavigation();
@@ -101,7 +125,8 @@ namespace Mercadito.Pages.Categories
 
             try
             {
-                var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var wasDeleted = await _categoryManagementUseCase.DeleteAsync(id, actor, HttpContext.RequestAborted);
                 if (wasDeleted)
                 {
                     TempData["SuccessMessage"] = "Categoría desactivada.";
@@ -121,3 +146,5 @@ namespace Mercadito.Pages.Categories
         }
     }
 }
+
+

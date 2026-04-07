@@ -112,13 +112,13 @@
         }
 
         initializeRoleDropdown({
-            hiddenInputId: 'NewEmployee_Rol',
+            hiddenInputId: 'NewEmployee_Cargo',
             triggerTextId: 'newRoleDropdownText',
             dropdownKey: 'newRole'
         });
 
         initializeRoleDropdown({
-            hiddenInputId: 'EditEmployee_Rol',
+            hiddenInputId: 'EditEmployee_Cargo',
             triggerTextId: 'editRoleDropdownText',
             dropdownKey: 'editRole'
         });

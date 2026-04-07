@@ -1,6 +1,5 @@
-﻿using Mercadito.src.employees.domain.dto;
+using Mercadito.src.employees.application.models;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Employees
 {
@@ -12,7 +11,8 @@ namespace Mercadito.Pages.Employees
             string sortDirection = "")
         {
             NewEmployee = newEmployee;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             ClearPendingNavigation();
@@ -22,21 +22,32 @@ namespace Mercadito.Pages.Employees
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario.";
                 StorePendingCreateModal(NewEmployee);
-                StorePendingValidationErrors(PendingCreateErrorsSessionKey);
+                StoreModelStateErrors(PendingCreateErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
             try
             {
-                await _employeeManagementUseCase.CreateAsync(NewEmployee, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var result = await _employeeManagementUseCase.CreateAsync(NewEmployee, actor, HttpContext.RequestAborted);
+                if (result.IsFailure)
+                {
+                    if (result.Errors.Count > 0)
+                    {
+                        ApplyValidationErrors("NewEmployee", result.Errors);
+                        StoreModelStateErrors(PendingCreateErrorsSessionKey);
+                        TempData["ErrorMessage"] = "Corrige los errores del formulario.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                    }
+
+                    StorePendingCreateModal(NewEmployee);
+                    return RedirectToCurrentState();
+                }
+
                 TempData["SuccessMessage"] = "Empleado agregado exitosamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al crear empleado");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingCreateModal(NewEmployee);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
@@ -54,7 +65,8 @@ namespace Mercadito.Pages.Employees
             string sortDirection = "")
         {
             EditEmployee = editEmployee;
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
             ClearPendingNavigation();
             SaveStateInSession();
 
@@ -62,21 +74,32 @@ namespace Mercadito.Pages.Employees
             {
                 TempData["ErrorMessage"] = "Revisa los campos obligatorios del formulario de edición.";
                 StorePendingEditModal(EditEmployee);
-                StorePendingValidationErrors(PendingEditErrorsSessionKey);
+                StoreModelStateErrors(PendingEditErrorsSessionKey);
                 return RedirectToCurrentState();
             }
 
             try
             {
-                await _employeeManagementUseCase.UpdateAsync(EditEmployee, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var result = await _employeeManagementUseCase.UpdateAsync(EditEmployee, actor, HttpContext.RequestAborted);
+                if (result.IsFailure)
+                {
+                    if (result.Errors.Count > 0)
+                    {
+                        ApplyValidationErrors("EditEmployee", result.Errors);
+                        StoreModelStateErrors(PendingEditErrorsSessionKey);
+                        TempData["ErrorMessage"] = "Corrige los errores del formulario.";
+                    }
+                    else
+                    {
+                        TempData["ErrorMessage"] = result.ErrorMessage;
+                    }
+
+                    StorePendingEditModal(EditEmployee);
+                    return RedirectToCurrentState();
+                }
+
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
-                return RedirectToCurrentState();
-            }
-            catch (ValidationException validationException)
-            {
-                _logger.LogWarning(validationException, "Validación de negocio al actualizar empleado");
-                TempData["ErrorMessage"] = validationException.Message;
-                StorePendingEditModal(EditEmployee);
                 return RedirectToCurrentState();
             }
             catch (Exception exception)
@@ -90,7 +113,8 @@ namespace Mercadito.Pages.Employees
 
         public async Task<IActionResult> OnPostDeleteAsync(long id, string sortBy = "", string sortDirection = "")
         {
-            SetSortState(sortBy, sortDirection);
+            LoadStateFromSession();
+            SetSearchAndSortState(string.Empty, sortBy, sortDirection);
 
             ClearPendingEditEmployeeId();
             ClearPendingNavigation();
@@ -98,7 +122,8 @@ namespace Mercadito.Pages.Employees
 
             try
             {
-                var deleted = await _employeeManagementUseCase.DeleteAsync(id, HttpContext.RequestAborted);
+                var actor = BuildAuditActor();
+                var deleted = await _employeeManagementUseCase.DeleteAsync(id, actor, HttpContext.RequestAborted);
                 TempData[deleted ? "SuccessMessage" : "ErrorMessage"] = deleted
                     ? "Empleado desactivado."
                     : "El empleado no existe o ya estaba desactivado.";
@@ -113,3 +138,5 @@ namespace Mercadito.Pages.Employees
         }
     }
 }
+
+

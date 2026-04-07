@@ -1,9 +1,23 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace Mercadito.Pages.Employees
 {
     public partial class EmployeesModel
     {
+        private void SetSearchAndSortState(string searchTerm, string sortBy, string sortDirection)
+        {
+            SearchTerm = ResolveSearchTermFromRequest(searchTerm);
+
+            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
+            {
+                LoadSortStateFromSession();
+                return;
+            }
+
+            SortBy = NormalizeSortBy(sortBy);
+            SortDirection = NormalizeSortDirection(sortDirection);
+        }
+
         public string GetSortIcon(string columnName)
         {
             var normalizedColumn = NormalizeSortBy(columnName);
@@ -52,6 +66,8 @@ namespace Mercadito.Pages.Employees
             }
 
             LoadSortStateFromSession();
+            var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
+            SearchTerm = NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
         }
 
         private void SaveStateInSession()
@@ -60,6 +76,7 @@ namespace Mercadito.Pages.Employees
             HttpContext.Session.SetString(CurrentAnchorEmployeeIdSessionKey, Math.Max(CurrentAnchorEmployeeId, 0).ToString(CultureInfo.InvariantCulture));
             HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
             HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
+            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
         }
 
         private void NormalizeCurrentState()
@@ -73,6 +90,7 @@ namespace Mercadito.Pages.Employees
 
             SortBy = NormalizeSortBy(SortBy);
             SortDirection = NormalizeSortDirection(SortDirection);
+            SearchTerm = NormalizeSearchTerm(SearchTerm);
         }
 
         private void LoadSortStateFromSession()
@@ -110,7 +128,8 @@ namespace Mercadito.Pages.Employees
                 "id" => "id",
                 "ci" => "ci",
                 "nombres" => "nombres",
-                "rol" => "rol",
+                "rol" => "cargo",
+                "cargo" => "cargo",
                 _ => "apellidos"
             };
         }
@@ -120,6 +139,35 @@ namespace Mercadito.Pages.Employees
             return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
                 ? "desc"
                 : "asc";
+        }
+
+        private string ResolveSearchTermFromRequest(string searchTerm)
+        {
+            var hasSearchTermInForm = Request.HasFormContentType && Request.Form.ContainsKey("searchTerm");
+            var hasSearchTermInQuery = Request.Query.ContainsKey("searchTerm");
+
+            if (hasSearchTermInForm || hasSearchTermInQuery)
+            {
+                return NormalizeSearchTerm(searchTerm);
+            }
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
+                return NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
+            }
+
+            return NormalizeSearchTerm(searchTerm);
+        }
+
+        private static string NormalizeSearchTerm(string searchTerm)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return string.Empty;
+            }
+
+            return searchTerm.Trim();
         }
     }
 }

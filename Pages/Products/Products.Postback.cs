@@ -1,6 +1,6 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text.Json;
-using Mercadito.src.products.domain.dto;
+using Mercadito.src.products.application.models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Products
@@ -88,65 +88,6 @@ namespace Mercadito.Pages.Products
             }
         }
 
-        private void StorePendingValidationErrors(string sessionKey)
-        {
-            var errors = ModelState
-                .Where(entry => entry.Value?.Errors.Count > 0)
-                .ToDictionary(
-                    entry => entry.Key,
-                    entry => entry.Value!.Errors
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Valor inválido." : error.ErrorMessage)
-                        .ToArray());
-
-            if (errors.Count == 0)
-            {
-                HttpContext.Session.Remove(sessionKey);
-                return;
-            }
-
-            HttpContext.Session.SetString(sessionKey, JsonSerializer.Serialize(errors));
-        }
-
-        private void RestorePendingValidationErrors(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return;
-            }
-
-            try
-            {
-                var errors = JsonSerializer.Deserialize<Dictionary<string, string[]>>(rawValue);
-                if (errors == null)
-                {
-                    return;
-                }
-
-                foreach (var (key, messages) in errors)
-                {
-                    if (messages == null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var message in messages)
-                    {
-                        if (!string.IsNullOrWhiteSpace(message))
-                        {
-                            ModelState.AddModelError(key, message);
-                        }
-                    }
-                }
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar errores de validación para key {SessionKey}", sessionKey);
-            }
-        }
-
         private void SetPendingEditProductId(long productId)
         {
             HttpContext.Session.SetString(EditProductSessionKey, productId.ToString(CultureInfo.InvariantCulture));
@@ -168,3 +109,4 @@ namespace Mercadito.Pages.Products
         }
     }
 }
+

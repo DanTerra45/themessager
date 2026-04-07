@@ -1,3 +1,25 @@
+@{
+    var currentUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+    var currentRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    var isAuthenticated = User.Identity?.IsAuthenticated == true;
+    if (currentRole == null)
+    {
+        currentRole = string.Empty;
+    }
+    var isAdmin = string.Equals(currentRole, "Admin", StringComparison.Ordinal);
+    var isOperator = string.Equals(currentRole, "Operador", StringComparison.Ordinal);
+    var isAuditor = string.Equals(currentRole, "Auditor", StringComparison.Ordinal);
+    var canSeeSales = isAdmin || isOperator;
+    var canSeeCancellation = isAdmin || isOperator;
+    var canSeeReports = isAdmin || isAuditor;
+    var canSeeSuppliers = isAdmin || isOperator;
+    var canSeeCommercial = canSeeSales || canSeeCancellation || canSeeReports || canSeeSuppliers;
+    var canSeeProductManagement = isAdmin || isOperator;
+    var canSeeProductCatalog = true;
+    var canSeeCategories = isAdmin || isAuditor;
+    var canSeeEmployees = isAdmin;
+    var canManageUsers = string.Equals(currentRole, "Admin", StringComparison.Ordinal);
+}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -30,151 +52,201 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-page="/Index">Inicio</a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="comercialDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Comercial
-                            </a>
-                            <ul class="dropdown-menu shadow-sm" aria-labelledby="comercialDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Sales">
-                                        <i class="bi bi-cash-stack me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Ventas</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Tablero y flujo comercial</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Cancellation">
-                                        <i class="bi bi-receipt-cutoff me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Anulación</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Gestión visual de anulaciones</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Reports">
-                                        <i class="bi bi-bar-chart-line me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Reportes</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Resumen comercial y exportación</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Suppliers/Suppliers">
-                                        <i class="bi bi-truck me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Proveedores</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Abastecimiento y contactos</small>
-                                        </section>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
+                        @if (canSeeCommercial)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="comercialDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Comercial
+                                </a>
+                                <ul class="dropdown-menu shadow-sm" aria-labelledby="comercialDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
+                                    @if (canSeeSales)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Sales">
+                                                <i class="bi bi-cash-stack me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Ventas</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Tablero y flujo comercial</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (canSeeCancellation)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Cancellation">
+                                                <i class="bi bi-receipt-cutoff me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Anulación</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Gestión visual de anulaciones</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (canSeeReports)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Sales/Reports">
+                                                <i class="bi bi-bar-chart-line me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Reportes</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Resumen comercial y exportación</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (canSeeSuppliers)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Suppliers/Suppliers">
+                                                <i class="bi bi-truck me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Proveedores</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Abastecimiento y contactos</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </li>
+                        }
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="productosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Productos
                             </a>
                             <ul class="dropdown-menu shadow-sm" aria-labelledby="productosDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Products/Products">
-                                        <i class="bi bi-box-seam me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Gestión de Inventario</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Ver, crear y editar productos</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" href="#">
-                                        <i class="bi bi-tags me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Ofertas Especiales</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Administrar descuentos (Próximamente)</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" href="#">
-                                        <i class="bi bi-file-earmark-arrow-down me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Exportar Catálogo</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Descargar en PDF / Excel</small>
-                                        </section>
-                                    </a>
-                                </li>
+                                @if (canSeeProductManagement)
+                                {
+                                    <li>
+                                        <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Products/Products">
+                                            <i class="bi bi-box-seam me-3" style="font-size: 1.5rem;"></i>
+                                            <section>
+                                                <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Gestión de Inventario</span>
+                                                <small class="d-block text-muted" style="font-size: 0.75rem;">Ver, crear y editar productos</small>
+                                            </section>
+                                        </a>
+                                    </li>
+                                }
+                                @if (canSeeProductCatalog)
+                                {
+                                    <li>
+                                        <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Products/Catalog">
+                                            <i class="bi bi-grid me-3" style="font-size: 1.5rem;"></i>
+                                            <section>
+                                                <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Catálogo</span>
+                                                <small class="d-block text-muted" style="font-size: 0.75rem;">Consulta de productos en modo lectura</small>
+                                            </section>
+                                        </a>
+                                    </li>
+                                }
                             </ul>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="categoriasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Categorías
-                            </a>
-                            <ul class="dropdown-menu shadow-sm" aria-labelledby="categoriasDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Categories/Categories">
-                                        <i class="bi bi-folder me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Organización</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Ver, crear y editar categorías</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" href="#">
-                                        <i class="bi bi-diagram-3 me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Árbol de Categorías</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Ver dependencias (Próximamente)</small>
-                                        </section>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="empleadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Empleados
-                            </a>
-                            <ul class="dropdown-menu shadow-sm dropdown-menu-end" aria-labelledby="empleadosDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Employees/Employees">
-                                        <i class="bi bi-people me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Personal</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Administración de empleados</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" href="#">
-                                        <i class="bi bi-clock-history me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Control de Horarios</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Turnos y asistencias (Próximamente)</small>
-                                        </section>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" href="#">
-                                        <i class="bi bi-shield-lock me-3" style="font-size: 1.5rem;"></i>
-                                        <section>
-                                            <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Permisos de Acceso</span>
-                                            <small class="d-block text-muted" style="font-size: 0.75rem;">Roles de seguridad (Próximamente)</small>
-                                        </section>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
+                        @if (canSeeCategories)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="categoriasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Categorías
+                                </a>
+                                <ul class="dropdown-menu shadow-sm" aria-labelledby="categoriasDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
+                                    @if (isAdmin)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Categories/Categories">
+                                                <i class="bi bi-folder me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Organización</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Ver, crear y editar categorías</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" href="#">
+                                                <i class="bi bi-diagram-3 me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Árbol de Categorías</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Ver dependencias (Próximamente)</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (isAuditor || isAdmin)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Categories/Browse">
+                                                <i class="bi bi-eye me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Consulta</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Vista de categorías en modo lectura</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </li>
+                        }
+                        @if (canSeeEmployees)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="empleadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Empleados
+                                </a>
+                                <ul class="dropdown-menu shadow-sm dropdown-menu-end" aria-labelledby="empleadosDropdown" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">
+                                    <li>
+                                        <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" asp-area="" asp-page="/Employees/Employees">
+                                            <i class="bi bi-people me-3" style="font-size: 1.5rem;"></i>
+                                            <section>
+                                                <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Personal</span>
+                                                <small class="d-block text-muted" style="font-size: 0.75rem;">Administración de empleados</small>
+                                            </section>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); border-bottom: 2px solid var(--mrc-ink); padding: 1rem;" href="#">
+                                            <i class="bi bi-clock-history me-3" style="font-size: 1.5rem;"></i>
+                                            <section>
+                                                <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Control de Horarios</span>
+                                                <small class="d-block text-muted" style="font-size: 0.75rem;">Turnos y asistencias (Próximamente)</small>
+                                            </section>
+                                        </a>
+                                    </li>
+                                    @if (canManageUsers)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item fw-bold d-flex align-items-center" style="font-family: var(--font-mono); padding: 1rem;" asp-area="" asp-page="/Users/Users">
+                                                <i class="bi bi-shield-lock me-3" style="font-size: 1.5rem;"></i>
+                                                <section>
+                                                    <span class="d-block text-uppercase" style="font-family: var(--font-display); letter-spacing: -0.02em;">Permisos de Acceso</span>
+                                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Usuarios y roles del sistema</small>
+                                                </section>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            </li>
+                        }
                         @* Accesos visuales de encabezado: se dejan como placeholders de interfaz para la entrega. *@
                         <li class="nav-item nav-auth-item ms-sm-auto mt-2 mt-sm-0">
                             <section class="nav-auth-actions">
-                                <button type="button" class="b-btn b-btn-secondary nav-auth-icon-btn" title="Usuario invitado" aria-label="Usuario invitado">
-                                    <i class="bi bi-person-circle"></i>
-                                </button>
-                    <button type="button" class="b-btn b-btn-secondary nav-auth-icon-btn" data-bs-toggle="modal" data-bs-target="#loginModal" title="Iniciar sesión" aria-label="Iniciar sesión">
-                                    <i class="bi bi-box-arrow-in-right"></i>
-                                </button>
+                                @if (isAuthenticated)
+                                {
+                                    <span class="b-btn b-btn-secondary nav-auth-chip">
+                                        <i class="bi bi-person-circle"></i>
+                                        <span style="font-family: var(--font-mono);">@(User.Identity?.Name ?? "Usuario")</span>
+                                    </span>
+
+                                    <form method="post" asp-page="/Account/Login" asp-page-handler="SignOut" class="d-inline-flex">
+                                        <input type="hidden" name="returnUrl" value="@currentUrl" />
+                                        <button type="submit" class="b-btn b-btn-secondary nav-auth-icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">
+                                            <i class="bi bi-box-arrow-right"></i>
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <a class="b-btn b-btn-secondary nav-auth-icon-btn" href="/Login" title="Iniciar sesión" aria-label="Iniciar sesión">
+                                        <i class="bi bi-box-arrow-in-right"></i>
+                                    </a>
+                                }
                             </section>
                         </li>
                     </menu>
@@ -186,55 +258,41 @@
     <main role="main" class="container pb-4 flex-grow-1 d-flex flex-column">
         @if (ViewData["UseToasts"] as bool? != true)
         {
-            <aside id="alert-container">
+            <section class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" aria-live="polite" aria-atomic="true">
                 @if (TempData["SuccessMessage"] is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
                 {
-                    <aside class="alert alert-success alert-dismissible fade show b-card auto-close-alert" style="background-color: var(--mrc-success); color: var(--mrc-ink); border-color: var(--mrc-ink);" role="alert">
-                        <strong>¡Éxito!</strong> @successMessage
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                    </aside>
+                    <section class="toast align-items-center border-0 app-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+                        <section class="d-flex position-relative">
+                            <section class="toast-icon d-flex align-items-center justify-content-center app-toast-icon app-toast-icon-success">
+                                <i class="bi bi-check-lg"></i>
+                            </section>
+                            <section class="toast-body d-flex align-items-center app-toast-body">
+                                <strong class="me-2">Éxito:</strong> @successMessage
+                            </section>
+                            <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2 app-toast-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                        </section>
+                    </section>
                 }
 
                 @if (TempData["ErrorMessage"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
                 {
-                    <aside class="alert alert-danger alert-dismissible fade show b-card mb-4" style="background-color: var(--mrc-danger); color: white; border-color: var(--mrc-ink);" role="alert">
-                        <strong>Error:</strong> @errorMessage
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                    </aside>
+                    <section class="toast align-items-center border-0 app-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+                        <section class="d-flex position-relative">
+                            <section class="toast-icon d-flex align-items-center justify-content-center app-toast-icon app-toast-icon-error">
+                                <i class="bi bi-exclamation-lg"></i>
+                            </section>
+                            <section class="toast-body d-flex align-items-center app-toast-body">
+                                <strong class="me-2">Error:</strong> @errorMessage
+                            </section>
+                            <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2 app-toast-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                        </section>
+                    </section>
                 }
-            </aside>
+            </section>
         }
 
         @RenderBody()
     </main>
-
-    <section class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
-        <section class="modal-dialog modal-dialog-centered">
-            <article class="modal-content">
-                <header class="modal-header">
-                    <h5 class="modal-title" id="loginModalLabel" style="font-family: var(--font-display); font-weight: 800;">
-                        <i class="bi bi-person-lock me-2"></i> Inicio de sesión
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </header>
-                <section class="modal-body p-4">
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">Usuario</label>
-                        <input class="form-control" placeholder="ejemplo@empresa.com" />
-                    </section>
-                    <section class="mb-0">
-                        <label class="form-label fw-bold">Contrasena</label>
-                        <input class="form-control" type="password" placeholder="********" />
-                    </section>
-                    <small class="d-block mt-3 text-muted">Prototipo visual. No autentica usuarios.</small>
-                </section>
-                <footer class="modal-footer">
-                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="b-btn" disabled>Entrar</button>
-                </footer>
-            </article>
-        </section>
-    </section>
 
     <footer class="footer py-3 mt-auto" style="border-top: 2px solid var(--mrc-ink); background-color: var(--mrc-surface); position: relative; z-index: 10; margin-top: auto;">
         <section class="container text-center">

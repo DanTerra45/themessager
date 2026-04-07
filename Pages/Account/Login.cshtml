@@ -1,0 +1,49 @@
+@page "/Account/Login"
+@model Mercadito.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+
+<section class="mx-auto" style="max-width: 520px;">
+    <header class="dash-header mb-4">
+        <section>
+            <h1>INICIAR SESIÓN</h1>
+            <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Acceso al sistema</p>
+        </section>
+    </header>
+
+    <section class="b-card p-4">
+        <form method="post">
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <section class="mb-3">
+                <label asp-for="Username" class="form-label fw-bold">
+                    Usuario
+                    <span asp-validation-for="Username" class="validation-icon-inline"></span>
+                </label>
+                <input asp-for="Username" class="form-control" autocomplete="username" />
+            </section>
+
+            <section class="mb-3">
+                <label asp-for="Password" class="form-label fw-bold">
+                    Contraseña
+                    <span asp-validation-for="Password" class="validation-icon-inline"></span>
+                </label>
+                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" />
+                <small class="text-muted d-block mt-1">Si olvidaste tu contraseña, puedes solicitar un enlace de restablecimiento.</small>
+            </section>
+
+            <section class="mb-3 d-flex justify-content-end">
+                <a href="/ForgotPassword" class="link-secondary" style="font-family: var(--font-mono);">¿Olvidaste tu contraseña?</a>
+            </section>
+
+            <footer class="d-flex justify-content-end">
+                <button type="submit" class="b-btn">Entrar</button>
+            </footer>
+        </form>
+    </section>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -3,6 +3,11 @@
 @{
     ViewData["Title"] = "Proveedores";
     ViewData["UseToasts"] = true;
+
+    string BuildTooltipMessage(IEnumerable<string> messages)
+    {
+        return string.Join(" ", messages.Where(message => !string.IsNullOrWhiteSpace(message)).Select(message => $"• {message.Trim()}"));
+    }
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -15,59 +20,91 @@
     </button>
 </header>
 
-<section class="b-card p-0 overflow-hidden">
-    <header class="d-flex justify-content-between align-items-center p-3" style="border-bottom: 2px solid var(--mrc-ink); background-color: var(--mrc-surface-alt);">
-        <strong style="font-family: var(--font-display); text-transform: uppercase;">Listado de proveedores</strong>
-        <mark class="status-badge" data-status="warning">Solo visual</mark>
-    </header>
-    <section class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="text-center">
-                <tr>
-                    <th>Código</th>
-                    <th>Razón social</th>
-                    <th>Contacto</th>
-                    <th>Teléfono</th>
-                    <th>Rubro</th>
-                    <th class="text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var supplier in Model.ActiveSuppliers)
-                {
-                    <tr>
-                        <td style="font-family: var(--font-mono);" class="fw-bold">@supplier.Codigo</td>
-                        <td class="fw-bold">@supplier.RazonSocial</td>
-                        <td>@supplier.Contacto</td>
-                        <td style="font-family: var(--font-mono);">@supplier.Telefono</td>
-                        <td>@supplier.Rubro</td>
-                        <td class="text-center">
-                            <button type="button" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;" disabled title="Ver detalle">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                            <button type="button" 
-                                    class="b-btn b-btn-secondary ms-1" 
-                                    style="padding: 0.25rem 0.5rem;" 
-                                    title="Editar registro"
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#editarProveedorModal"
-                                    data-id="@supplier.Id"
-                                    data-codigo="@supplier.Codigo"
-                                    data-razonsocial="@supplier.RazonSocial"
-                                    data-contacto="@supplier.Contacto"
-                                    data-telefono="@supplier.Telefono"
-                                    data-rubro="@supplier.Rubro">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </section>
+<section class="mb-4 listing-filter-wrap">
+    <form method="post" asp-page-handler="Filter" class="listing-filter-form">
+        <section class="listing-search-field">
+            <label for="suppliersSearchTerm" class="visually-hidden">Buscar proveedor</label>
+            <input type="search"
+                   id="suppliersSearchTerm"
+                   name="searchTerm"
+                   class="form-control listing-search-input"
+                   value="@Model.SearchTerm"
+                   placeholder="Buscar proveedor..."
+                   autocomplete="off" />
+        </section>
+        <section class="listing-filter-actions">
+            <button type="submit" class="b-btn b-btn-secondary listing-icon-btn" title="Buscar proveedores" aria-label="Buscar proveedores">
+                <i class="bi bi-search"></i>
+            </button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+            {
+                <button type="submit" name="clear" value="true" class="b-btn b-btn-secondary listing-icon-btn" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+            }
+        </section>
+    </form>
 </section>
 
-<form method="post" asp-page-handler="Create">
+@if (Model.ActiveSuppliers.Count > 0)
+{
+    <section class="table-responsive table-shadow-safe-wrap">
+        <table class="table table-hover align-middle">
+                <thead class="text-center">
+                    <tr>
+                        <th>Código</th>
+                        <th>Razón social</th>
+                        <th>Contacto</th>
+                        <th>Teléfono</th>
+                        <th>Rubro</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var supplier in Model.ActiveSuppliers)
+                    {
+                        <tr>
+                            <td style="font-family: var(--font-mono);" class="fw-bold">@supplier.Codigo</td>
+                            <td class="fw-bold">@supplier.RazonSocial</td>
+                            <td>@supplier.Contacto</td>
+                            <td style="font-family: var(--font-mono);">@supplier.Telefono</td>
+                            <td>@supplier.Rubro</td>
+                            <td class="text-center">
+                                <button type="button" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;" disabled title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button type="button" 
+                                        class="b-btn b-btn-secondary ms-1" 
+                                        style="padding: 0.25rem 0.5rem;" 
+                                        title="Editar registro"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editarProveedorModal"
+                                        data-id="@supplier.Id"
+                                        data-details-url="@Url.Page("/Suppliers/Suppliers", "Details", new { id = supplier.Id })">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+    </section>
+}
+else
+{
+    <aside class="text-center text-muted py-5" style="font-family: var(--font-mono); border: 2px dashed var(--mrc-ink); border-radius: var(--radius-md);">
+        @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+        {
+            <span>No se encontraron proveedores para la búsqueda actual.</span>
+        }
+        else
+        {
+            <span>No hay proveedores registrados en el sistema.</span>
+        }
+    </aside>
+}
+
+<form method="post" asp-page-handler="Create" class="needs-validation" novalidate autocomplete="off" id="createSupplierForm">
     <input type="hidden" id="showModalOnError" value="@(Model.ShowModalOnError && Model.ActiveModal == "create" ? "true" : "false")" />
     <section class="modal fade" id="nuevoProveedorModal" tabindex="-1" aria-labelledby="nuevoProveedorModalLabel" aria-hidden="true">
         <section class="modal-dialog modal-dialog-centered">
@@ -86,20 +123,18 @@
                             Código
                             @if (Model.FieldHints.TryGetValue("Codigo", out var codigoHints) && codigoHints.Count > 0)
                             {
-                                var codigoHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", codigoHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@codigoHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(codigoHints)">i</span>
                             }
                             @if (Model.CodigoErrors?.Count > 0)
                             {
-                                var codigoErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.CodigoErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@codigoErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Codigo" data-error-message="@BuildTooltipMessage(Model.CodigoErrors)" aria-label="@BuildTooltipMessage(Model.CodigoErrors)"></span>
                             }
                         </label>
-                        <input class="form-control @(Model.CodigoErrors?.Count > 0 ? "is-invalid" : "")" 
+                        <input class="form-control supplier-code-readonly @(Model.CodigoErrors?.Count > 0 ? "is-invalid" : "")" 
                                asp-for="Codigo" 
-                               placeholder="ABC123" />
+                               value="@Model.NextSupplierCodePreview"
+                               readonly
+                               autocomplete="off" />
                     </section>
 
                     <!-- Razón Social -->
@@ -108,15 +143,11 @@
                             Razón social
                             @if (Model.FieldHints.TryGetValue("Nombre", out var nombreHints) && nombreHints.Count > 0)
                             {
-                                var nombreHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", nombreHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@nombreHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(nombreHints)">i</span>
                             }
                             @if (Model.RazonSocialErrors?.Count > 0)
                             {
-                                var nombreErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.RazonSocialErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@nombreErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="RazonSocial" data-error-message="@BuildTooltipMessage(Model.RazonSocialErrors)" aria-label="@BuildTooltipMessage(Model.RazonSocialErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.RazonSocialErrors?.Count > 0 ? "is-invalid" : "")" 
@@ -130,15 +161,11 @@
                             Dirección
                             @if (Model.FieldHints.TryGetValue("Direccion", out var direccionHints) && direccionHints.Count > 0)
                             {
-                                var direccionHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", direccionHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@direccionHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(direccionHints)">i</span>
                             }
                             @if (Model.DireccionErrors?.Count > 0)
                             {
-                                var direccionErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.DireccionErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@direccionErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Direccion" data-error-message="@BuildTooltipMessage(Model.DireccionErrors)" aria-label="@BuildTooltipMessage(Model.DireccionErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.DireccionErrors?.Count > 0 ? "is-invalid" : "")" 
@@ -152,15 +179,11 @@
                             Contacto
                             @if (Model.FieldHints.TryGetValue("Contacto", out var contactoHints) && contactoHints.Count > 0)
                             {
-                                var contactoHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", contactoHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@contactoHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(contactoHints)">i</span>
                             }
                             @if (Model.ContactoErrors?.Count > 0)
                             {
-                                var contactoErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.ContactoErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@contactoErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Contacto" data-error-message="@BuildTooltipMessage(Model.ContactoErrors)" aria-label="@BuildTooltipMessage(Model.ContactoErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.ContactoErrors?.Count > 0 ? "is-invalid" : "")" 
@@ -174,15 +197,11 @@
                             Rubro
                             @if (Model.FieldHints.TryGetValue("Rubro", out var rubroHints) && rubroHints.Count > 0)
                             {
-                                var rubroHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", rubroHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@rubroHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(rubroHints)">i</span>
                             }
                             @if (Model.RubroErrors?.Count > 0)
                             {
-                                var rubroErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.RubroErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@rubroErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Rubro" data-error-message="@BuildTooltipMessage(Model.RubroErrors)" aria-label="@BuildTooltipMessage(Model.RubroErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.RubroErrors?.Count > 0 ? "is-invalid" : "")" 
@@ -199,9 +218,10 @@
     </section>
 </form>
 
-<form method="post" asp-page-handler="Edit">
+<form method="post" asp-page-handler="Edit" class="needs-validation" novalidate autocomplete="off" id="updateSupplierForm">
     <input type="hidden" id="showEditModalOnError" value="@(Model.ShowModalOnError && Model.ActiveModal == "edit" ? "true" : "false")" />
     <input type="hidden" asp-for="EditId" id="editProveedorId" />
+    <input type="hidden" asp-for="EditTelefono" id="EditTelefono" />
     <section class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" aria-hidden="true">
         <section class="modal-dialog modal-dialog-centered">
             <article class="modal-content">
@@ -219,20 +239,17 @@
                             Código
                             @if (Model.FieldHints.TryGetValue("Codigo", out var editCodigoHints) && editCodigoHints.Count > 0)
                             {
-                                var codigoHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", editCodigoHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@codigoHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editCodigoHints)">i</span>
                             }
                             @if (Model.EditCodigoErrors?.Count > 0)
                             {
-                                var codigoErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.EditCodigoErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@codigoErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditCodigo" data-error-message="@BuildTooltipMessage(Model.EditCodigoErrors)" aria-label="@BuildTooltipMessage(Model.EditCodigoErrors)"></span>
                             }
                         </label>
-                        <input class="form-control @(Model.EditCodigoErrors?.Count > 0 ? "is-invalid" : "")" 
+                        <input class="form-control supplier-code-readonly @(Model.EditCodigoErrors?.Count > 0 ? "is-invalid" : "")" 
                                asp-for="EditCodigo" 
-                               placeholder="ABC123" />
+                               readonly
+                               autocomplete="off" />
                     </section>
 
                     <!-- Razón Social -->
@@ -241,20 +258,33 @@
                             Razón social
                             @if (Model.FieldHints.TryGetValue("Nombre", out var editNombreHints) && editNombreHints.Count > 0)
                             {
-                                var nombreHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", editNombreHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@nombreHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editNombreHints)">i</span>
                             }
                             @if (Model.EditRazonSocialErrors?.Count > 0)
                             {
-                                var nombreErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.EditRazonSocialErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@nombreErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditRazonSocial" data-error-message="@BuildTooltipMessage(Model.EditRazonSocialErrors)" aria-label="@BuildTooltipMessage(Model.EditRazonSocialErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.EditRazonSocialErrors?.Count > 0 ? "is-invalid" : "")" 
                                asp-for="EditRazonSocial" 
                                placeholder="Ejemplo: Distribuidora Centro" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label class="form-label fw-bold">
+                            Dirección
+                            @if (Model.FieldHints.TryGetValue("Direccion", out var editDireccionHints) && editDireccionHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editDireccionHints)">i</span>
+                            }
+                            @if (Model.EditDireccionErrors?.Count > 0)
+                            {
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditDireccion" data-error-message="@BuildTooltipMessage(Model.EditDireccionErrors)" aria-label="@BuildTooltipMessage(Model.EditDireccionErrors)"></span>
+                            }
+                        </label>
+                        <input class="form-control @(Model.EditDireccionErrors?.Count > 0 ? "is-invalid" : "")" 
+                               asp-for="EditDireccion" 
+                               placeholder="Calle, número, zona" />
                     </section>
 
                     <!-- Contacto -->
@@ -263,20 +293,16 @@
                             Contacto
                             @if (Model.FieldHints.TryGetValue("Contacto", out var editContactoHints) && editContactoHints.Count > 0)
                             {
-                                var contactoHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", editContactoHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@contactoHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editContactoHints)">i</span>
                             }
                             @if (Model.EditContactoErrors?.Count > 0)
                             {
-                                var contactoErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.EditContactoErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@contactoErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditContacto" data-error-message="@BuildTooltipMessage(Model.EditContactoErrors)" aria-label="@BuildTooltipMessage(Model.EditContactoErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.EditContactoErrors?.Count > 0 ? "is-invalid" : "")" 
                                asp-for="EditContacto" 
-                               placeholder="Teléfono o email" />
+                               placeholder="Nombre del contacto" />
                     </section>
 
                     <!-- Rubro -->
@@ -285,15 +311,11 @@
                             Rubro
                             @if (Model.FieldHints.TryGetValue("Rubro", out var editRubroHints) && editRubroHints.Count > 0)
                             {
-                                var rubroHintMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", editRubroHints.Select(h => $"<li>{h}</li>"))}</ul>").ToString();
-                                <span class="info-tooltip" tabindex="0" data-bs-toggle="tooltip" data-bs-html="true" title="@rubroHintMsg">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editRubroHints)">i</span>
                             }
                             @if (Model.EditRubroErrors?.Count > 0)
                             {
-                                var rubroErrorMsg = Html.Raw($"<ul class='mb-0 ps-3'>{string.Join("", Model.EditRubroErrors.Select(e => $"<li>{e}</li>"))}</ul>").ToString();
-                                <span class="error-tooltip" data-bs-toggle="tooltip" data-bs-html="true" title="@rubroErrorMsg">
-                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
-                                </span>
+                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditRubro" data-error-message="@BuildTooltipMessage(Model.EditRubroErrors)" aria-label="@BuildTooltipMessage(Model.EditRubroErrors)"></span>
                             }
                         </label>
                         <input class="form-control @(Model.EditRubroErrors?.Count > 0 ? "is-invalid" : "")" 
@@ -346,12 +368,6 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar TODOS los tooltips (hints y errores)
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-
             // Abrir modal de crear si hay errores
             var showModal = document.getElementById('showModalOnError').value === 'true';
             if (showModal) {
@@ -371,20 +387,39 @@
             // Transferir datos del proveedor al modal de edición
             var editarModal = document.getElementById('editarProveedorModal');
             if (editarModal) {
-                editarModal.addEventListener('show.bs.modal', function(event) {
+                editarModal.addEventListener('show.bs.modal', async function(event) {
                     var button = event.relatedTarget;
-                    var id = button.getAttribute('data-id');
-                    var codigo = button.getAttribute('data-codigo');
-                    var razonsocial = button.getAttribute('data-razonsocial');
-                    var contacto = button.getAttribute('data-contacto');
-                    var telefono = button.getAttribute('data-telefono');
-                    var rubro = button.getAttribute('data-rubro');
+                    if (!button) {
+                        return;
+                    }
 
-                    document.getElementById('editProveedorId').value = id;
-                    document.getElementById('EditCodigo').value = codigo;
-                    document.getElementById('EditRazonSocial').value = razonsocial;
-                    document.getElementById('EditContacto').value = contacto;
-                    document.getElementById('EditRubro').value = rubro;
+                    var detailsUrl = button.getAttribute('data-details-url');
+                    if (!detailsUrl) {
+                        return;
+                    }
+
+                    try {
+                        var response = await fetch(detailsUrl, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('No se pudo cargar el proveedor.');
+                        }
+
+                        var supplier = await response.json();
+                        document.getElementById('editProveedorId').value = supplier.id;
+                        document.getElementById('EditCodigo').value = supplier.codigo;
+                        document.getElementById('EditRazonSocial').value = supplier.nombre;
+                        document.getElementById('EditDireccion').value = supplier.direccion;
+                        document.getElementById('EditContacto').value = supplier.contacto;
+                        document.getElementById('EditTelefono').value = supplier.telefono || '';
+                        document.getElementById('EditRubro').value = supplier.rubro;
+                    } catch (error) {
+                        console.error(error);
+                    }
                 });
             }
         });

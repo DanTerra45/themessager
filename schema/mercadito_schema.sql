@@ -26,6 +26,13 @@ CREATE TABLE `proveedores` (
 CREATE INDEX `proveedores_idx_estado_codigo` ON `proveedores` (`estado`, `codigo`);
 CREATE INDEX `proveedores_idx_estado_razon` ON `proveedores` (`estado`, `razonSocial`);
 
+CREATE TABLE `supplier_code_sequence` (
+  `id` TINYINT UNSIGNED PRIMARY KEY,
+  `nextValue` INT NOT NULL,
+  CONSTRAINT `chk_supplier_code_sequence_id` CHECK (`id` = 1),
+  CONSTRAINT `chk_supplier_code_sequence_next_value` CHECK (`nextValue` BETWEEN 1 AND 1000)
+);
+
 -- ============================================================
 -- TABLA DE CATEGORÍAS
 -- ============================================================
@@ -42,7 +49,8 @@ CREATE TABLE `categorias` (
   CONSTRAINT `chk_categorias_codigo_formato` CHECK (`codigo` REGEXP '^C[0-9]{5}$'),
   CONSTRAINT `chk_categorias_nombre_no_vacio` CHECK (TRIM(`nombre`) <> ''),
   CONSTRAINT `chk_categorias_descripcion_no_vacia` CHECK (TRIM(`descripcion`) <> ''),
-  CONSTRAINT `chk_categorias_productos_activos_count` CHECK (`productosActivosCount` >= 0)
+  CONSTRAINT `chk_categorias_productos_activos_count` CHECK (`productosActivosCount` >= 0),
+  FULLTEXT KEY `categorias_ft_nombre` (`nombre`)
 );
 
 CREATE TABLE `category_code_sequence` (
@@ -73,7 +81,8 @@ CREATE TABLE `products` (
   CONSTRAINT `chk_products_lote_no_vacio` CHECK (TRIM(`lote`) <> ''),
   CONSTRAINT `chk_products_lote_formato` CHECK (`lote` REGEXP '^[0-9]{1,40}$'),
   CONSTRAINT `chk_products_stock_positivo` CHECK (`stock` >= 0),
-  CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01)
+  CONSTRAINT `chk_products_precio_positivo` CHECK (`precio` >= 0.01),
+  FULLTEXT KEY `products_ft_nombre` (`nombre`)
 );
 
 -- ============================================================
@@ -87,7 +96,7 @@ CREATE TABLE `empleados` (
   `nombres` VARCHAR(40) NOT NULL,
   `primerApellido` VARCHAR(40) NOT NULL,
   `segundoApellido` VARCHAR(40),
-  `rol` ENUM ('Cajero', 'Inventario') NOT NULL,
+  `cargo` ENUM ('Cajero', 'Inventario') NOT NULL,
   `numeroContacto` VARCHAR(40) NOT NULL,
   `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
   `activoUnico` TINYINT GENERATED ALWAYS AS (CASE WHEN `estado` = 'A' THEN 1 ELSE NULL END) STORED,
@@ -108,6 +117,8 @@ CREATE TABLE `empleados` (
 CREATE TABLE `categoriaDeProducto` (
   `productId` BIGINT NOT NULL,
   `categoriaId` BIGINT NOT NULL,
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`productId`, `categoriaId`),
   CONSTRAINT `fk_categoriaDeProducto_productId` FOREIGN KEY (`productId`) REFERENCES `products` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_categoriaDeProducto_categoriaId` FOREIGN KEY (`categoriaId`) REFERENCES `categorias` (`id`) ON DELETE CASCADE
@@ -122,15 +133,53 @@ CREATE TABLE `usuarios` (
   `passwordHash` VARCHAR(255) NOT NULL,
   `email` VARCHAR(100),
   `empleadoId` BIGINT,
-  `rol` ENUM ('Admin', 'Cajero', 'Inventario') NOT NULL DEFAULT 'Cajero',
+  `rol` ENUM ('Admin', 'Operador', 'Auditor') NOT NULL DEFAULT 'Operador',
   `estado` ENUM ('A', 'I', 'B') NOT NULL DEFAULT 'A',
+  `empleadoActivoUnico` BIGINT GENERATED ALWAYS AS (CASE WHEN `estado` = 'A' THEN `empleadoId` ELSE NULL END) STORED,
   `ultimoLogin` DATETIME,
   `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `uq_usuarios_username` UNIQUE (`username`),
   CONSTRAINT `uq_usuarios_email` UNIQUE (`email`),
+  CONSTRAINT `uq_usuarios_activos_empleado` UNIQUE (`empleadoActivoUnico`),
   CONSTRAINT `chk_usuarios_username_no_vacio` CHECK (TRIM(`username`) <> ''),
-  CONSTRAINT `fk_usuarios_empleadoId` FOREIGN KEY (`empleadoId`) REFERENCES `empleados` (`id`) ON DELETE SET NULL
+  CONSTRAINT `chk_usuarios_username_formato` CHECK (`username` REGEXP '^[a-z0-9._-]{4,40}$'),
+  CONSTRAINT `chk_usuarios_password_hash_no_vacio` CHECK (TRIM(`passwordHash`) <> ''),
+  CONSTRAINT `chk_usuarios_email_formato` CHECK (`email` IS NULL OR `email` REGEXP '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'),
+  CONSTRAINT `fk_usuarios_empleadoId` FOREIGN KEY (`empleadoId`) REFERENCES `empleados` (`id`) ON DELETE RESTRICT
+);
+
+CREATE TABLE `password_reset_tokens` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `usuarioId` BIGINT NOT NULL,
+  `tokenHash` CHAR(64) NOT NULL,
+  `expiresAtUtc` DATETIME NOT NULL,
+  `usedAtUtc` DATETIME NULL,
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_password_reset_tokens_token_hash` UNIQUE (`tokenHash`),
+  CONSTRAINT `fk_password_reset_tokens_usuarioId` FOREIGN KEY (`usuarioId`) REFERENCES `usuarios` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `chk_password_reset_tokens_expiracion` CHECK (`expiresAtUtc` > `fechaRegistro`)
+);
+
+CREATE TABLE `email_outbox` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `toAddress` VARCHAR(255) NOT NULL,
+  `toName` VARCHAR(150),
+  `subject` VARCHAR(255) NOT NULL,
+  `plainTextBody` TEXT NOT NULL,
+  `htmlBody` MEDIUMTEXT,
+  `status` ENUM ('P', 'R', 'S', 'E') NOT NULL DEFAULT 'P',
+  `attempts` INT NOT NULL DEFAULT 0,
+  `nextAttemptAtUtc` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `lastAttemptAtUtc` DATETIME NULL,
+  `sentAtUtc` DATETIME NULL,
+  `lastError` VARCHAR(1000) NULL,
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `chk_email_outbox_to_address_no_vacio` CHECK (TRIM(`toAddress`) <> ''),
+  CONSTRAINT `chk_email_outbox_subject_no_vacio` CHECK (TRIM(`subject`) <> ''),
+  CONSTRAINT `chk_email_outbox_plain_text_no_vacio` CHECK (TRIM(`plainTextBody`) <> ''),
+  CONSTRAINT `chk_email_outbox_attempts_positivos` CHECK (`attempts` >= 0)
 );
 
 -- ============================================================
@@ -171,18 +220,20 @@ CREATE INDEX `products_index_3` ON `products` (`estado`, `fechaCaducidad`);
 CREATE INDEX `products_index_4` ON `products` (`estado`, `stock`);
 CREATE INDEX `products_index_5` ON `products` (`estado`, `precio`);
 CREATE INDEX `products_index_6` ON `products` (`estado`, `id`);
-CREATE FULLTEXT INDEX `products_ft_nombre` ON `products` (`nombre`);
-
 CREATE INDEX `empleados_index_4` ON `empleados` (`estado`, `primerApellido`, `segundoApellido`, `nombres`);
 CREATE INDEX `empleados_index_5` ON `empleados` (`estado`, `ci`);
-CREATE INDEX `empleados_index_6` ON `empleados` (`estado`, `rol`);
+CREATE INDEX `empleados_index_6` ON `empleados` (`estado`, `cargo`);
 CREATE INDEX `empleados_index_7` ON `empleados` (`estado`, `id`);
 
 CREATE INDEX `categoriaDeProducto_idx_categoria` ON `categoriaDeProducto` (`categoriaId`);
-CREATE FULLTEXT INDEX `categorias_ft_nombre` ON `categorias` (`nombre`);
 
 CREATE INDEX `usuarios_idx_estado` ON `usuarios` (`estado`, `username`);
 CREATE INDEX `usuarios_idx_empleado` ON `usuarios` (`empleadoId`);
+CREATE INDEX `usuarios_idx_estado_rol` ON `usuarios` (`estado`, `rol`);
+CREATE INDEX `password_reset_tokens_idx_usuario_activo` ON `password_reset_tokens` (`usuarioId`, `usedAtUtc`, `expiresAtUtc`);
+CREATE INDEX `password_reset_tokens_idx_expiracion` ON `password_reset_tokens` (`expiresAtUtc`);
+CREATE INDEX `email_outbox_idx_status_next_attempt` ON `email_outbox` (`status`, `nextAttemptAtUtc`, `id`);
+CREATE INDEX `email_outbox_idx_fecha_registro` ON `email_outbox` (`fechaRegistro`);
 
 -- ============================================================
 -- DATOS INICIALES
@@ -191,10 +242,13 @@ INSERT INTO `category_code_sequence` (`id`, `nextValue`)
 VALUES (1, 1)
 ON DUPLICATE KEY UPDATE `nextValue` = `nextValue`;
 
--- Usuario admin por defecto (password: admin123 - hash SHA-256)
--- Nota: En producción usar password hashing seguro (bcrypt, Argon2)
+INSERT INTO `supplier_code_sequence` (`id`, `nextValue`)
+VALUES (1, 1)
+ON DUPLICATE KEY UPDATE `nextValue` = `nextValue`;
+
+-- Usuario admin por defecto (password: admin123 - hash Argon2id generado con Sodium.Core)
 INSERT INTO `usuarios` (`id`, `username`, `passwordHash`, `email`, `empleadoId`, `rol`, `estado`)
-VALUES (1, 'admin', 'jGl25bVjrBWyp98G+3H7B+ogRxMAAAAhRpxG2A0X7t6T3jqiq7Fct0xZYo', 'admin@mercadito.local', NULL, 'Admin', 'A')
+VALUES (1, 'admin', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'admin@mercadito.local', NULL, 'Admin', 'A')
 ON DUPLICATE KEY UPDATE `username` = `username`;
 
 -- ============================================================
