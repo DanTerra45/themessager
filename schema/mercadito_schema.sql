@@ -3,7 +3,6 @@
 
 SET NAMES utf8mb4;
 
-
 -- ============================================================
 -- TABLA DE PROVEEDORES
 -- ============================================================
@@ -107,7 +106,7 @@ CREATE TABLE `empleados` (
   CONSTRAINT `chk_empleados_nombres_no_vacios` CHECK (TRIM(`nombres`) <> ''),
   CONSTRAINT `chk_empleados_primer_apellido_no_vacio` CHECK (TRIM(`primerApellido`) <> ''),
   CONSTRAINT `chk_empleados_contacto_no_vacio` CHECK (TRIM(`numeroContacto`) <> ''),
-  CONSTRAINT `chk_empleados_contacto_formato` CHECK (`numeroContacto` REGEXP '^[+]591[0-9]{8}$'),
+  CONSTRAINT `chk_empleados_contacto_formato` CHECK (`numeroContacto` REGEXP '^[0-9]{8}$'),
   CONSTRAINT `chk_empleados_complemento_formato` CHECK (`complemento` IS NULL OR `complemento` REGEXP '^[0-9][A-Z]$')
 );
 
@@ -134,6 +133,7 @@ CREATE TABLE `usuarios` (
   `email` VARCHAR(100),
   `empleadoId` BIGINT,
   `rol` ENUM ('Admin', 'Operador', 'Auditor') NOT NULL DEFAULT 'Operador',
+  `debeCambiarPassword` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `estado` ENUM ('A', 'I', 'B') NOT NULL DEFAULT 'A',
   `empleadoActivoUnico` BIGINT GENERATED ALWAYS AS (CASE WHEN `estado` = 'A' THEN `empleadoId` ELSE NULL END) STORED,
   `ultimoLogin` DATETIME,
@@ -146,6 +146,7 @@ CREATE TABLE `usuarios` (
   CONSTRAINT `chk_usuarios_username_formato` CHECK (`username` REGEXP '^[a-z0-9._-]{4,40}$'),
   CONSTRAINT `chk_usuarios_password_hash_no_vacio` CHECK (TRIM(`passwordHash`) <> ''),
   CONSTRAINT `chk_usuarios_email_formato` CHECK (`email` IS NULL OR `email` REGEXP '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$'),
+  CONSTRAINT `chk_usuarios_debe_cambiar_password` CHECK (`debeCambiarPassword` IN (0, 1)),
   CONSTRAINT `fk_usuarios_empleadoId` FOREIGN KEY (`empleadoId`) REFERENCES `empleados` (`id`) ON DELETE RESTRICT
 );
 

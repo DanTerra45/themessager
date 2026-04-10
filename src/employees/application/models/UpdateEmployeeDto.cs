@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using Mercadito.src.shared.presentation.validation;
 
 namespace Mercadito.src.employees.application.models
 {
     public class UpdateEmployeeDto
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
-        private const string ContactPattern = "^(?:\\+591)?[0-9]{8}$";
+        private const string ContactPattern = "^[0-9]{8}$";
 
         [Required]
         public long Id { get; set; }
@@ -36,9 +37,8 @@ namespace Mercadito.src.employees.application.models
         public string Cargo { get; set; } = "Cajero";
 
         [Required(ErrorMessage = "El número de contacto es requerido")]
-        [StringLength(12, MinimumLength = 8, ErrorMessage = "El número de contacto debe tener 8 dígitos o incluir el prefijo +591")]
-        [RegularExpression(ContactPattern, ErrorMessage = "El número de contacto debe tener formato válido (ejemplo: 71234567 o +59171234567)")]
+        [StringLength(8, MinimumLength = 8, ErrorMessage = "El número de contacto debe tener exactamente 8 dígitos")]
+        [RegularExpression(ContactPattern, ErrorMessage = "El número de contacto debe tener formato válido (ejemplo: 71234567)")]
         public string NumeroContacto { get; set; } = string.Empty;
     }
 }
-

@@ -1,0 +1,143 @@
+@model Mercadito.Pages.Suppliers.SuppliersModel
+
+@{
+    string ResolveInvalidClass(string key)
+    {
+        if (ViewData.ModelState.TryGetValue(key, out var entry) && entry.Errors.Count > 0)
+        {
+            return "is-invalid";
+        }
+
+        return string.Empty;
+    }
+
+    var codigoInputClass = "form-control supplier-code-readonly";
+    var codigoInvalidClass = ResolveInvalidClass("NewSupplier.Codigo");
+    if (!string.IsNullOrWhiteSpace(codigoInvalidClass))
+    {
+        codigoInputClass += " " + codigoInvalidClass;
+    }
+
+    var razonSocialInputClass = "form-control";
+    var razonSocialInvalidClass = ResolveInvalidClass("NewSupplier.Nombre");
+    if (!string.IsNullOrWhiteSpace(razonSocialInvalidClass))
+    {
+        razonSocialInputClass += " " + razonSocialInvalidClass;
+    }
+
+    var direccionInputClass = "form-control";
+    var direccionInvalidClass = ResolveInvalidClass("NewSupplier.Direccion");
+    if (!string.IsNullOrWhiteSpace(direccionInvalidClass))
+    {
+        direccionInputClass += " " + direccionInvalidClass;
+    }
+
+    var contactoInputClass = "form-control";
+    var contactoInvalidClass = ResolveInvalidClass("NewSupplier.Contacto");
+    if (!string.IsNullOrWhiteSpace(contactoInvalidClass))
+    {
+        contactoInputClass += " " + contactoInvalidClass;
+    }
+
+    var rubroInputClass = "form-control";
+    var rubroInvalidClass = ResolveInvalidClass("NewSupplier.Rubro");
+    if (!string.IsNullOrWhiteSpace(rubroInvalidClass))
+    {
+        rubroInputClass += " " + rubroInvalidClass;
+    }
+}
+
+<form method="post" asp-page-handler="Create" class="needs-validation" novalidate autocomplete="off" id="createSupplierForm">
+    <section class="modal fade" id="nuevoProveedorModal" tabindex="-1" aria-labelledby="nuevoProveedorModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="nuevoProveedorModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-building-add me-2"></i> Registrar Proveedor
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <section class="mb-3">
+                        <label asp-for="NewSupplier.Codigo" class="form-label fw-bold">
+                            Código
+                            @if (Model.CreateFieldHints.TryGetValue("NewSupplier.Codigo", out var codigoHints) && codigoHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(codigoHints)">i</span>
+                            }
+                            <span asp-validation-for="NewSupplier.Codigo" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewSupplier.Codigo"
+                               class="@codigoInputClass"
+                               readonly
+                               autocomplete="off" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="NewSupplier.Nombre" class="form-label fw-bold">
+                            Razón social
+                            @if (Model.CreateFieldHints.TryGetValue("NewSupplier.Nombre", out var nombreHints) && nombreHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(nombreHints)">i</span>
+                            }
+                            <span asp-validation-for="NewSupplier.Nombre" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewSupplier.Nombre"
+                               class="@razonSocialInputClass"
+                               placeholder="Ejemplo: Distribuidora Centro"
+                               data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="NewSupplier.Direccion" class="form-label fw-bold">
+                            Dirección
+                            @if (Model.CreateFieldHints.TryGetValue("NewSupplier.Direccion", out var direccionHints) && direccionHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(direccionHints)">i</span>
+                            }
+                            <span asp-validation-for="NewSupplier.Direccion" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewSupplier.Direccion"
+                               class="@direccionInputClass"
+                               placeholder="Calle, número, zona"
+                               data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="NewSupplier.Contacto" class="form-label fw-bold">
+                            Contacto
+                            @if (Model.CreateFieldHints.TryGetValue("NewSupplier.Contacto", out var contactoHints) && contactoHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(contactoHints)">i</span>
+                            }
+                            <span asp-validation-for="NewSupplier.Contacto" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewSupplier.Contacto"
+                               class="@contactoInputClass"
+                               placeholder="Nombre del contacto"
+                               data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-0">
+                        <label asp-for="NewSupplier.Rubro" class="form-label fw-bold">
+                            Rubro
+                            @if (Model.CreateFieldHints.TryGetValue("NewSupplier.Rubro", out var rubroHints) && rubroHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(rubroHints)">i</span>
+                            }
+                            <span asp-validation-for="NewSupplier.Rubro" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewSupplier.Rubro"
+                               class="@rubroInputClass"
+                               placeholder="Ejemplo: Alimentos"
+                               data-normalize="collapse" />
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="b-btn">Guardar</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</form>

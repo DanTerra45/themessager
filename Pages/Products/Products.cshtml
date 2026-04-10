@@ -30,7 +30,6 @@
 
 <partial name="_ProductListing" model="(Mercadito.Pages.Products.IProductListingPageModel)Model" view-data="listingViewData" />
 
-<!-- Modals -->
 <section class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-dialog-centered">
         <article class="modal-content">
@@ -93,7 +92,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                                 <span asp-validation-for="NewProduct.Name" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewProduct.Name" class="form-control" />
+                            <input asp-for="NewProduct.Name" class="form-control" data-normalize="collapse" />
                         </section>
 
                         <section class="col-md-6 mb-3">
@@ -137,7 +136,7 @@
                             <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                             <span asp-validation-for="NewProduct.Description" class="validation-icon-inline"></span>
                         </label>
-                        <textarea asp-for="NewProduct.Description" class="form-control product-description-textarea"></textarea>
+                        <textarea asp-for="NewProduct.Description" class="form-control product-description-textarea" data-normalize="trim"></textarea>
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
@@ -166,7 +165,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
                                 <span asp-validation-for="NewProduct.Batch" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewProduct.Batch" type="text" class="form-control" inputmode="numeric" />
+                            <input asp-for="NewProduct.Batch" type="text" class="form-control" inputmode="numeric" data-normalize="trim" />
                         </section>
 
                         <section class="col-md-4">
@@ -240,7 +239,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                                 <span asp-validation-for="EditProduct.Name" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditProduct.Name" class="form-control" />
+                            <input asp-for="EditProduct.Name" class="form-control" data-normalize="collapse" />
                         </section>
 
                         <section class="col-md-6 mb-3">
@@ -285,7 +284,7 @@
                             <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
                             <span asp-validation-for="EditProduct.Description" class="validation-icon-inline"></span>
                         </label>
-                        <textarea asp-for="EditProduct.Description" class="form-control product-description-textarea"></textarea>
+                        <textarea asp-for="EditProduct.Description" class="form-control product-description-textarea" data-normalize="trim"></textarea>
                     </section>
 
                     <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
@@ -315,7 +314,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
                                 <span asp-validation-for="EditProduct.Batch" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditProduct.Batch" type="text" class="form-control" inputmode="numeric" />
+                            <input asp-for="EditProduct.Batch" type="text" class="form-control" inputmode="numeric" data-normalize="trim" />
                         </section>
 
                         <section class="col-md-4">
@@ -365,7 +364,6 @@
     </section>
 </section>
 
-<!-- Brutalist Toasts -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1060;">
     @if (TempData["SuccessMessage"] is string successMsg && !string.IsNullOrWhiteSpace(successMsg))
     {

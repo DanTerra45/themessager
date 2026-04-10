@@ -8,7 +8,7 @@ namespace Mercadito.Pages.Sales
         public decimal TicketPromedio { get; private set; }
         public int VentasRegistradasHoy { get; private set; }
 
-        public List<VentaRow> VentasRecientes { get; private set; } = [];
+        public IReadOnlyList<VentaRow> VentasRecientes { get; private set; } = [];
 
         public void OnGet()
         {

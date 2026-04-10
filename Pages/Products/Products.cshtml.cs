@@ -1,14 +1,18 @@
-using System.Globalization;
 using Mercadito.src.categories.application.models;
 using Mercadito.src.products.application.models;
 using Mercadito.src.products.application.ports.input;
 using Mercadito.Pages.Infrastructure;
-using Microsoft.AspNetCore.Http;
+using Mercadito.src.shared.domain.validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Products
 {
-    public partial class ProductsModel : AppPageModel, IProductListingPageModel
+    public partial class ProductsModel(
+        ILogger<ProductsModel> logger,
+        IListingPageStateService listingPageStateService,
+        IModalPostbackStateService modalPostbackStateService,
+        IProductManagementUseCase productManagementUseCase,
+        IConfiguration configuration) : AppPageModel, IProductListingPageModel
     {
         private const string CurrentPageSessionKey = "Products.CurrentPage";
         private const string CategoryFilterSessionKey = "Products.CategoryFilter";
@@ -31,15 +35,30 @@ namespace Mercadito.Pages.Products
         private const string OrderPresetAlphabeticalAsc = "az";
         private const string OrderPresetAlphabeticalDesc = "za";
         private const string OrderPresetCustom = "custom";
-        private const string NavigationModeNext = "next";
-        private const string NavigationModePrevious = "prev";
+        private static readonly KeysetListingSessionKeys ListingSessionKeys = new(
+            CurrentPageSessionKey,
+            CurrentAnchorProductIdSessionKey,
+            PendingNavigationModeSessionKey,
+            PendingNavigationCursorProductIdSessionKey,
+            SortBySessionKey,
+            SortDirectionSessionKey,
+            SearchTermSessionKey);
+        private static readonly ListingPageStateOptions ListingStateOptions = new(
+            ListingSessionKeys,
+            DefaultSortBy,
+            DefaultSortDirection,
+            NormalizeSortBy,
+            NormalizeSortDirection,
+            ValidationText.NormalizeTrimmed);
 
-        private readonly ILogger<ProductsModel> _logger;
-        private readonly IProductManagementUseCase _productManagementUseCase;
-        private readonly int _defaultPageSize;
+        private readonly ILogger<ProductsModel> _logger = logger;
+        private readonly IListingPageStateService _listingPageStateService = listingPageStateService;
+        private readonly IModalPostbackStateService _modalPostbackStateService = modalPostbackStateService;
+        private readonly IProductManagementUseCase _productManagementUseCase = productManagementUseCase;
+        private readonly int _defaultPageSize = PaginationSettings.ResolveDefaultPageSize(configuration);
 
-        public List<ProductWithCategoriesModel> Products { get; set; } = [];
-        public List<CategoryModel> Categories { get; set; } = [];
+        public IReadOnlyList<ProductWithCategoriesModel> Products { get; set; } = [];
+        public IReadOnlyList<CategoryModel> Categories { get; set; } = [];
 
         public long CategoryFilter { get; set; }
 
@@ -68,18 +87,6 @@ namespace Mercadito.Pages.Products
 
         public bool ShowEditModal { get; set; }
 
-        public ProductsModel(
-            ILogger<ProductsModel> logger,
-            IProductManagementUseCase productManagementUseCase,
-            IConfiguration configuration
-            )
-        {
-            _logger = logger;
-            _productManagementUseCase = productManagementUseCase;
-            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
-            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
-        }
-
         public async Task OnGetAsync()
         {
             LoadStateFromSession();
@@ -90,7 +97,7 @@ namespace Mercadito.Pages.Products
             var pendingNavigation = PopPendingNavigation();
             if (pendingNavigation.HasValue)
             {
-                await LoadProductsByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorProductId);
+                await LoadProductsByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorId);
             }
             else
             {
@@ -204,5 +211,3 @@ namespace Mercadito.Pages.Products
 
     }
 }
-
-

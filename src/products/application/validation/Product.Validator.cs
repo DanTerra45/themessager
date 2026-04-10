@@ -1,9 +1,8 @@
 using Mercadito.src.products.application.models;
 using Mercadito.src.products.domain.entities;
 using Mercadito.src.products.domain.factories;
-using Mercadito.src.shared.domain.validator;
-using Shared.Domain;
-using System.Text.RegularExpressions;
+using Mercadito.src.shared.domain.validation;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.products.application.validation
 {
@@ -19,8 +18,8 @@ namespace Mercadito.src.products.application.validation
     {
         private const string BatchPattern = "^[0-9]{1,40}$";
 
-        private readonly Dictionary<string, List<Func<string, string>>> _stringRules = new();
-        protected readonly Dictionary<string, List<string>> errors = new();
+        private readonly StringRuleSet _stringRules = new();
+        private readonly ValidationErrorBag _errors = new();
 
         protected ProductValidator()
         {
@@ -31,29 +30,29 @@ namespace Mercadito.src.products.application.validation
 
         private void ConfigureNameRules()
         {
-            AddStringRule("Name", value => Required(value, "El nombre es obligatorio"));
-            AddStringRule("Name", value => MaxLength(value, 150, "El nombre no puede exceder 150 caracteres"));
-            AddStringRule("Name", value => ControlCharacters(value, "El nombre contiene caracteres no permitidos"));
-            AddStringRule("Name", value => RegexMatch(value, @"^[\p{L}\p{N} .,'-]+$", "El nombre solo permite letras, números y separadores válidos (espacio, punto, apóstrofe o guion)"));
+            AddStringRule("Name", StringValidationRules.Required("El nombre es obligatorio"));
+            AddStringRule("Name", StringValidationRules.MaxLength(150, "El nombre no puede exceder 150 caracteres"));
+            AddStringRule("Name", StringValidationRules.ControlCharacters("El nombre contiene caracteres no permitidos"));
         }
 
         private void ConfigureDescriptionRules()
         {
-            AddStringRule("Description", value => Required(value, "La descripción es obligatoria"));
-            AddStringRule("Description", value => MaxLength(value, 150, "La descripción no puede exceder 150 caracteres"));
-            AddStringRule("Description", value => ControlCharacters(value, "La descripción contiene caracteres no permitidos"));
-            AddStringRule("Description", value => RegexMatch(value, @"^[\p{L}\p{N} .,'-]+$", "La descripción solo permite letras, números y separadores válidos (espacio, punto, apóstrofe o guion)"));
+            AddStringRule("Description", StringValidationRules.Required("La descripción es obligatoria"));
+            AddStringRule("Description", StringValidationRules.MaxLength(150, "La descripción no puede exceder 150 caracteres"));
+            AddStringRule("Description", StringValidationRules.ControlCharacters("La descripción contiene caracteres no permitidos"));
         }
 
         private void ConfigureBatchRules()
         {
-            AddStringRule("Batch", value => Required(value, "Lote es obligatorio"));
-            AddStringRule("Batch", value => MaxLength(value, 40, "Lote no puede exceder 40 caracteres"));
-            AddStringRule("Batch", value => RegexMatch(value, BatchPattern, "El lote solo permite números"));
+            AddStringRule("Batch", StringValidationRules.Required("Lote es obligatorio"));
+            AddStringRule("Batch", StringValidationRules.MaxLength(40, "Lote no puede exceder 40 caracteres"));
+            AddStringRule("Batch", StringValidationRules.RegexMatch(BatchPattern, "El lote solo permite números"));
         }
 
         protected void ValidateCreateFields(CreateProductDto dto)
         {
+            ArgumentNullException.ThrowIfNull(dto);
+
             ValidateField("Name", dto.Name);
             ValidateField("Description", dto.Description);
             ValidateField("Batch", dto.Batch);
@@ -65,6 +64,8 @@ namespace Mercadito.src.products.application.validation
 
         protected void ValidateUpdateFields(UpdateProductDto dto)
         {
+            ArgumentNullException.ThrowIfNull(dto);
+
             if (dto.Id <= 0)
             {
                 AddError("Id", "Id de producto inválido");
@@ -81,19 +82,7 @@ namespace Mercadito.src.products.application.validation
 
         protected void ValidateField(string field, string value)
         {
-            if (!_stringRules.TryGetValue(field, out var rules))
-            {
-                return;
-            }
-
-            foreach (var rule in rules)
-            {
-                var message = rule(value);
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    AddError(field, message);
-                }
-            }
+            _stringRules.Validate(field, value, _errors);
         }
 
         protected void ValidateStock(int? stock)
@@ -138,8 +127,10 @@ namespace Mercadito.src.products.application.validation
             }
         }
 
-        protected void ValidateCategoryIds(IReadOnlyCollection<long> categoryIds)
+        protected void ValidateCategoryIds(ICollection<long> categoryIds)
         {
+            ArgumentNullException.ThrowIfNull(categoryIds);
+
             if (categoryIds.Count == 0)
             {
                 AddError("CategoryIds", "Debe seleccionar al menos una categoría");
@@ -165,120 +156,144 @@ namespace Mercadito.src.products.application.validation
 
         protected void AddStringRule(string field, Func<string, string> rule)
         {
-            if (!_stringRules.ContainsKey(field))
-            {
-                _stringRules[field] = [];
-            }
-
-            _stringRules[field].Add(rule);
+            _stringRules.Add(field, rule);
         }
 
         protected void AddError(string field, string message)
         {
-            if (!errors.ContainsKey(field))
-            {
-                errors[field] = [];
-            }
-
-            errors[field].Add(message);
+            _errors.Add(field, message);
         }
 
         protected void ClearErrors()
         {
-            errors.Clear();
+            _errors.Clear();
         }
 
         protected bool HasErrors()
         {
-            return errors.Count > 0;
+            return _errors.HasErrors;
         }
 
         protected Dictionary<string, List<string>> GetErrors()
         {
-            return errors;
-        }
-
-        private static string Required(string value, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) ? message : string.Empty;
-        }
-
-        private static string MaxLength(string value, int maximum, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) || value.Length <= maximum ? string.Empty : message;
-        }
-
-        private static string RegexMatch(string value, string pattern, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) || Regex.IsMatch(value, pattern, RegexOptions.CultureInvariant) ? string.Empty : message;
-        }
-
-        private static string ControlCharacters(string value, string message)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return string.Empty;
-            }
-
-            foreach (var character in value)
-            {
-                if (char.IsControl(character))
-                {
-                    return message;
-                }
-            }
-
-            return string.Empty;
+            return _errors.ToDictionary();
         }
     }
 
-    public sealed class CreateProductValidator : ProductValidator, ICreateProductValidator
+    public sealed class CreateProductValidator(IProductFactory productFactory) : ProductValidator, ICreateProductValidator
     {
-        private readonly IProductFactory _productFactory;
-
-        public CreateProductValidator(IProductFactory productFactory)
-        {
-            _productFactory = productFactory;
-        }
-
         public Result<Product> Validate(CreateProductDto input)
         {
             if (input == null)
             {
-                return Result<Product>.Failure("El producto es obligatorio.");
+                return Result.Failure<Product>("El producto es obligatorio.");
             }
 
+            var normalizedInput = ProductValidationNormalization.NormalizeCreateInput(input);
             ClearErrors();
-            ValidateCreateFields(input);
+            ValidateCreateFields(normalizedInput);
 
-            return HasErrors()
-                ? Result<Product>.Failure(GetErrors())
-                : Result<Product>.Success(_productFactory.CreateForInsert(input));
+            if (HasErrors())
+            {
+                return Result.Failure<Product>(GetErrors());
+            }
+
+            return Result.Success(productFactory.CreateForInsert(ProductValidationNormalization.ToCreateValues(normalizedInput)));
         }
     }
 
-    public sealed class UpdateProductValidator : ProductValidator, IUpdateProductValidator
+    public sealed class UpdateProductValidator(IProductFactory productFactory) : ProductValidator, IUpdateProductValidator
     {
-        private readonly IProductFactory _productFactory;
-
-        public UpdateProductValidator(IProductFactory productFactory)
-        {
-            _productFactory = productFactory;
-        }
-
         public Result<Product> Validate(UpdateProductDto input)
         {
             if (input == null)
             {
-                return Result<Product>.Failure("El producto es obligatorio.");
+                return Result.Failure<Product>("El producto es obligatorio.");
             }
 
+            var normalizedInput = ProductValidationNormalization.NormalizeUpdateInput(input);
             ClearErrors();
-            ValidateUpdateFields(input);
+            ValidateUpdateFields(normalizedInput);
 
-            return HasErrors()
-                ? Result<Product>.Failure(GetErrors())
-                : Result<Product>.Success(_productFactory.CreateForUpdate(input));
+            if (HasErrors())
+            {
+                return Result.Failure<Product>(GetErrors());
+            }
+
+            return Result.Success(productFactory.CreateForUpdate(ProductValidationNormalization.ToUpdateValues(normalizedInput)));
+        }
+    }
+
+    internal static class ProductValidationNormalization
+    {
+        internal static CreateProductDto NormalizeCreateInput(CreateProductDto input)
+        {
+            var normalizedInput = new CreateProductDto
+            {
+                Name = ValidationText.NormalizeCollapsed(input.Name),
+                Description = ValidationText.NormalizeTrimmed(input.Description),
+                Stock = input.Stock,
+                Batch = ValidationText.NormalizeTrimmed(input.Batch),
+                ExpirationDate = input.ExpirationDate,
+                Price = input.Price
+            };
+
+            foreach (var categoryId in input.CategoryIds)
+            {
+                normalizedInput.CategoryIds.Add(categoryId);
+            }
+
+            return normalizedInput;
+        }
+
+        internal static CreateProductValues ToCreateValues(CreateProductDto input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            return new CreateProductValues(
+                input.Name,
+                input.Description,
+                input.Stock,
+                input.Batch,
+                input.ExpirationDate,
+                input.Price,
+                [.. input.CategoryIds]);
+        }
+
+        internal static UpdateProductDto NormalizeUpdateInput(UpdateProductDto input)
+        {
+            var normalizedInput = new UpdateProductDto
+            {
+                Id = input.Id,
+                Name = ValidationText.NormalizeCollapsed(input.Name),
+                Description = ValidationText.NormalizeTrimmed(input.Description),
+                Stock = input.Stock,
+                Batch = ValidationText.NormalizeTrimmed(input.Batch),
+                ExpirationDate = input.ExpirationDate,
+                Price = input.Price
+            };
+
+            foreach (var categoryId in input.CategoryIds)
+            {
+                normalizedInput.CategoryIds.Add(categoryId);
+            }
+
+            return normalizedInput;
+        }
+
+        internal static UpdateProductValues ToUpdateValues(UpdateProductDto input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            return new UpdateProductValues(
+                input.Id,
+                input.Name,
+                input.Description,
+                input.Stock,
+                input.Batch,
+                input.ExpirationDate,
+                input.Price,
+                [.. input.CategoryIds]);
         }
     }
 }

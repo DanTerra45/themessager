@@ -1,9 +1,8 @@
 using Mercadito.src.employees.application.models;
 using Mercadito.src.employees.domain.entities;
 using Mercadito.src.employees.domain.factories;
-using Mercadito.src.shared.domain.validator;
-using Shared.Domain;
-using System.Text.RegularExpressions;
+using Mercadito.src.shared.domain.validation;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.employees.application.validation
 {
@@ -19,13 +18,13 @@ namespace Mercadito.src.employees.application.validation
     {
         private const string HumanNamePattern = "^[A-Za-z\\u00C0-\\u024F]+(?:[ .'-][A-Za-z\\u00C0-\\u024F]+)*$";
         private const string ComplementPattern = "^[0-9][A-Za-z]$";
-        private const string ContactPattern = "^(?:\\+591)?[0-9]{8}$";
+        private const string ContactPattern = "^[0-9]{8}$";
         private const long MinimumCiValue = 1000000L;
         private const long MaximumCiValue = 99999999L;
 
-        private readonly Dictionary<string, List<Func<string, string>>> _requiredStringRules = new();
-        private readonly Dictionary<string, List<Func<string, string>>> _optionalStringRules = new();
-        protected readonly Dictionary<string, List<string>> errors = new();
+        private readonly StringRuleSet _requiredStringRules = new();
+        private readonly StringRuleSet _optionalStringRules = new();
+        private readonly ValidationErrorBag _errors = new();
 
         protected EmployeeValidator()
         {
@@ -38,32 +37,34 @@ namespace Mercadito.src.employees.application.validation
             ConfigureNameRules("Nombres", "Los nombres son requeridos", "Los nombres deben tener entre 2 y 40 caracteres", "Los nombres solo permiten letras y separadores válidos (espacio, punto, apóstrofe o guion)");
             ConfigureNameRules("PrimerApellido", "El primer apellido es requerido", "El primer apellido debe tener entre 2 y 40 caracteres", "El primer apellido solo permite letras y separadores válidos (espacio, punto, apóstrofe o guion)");
 
-            AddRequiredStringRule("Cargo", value => Required(value, "El cargo es requerido"));
-            AddRequiredStringRule("Cargo", value => RegexMatch(value, "^(Cajero|Inventario)$", "El cargo debe ser Cajero o Inventario"));
+            AddRequiredStringRule("Cargo", StringValidationRules.Required("El cargo es requerido"));
+            AddRequiredStringRule("Cargo", StringValidationRules.RegexMatch("^(Cajero|Inventario)$", "El cargo debe ser Cajero o Inventario"));
 
-            AddRequiredStringRule("NumeroContacto", value => Required(value, "El número de contacto es requerido"));
-            AddRequiredStringRule("NumeroContacto", value => LengthBetween(value, 8, 12, "El número de contacto debe tener 8 dígitos o incluir el prefijo +591"));
-            AddRequiredStringRule("NumeroContacto", value => RegexMatch(value, ContactPattern, "El número de contacto debe tener formato válido (ejemplo: 71234567 o +59171234567)"));
+            AddRequiredStringRule("NumeroContacto", StringValidationRules.Required("El número de contacto es requerido"));
+            AddRequiredStringRule("NumeroContacto", StringValidationRules.ExactLength(8, "El número de contacto debe tener exactamente 8 dígitos"));
+            AddRequiredStringRule("NumeroContacto", StringValidationRules.RegexMatch(ContactPattern, "El número de contacto debe tener formato válido (ejemplo: 71234567)"));
         }
 
         private void ConfigureOptionalStringRules()
         {
-            AddOptionalStringRule("Complemento", value => ExactLength(value, 2, "El complemento debe tener exactamente 2 caracteres"));
-            AddOptionalStringRule("Complemento", value => RegexMatch(value, ComplementPattern, "El complemento debe tener formato número+letra (ejemplo: 1A)"));
+            AddOptionalStringRule("Complemento", StringValidationRules.ExactLength(2, "El complemento debe tener exactamente 2 caracteres"));
+            AddOptionalStringRule("Complemento", StringValidationRules.RegexMatch(ComplementPattern, "El complemento debe tener formato número+letra (ejemplo: 1A)"));
 
-            AddOptionalStringRule("SegundoApellido", value => MaxLength(value, 40, "Máximo 40 caracteres"));
-            AddOptionalStringRule("SegundoApellido", value => RegexMatch(value, HumanNamePattern, "El segundo apellido solo permite letras y separadores válidos (espacio, punto, apóstrofe o guion)"));
+            AddOptionalStringRule("SegundoApellido", StringValidationRules.MaxLength(40, "Máximo 40 caracteres"));
+            AddOptionalStringRule("SegundoApellido", StringValidationRules.RegexMatch(HumanNamePattern, "El segundo apellido solo permite letras y separadores válidos (espacio, punto, apóstrofe o guion)"));
         }
 
         private void ConfigureNameRules(string field, string requiredMessage, string lengthMessage, string formatMessage)
         {
-            AddRequiredStringRule(field, value => Required(value, requiredMessage));
-            AddRequiredStringRule(field, value => LengthBetween(value, 2, 40, lengthMessage));
-            AddRequiredStringRule(field, value => RegexMatch(value, HumanNamePattern, formatMessage));
+            AddRequiredStringRule(field, StringValidationRules.Required(requiredMessage));
+            AddRequiredStringRule(field, StringValidationRules.LengthBetween(2, 40, lengthMessage));
+            AddRequiredStringRule(field, StringValidationRules.RegexMatch(HumanNamePattern, formatMessage));
         }
 
         protected void ValidateCreateFields(CreateEmployeeDto dto)
         {
+            ArgumentNullException.ThrowIfNull(dto);
+
             ValidateCi(dto.Ci);
             ValidateRequiredField("Nombres", dto.Nombres);
             ValidateRequiredField("PrimerApellido", dto.PrimerApellido);
@@ -75,6 +76,8 @@ namespace Mercadito.src.employees.application.validation
 
         protected void ValidateUpdateFields(UpdateEmployeeDto dto)
         {
+            ArgumentNullException.ThrowIfNull(dto);
+
             if (dto.Id <= 0)
             {
                 AddError("Id", "El empleado es inválido.");
@@ -105,19 +108,7 @@ namespace Mercadito.src.employees.application.validation
 
         protected void ValidateRequiredField(string field, string value)
         {
-            if (!_requiredStringRules.TryGetValue(field, out var rules))
-            {
-                return;
-            }
-
-            foreach (var rule in rules)
-            {
-                var message = rule(value);
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    AddError(field, message);
-                }
-            }
+            _requiredStringRules.Validate(field, value, _errors);
         }
 
         protected void ValidateOptionalField(string field, string? value)
@@ -127,139 +118,164 @@ namespace Mercadito.src.employees.application.validation
                 return;
             }
 
-            if (!_optionalStringRules.TryGetValue(field, out var rules))
-            {
-                return;
-            }
-
-            foreach (var rule in rules)
-            {
-                var message = rule(value);
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    AddError(field, message);
-                }
-            }
+            _optionalStringRules.Validate(field, value, _errors);
         }
 
         protected void AddRequiredStringRule(string field, Func<string, string> rule)
         {
-            if (!_requiredStringRules.ContainsKey(field))
-            {
-                _requiredStringRules[field] = [];
-            }
-
-            _requiredStringRules[field].Add(rule);
+            _requiredStringRules.Add(field, rule);
         }
 
         protected void AddOptionalStringRule(string field, Func<string, string> rule)
         {
-            if (!_optionalStringRules.ContainsKey(field))
-            {
-                _optionalStringRules[field] = [];
-            }
-
-            _optionalStringRules[field].Add(rule);
+            _optionalStringRules.Add(field, rule);
         }
 
         protected void AddError(string field, string message)
         {
-            if (!errors.ContainsKey(field))
-            {
-                errors[field] = [];
-            }
-
-            errors[field].Add(message);
+            _errors.Add(field, message);
         }
 
         protected void ClearErrors()
         {
-            errors.Clear();
+            _errors.Clear();
         }
 
         protected bool HasErrors()
         {
-            return errors.Count > 0;
+            return _errors.HasErrors;
         }
 
         protected Dictionary<string, List<string>> GetErrors()
         {
-            return errors;
-        }
-
-        private static string Required(string value, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) ? message : string.Empty;
-        }
-
-        private static string LengthBetween(string value, int minimum, int maximum, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) || value.Length >= minimum && value.Length <= maximum ? string.Empty : message;
-        }
-
-        private static string ExactLength(string value, int length, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) || value.Length == length ? string.Empty : message;
-        }
-
-        private static string MaxLength(string value, int maximum, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) || value.Length <= maximum ? string.Empty : message;
-        }
-
-        private static string RegexMatch(string value, string pattern, string message)
-        {
-            return string.IsNullOrWhiteSpace(value) || Regex.IsMatch(value, pattern, RegexOptions.CultureInvariant) ? string.Empty : message;
+            return _errors.ToDictionary();
         }
     }
 
-    public sealed class CreateEmployeeValidator : EmployeeValidator, ICreateEmployeeValidator
+    public sealed class CreateEmployeeValidator(IEmployeeFactory employeeFactory) : EmployeeValidator, ICreateEmployeeValidator
     {
-        private readonly IEmployeeFactory _employeeFactory;
-
-        public CreateEmployeeValidator(IEmployeeFactory employeeFactory)
-        {
-            _employeeFactory = employeeFactory;
-        }
-
         public Result<Employee> Validate(CreateEmployeeDto input)
         {
             if (input == null)
             {
-                return Result<Employee>.Failure("El empleado es obligatorio.");
+                return Result.Failure<Employee>("El empleado es obligatorio.");
             }
 
+            var normalizedInput = EmployeeValidationNormalization.NormalizeCreateInput(input);
             ClearErrors();
-            ValidateCreateFields(input);
+            ValidateCreateFields(normalizedInput);
 
-            return HasErrors()
-                ? Result<Employee>.Failure(GetErrors())
-                : Result<Employee>.Success(_employeeFactory.CreateForInsert(input));
+            if (HasErrors())
+            {
+                return Result.Failure<Employee>(GetErrors());
+            }
+
+            return Result.Success(employeeFactory.CreateForInsert(EmployeeValidationNormalization.ToCreateValues(normalizedInput)));
         }
     }
 
-    public sealed class UpdateEmployeeValidator : EmployeeValidator, IUpdateEmployeeValidator
+    public sealed class UpdateEmployeeValidator(IEmployeeFactory employeeFactory) : EmployeeValidator, IUpdateEmployeeValidator
     {
-        private readonly IEmployeeFactory _employeeFactory;
-
-        public UpdateEmployeeValidator(IEmployeeFactory employeeFactory)
-        {
-            _employeeFactory = employeeFactory;
-        }
-
         public Result<Employee> Validate(UpdateEmployeeDto input)
         {
             if (input == null)
             {
-                return Result<Employee>.Failure("El empleado es obligatorio.");
+                return Result.Failure<Employee>("El empleado es obligatorio.");
             }
 
+            var normalizedInput = EmployeeValidationNormalization.NormalizeUpdateInput(input);
             ClearErrors();
-            ValidateUpdateFields(input);
+            ValidateUpdateFields(normalizedInput);
 
-            return HasErrors()
-                ? Result<Employee>.Failure(GetErrors())
-                : Result<Employee>.Success(_employeeFactory.CreateForUpdate(input));
+            if (HasErrors())
+            {
+                return Result.Failure<Employee>(GetErrors());
+            }
+
+            return Result.Success(employeeFactory.CreateForUpdate(EmployeeValidationNormalization.ToUpdateValues(normalizedInput)));
+        }
+    }
+
+    internal static class EmployeeValidationNormalization
+    {
+        internal static CreateEmployeeDto NormalizeCreateInput(CreateEmployeeDto input)
+        {
+            return new CreateEmployeeDto
+            {
+                Ci = input.Ci,
+                Complemento = NormalizeComplemento(input.Complemento),
+                Nombres = ValidationText.NormalizeCollapsed(input.Nombres),
+                PrimerApellido = ValidationText.NormalizeCollapsed(input.PrimerApellido),
+                SegundoApellido = NormalizeOptionalName(input.SegundoApellido),
+                Cargo = ValidationText.NormalizeTrimmed(input.Cargo),
+                NumeroContacto = ValidationText.NormalizeTrimmed(input.NumeroContacto)
+            };
+        }
+
+        internal static CreateEmployeeValues ToCreateValues(CreateEmployeeDto input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            return new CreateEmployeeValues(
+                input.Ci,
+                input.Complemento,
+                input.Nombres,
+                input.PrimerApellido,
+                input.SegundoApellido,
+                input.Cargo,
+                input.NumeroContacto);
+        }
+
+        internal static UpdateEmployeeDto NormalizeUpdateInput(UpdateEmployeeDto input)
+        {
+            return new UpdateEmployeeDto
+            {
+                Id = input.Id,
+                Ci = input.Ci,
+                Complemento = NormalizeComplemento(input.Complemento),
+                Nombres = ValidationText.NormalizeCollapsed(input.Nombres),
+                PrimerApellido = ValidationText.NormalizeCollapsed(input.PrimerApellido),
+                SegundoApellido = NormalizeOptionalName(input.SegundoApellido),
+                Cargo = ValidationText.NormalizeTrimmed(input.Cargo),
+                NumeroContacto = ValidationText.NormalizeTrimmed(input.NumeroContacto)
+            };
+        }
+
+        internal static UpdateEmployeeValues ToUpdateValues(UpdateEmployeeDto input)
+        {
+            ArgumentNullException.ThrowIfNull(input);
+
+            return new UpdateEmployeeValues(
+                input.Id,
+                input.Ci,
+                input.Complemento,
+                input.Nombres,
+                input.PrimerApellido,
+                input.SegundoApellido,
+                input.Cargo,
+                input.NumeroContacto);
+        }
+
+        private static string? NormalizeComplemento(string? value)
+        {
+            var normalizedValue = ValidationText.NormalizeTrimmed(value);
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                return null;
+            }
+
+            return normalizedValue.ToUpperInvariant();
+        }
+
+        private static string? NormalizeOptionalName(string? value)
+        {
+            var normalizedValue = ValidationText.NormalizeCollapsed(value);
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                return null;
+            }
+
+            return normalizedValue;
         }
     }
 }

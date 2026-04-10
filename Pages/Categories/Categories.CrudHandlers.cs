@@ -1,5 +1,6 @@
 using Mercadito.src.categories.application.models;
 using Microsoft.AspNetCore.Mvc;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages.Categories
 {
@@ -52,7 +53,7 @@ namespace Mercadito.Pages.Categories
                 TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
                 return RedirectToCurrentState();
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al crear categoría");
                 TempData["ErrorMessage"] = "Error al guardar la categoría. Intente nuevamente.";
@@ -105,7 +106,7 @@ namespace Mercadito.Pages.Categories
                 TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
                 return RedirectToCurrentState();
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al actualizar categoría");
                 TempData["ErrorMessage"] = "Error al actualizar la categoría. Intente nuevamente.";
@@ -136,7 +137,7 @@ namespace Mercadito.Pages.Categories
                     TempData["ErrorMessage"] = "La categoría no existe o ya estaba desactivada.";
                 }
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al eliminar la categoría");
                 TempData["ErrorMessage"] = "No se pudo eliminar la categoría.";
@@ -146,5 +147,3 @@ namespace Mercadito.Pages.Categories
         }
     }
 }
-
-

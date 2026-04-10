@@ -1,28 +1,26 @@
 using System.Security.Claims;
+using System.Globalization;
 using Mercadito.Pages.Infrastructure;
+using Mercadito.src.users.application;
 using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Account
 {
     [AllowAnonymous]
-    public class LoginModel : AppPageModel
+    public class LoginModel(IAuthenticateUserUseCase authenticateUserUseCase) : AppPageModel
     {
-        private readonly IAuthenticateUserUseCase _authenticateUserUseCase;
-
-        public LoginModel(IAuthenticateUserUseCase authenticateUserUseCase)
-        {
-            _authenticateUserUseCase = authenticateUserUseCase;
-        }
-
         [BindProperty]
+        [Required(ErrorMessage = "El usuario es obligatorio.")]
         public string Username { get; set; } = string.Empty;
 
         [BindProperty]
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
         public string Password { get; set; } = string.Empty;
 
         [BindProperty(SupportsGet = true)]
@@ -43,7 +41,7 @@ namespace Mercadito.Pages.Account
         {
             ReturnUrl = NormalizeReturnUrl(ReturnUrl);
 
-            var result = await _authenticateUserUseCase.ExecuteAsync(new LoginUserCommand
+            var result = await authenticateUserUseCase.ExecuteAsync(new LoginUserCommand
             {
                 Username = Username,
                 Password = Password
@@ -64,14 +62,19 @@ namespace Mercadito.Pages.Account
             var user = result.Value;
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),
                 new(ClaimTypes.Name, user.Username),
                 new(ClaimTypes.Role, user.Role.ToString())
             };
 
             if (user.EmployeeId.HasValue)
             {
-                claims.Add(new Claim("employee_id", user.EmployeeId.Value.ToString()));
+                claims.Add(new Claim("employee_id", user.EmployeeId.Value.ToString(CultureInfo.InvariantCulture)));
+            }
+
+            if (user.MustChangePassword)
+            {
+                claims.Add(new Claim(UserClaimTypes.MustChangePassword, "true"));
             }
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -104,7 +107,12 @@ namespace Mercadito.Pages.Account
                 return "/";
             }
 
-            return returnUrl.StartsWith('/') ? returnUrl : "/";
+            if (returnUrl.StartsWith('/'))
+            {
+                return returnUrl;
+            }
+
+            return "/";
         }
     }
 }

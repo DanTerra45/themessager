@@ -1,39 +1,32 @@
 using Dapper;
-using Mercadito.database.interfaces;
+using Mercadito.src.shared.infrastructure.persistence;
 using Mercadito.src.notifications.application.models;
 using Mercadito.src.notifications.application.ports.output;
 
 namespace Mercadito.src.notifications.infrastructure.persistence
 {
-    public sealed class EmailOutboxRepository : IEmailOutboxRepository
+    public sealed class EmailOutboxRepository(IDbConnectionFactory dbConnectionFactory) : IEmailOutboxRepository
     {
-        private readonly IDbConnectionFactory _dbConnectionFactory;
-
-        public EmailOutboxRepository(IDbConnectionFactory dbConnectionFactory)
-        {
-            _dbConnectionFactory = dbConnectionFactory;
-        }
-
         public async Task<IReadOnlyList<EmailOutboxItem>> ReservePendingBatchAsync(int batchSize, DateTime currentUtc, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            using var connection = await dbConnectionFactory.CreateConnectionAsync(cancellationToken);
             using var transaction = connection.BeginTransaction();
 
             const string selectQuery = @"
-SELECT
-    o.id AS Id,
-    o.toAddress AS ToAddress,
-    o.toName AS ToName,
-    o.subject AS Subject,
-    o.plainTextBody AS PlainTextBody,
-    o.htmlBody AS HtmlBody,
-    o.attempts AS Attempts
-FROM email_outbox o
-WHERE o.status = 'P'
-  AND o.nextAttemptAtUtc <= @CurrentUtc
-ORDER BY o.id ASC
-LIMIT @BatchSize
-FOR UPDATE SKIP LOCKED;";
+                    SELECT
+                        o.id AS Id,
+                        o.toAddress AS ToAddress,
+                        o.toName AS ToName,
+                        o.subject AS Subject,
+                        o.plainTextBody AS PlainTextBody,
+                        o.htmlBody AS HtmlBody,
+                        o.attempts AS Attempts
+                    FROM email_outbox o
+                    WHERE o.status = 'P'
+                    AND o.nextAttemptAtUtc <= @CurrentUtc
+                    ORDER BY o.id ASC
+                    LIMIT @BatchSize
+                    FOR UPDATE SKIP LOCKED;";
 
             var selectCommand = new CommandDefinition(
                 selectQuery,
@@ -55,11 +48,11 @@ FOR UPDATE SKIP LOCKED;";
             var outboxIds = rows.Select(row => row.Id).ToArray();
 
             const string reserveQuery = @"
-UPDATE email_outbox
-SET status = 'R',
-    attempts = attempts + 1,
-    lastAttemptAtUtc = @CurrentUtc
-WHERE id IN @OutboxIds;";
+                    UPDATE email_outbox
+                    SET status = 'R',
+                        attempts = attempts + 1,
+                        lastAttemptAtUtc = @CurrentUtc
+                    WHERE id IN @OutboxIds;";
 
             var reserveCommand = new CommandDefinition(
                 reserveQuery,
@@ -84,13 +77,13 @@ WHERE id IN @OutboxIds;";
 
         public async Task MarkSentAsync(long outboxId, DateTime sentAtUtc, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            using var connection = await dbConnectionFactory.CreateConnectionAsync(cancellationToken);
             const string query = @"
-UPDATE email_outbox
-SET status = 'S',
-    sentAtUtc = @SentAtUtc,
-    lastError = NULL
-WHERE id = @OutboxId;";
+                    UPDATE email_outbox
+                    SET status = 'S',
+                        sentAtUtc = @SentAtUtc,
+                        lastError = NULL
+                    WHERE id = @OutboxId;";
 
             var command = new CommandDefinition(
                 query,
@@ -106,13 +99,15 @@ WHERE id = @OutboxId;";
 
         public async Task MarkForRetryAsync(long outboxId, DateTime nextAttemptAtUtc, string errorMessage, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            ArgumentNullException.ThrowIfNull(errorMessage);
+
+            using var connection = await dbConnectionFactory.CreateConnectionAsync(cancellationToken);
             const string query = @"
-UPDATE email_outbox
-SET status = 'P',
-    nextAttemptAtUtc = @NextAttemptAtUtc,
-    lastError = @ErrorMessage
-WHERE id = @OutboxId;";
+                    UPDATE email_outbox
+                    SET status = 'P',
+                        nextAttemptAtUtc = @NextAttemptAtUtc,
+                        lastError = @ErrorMessage
+                    WHERE id = @OutboxId;";
 
             var command = new CommandDefinition(
                 query,
@@ -129,13 +124,15 @@ WHERE id = @OutboxId;";
 
         public async Task MarkExhaustedAsync(long outboxId, DateTime failedAtUtc, string errorMessage, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            ArgumentNullException.ThrowIfNull(errorMessage);
+
+            using var connection = await dbConnectionFactory.CreateConnectionAsync(cancellationToken);
             const string query = @"
-UPDATE email_outbox
-SET status = 'E',
-    nextAttemptAtUtc = @FailedAtUtc,
-    lastError = @ErrorMessage
-WHERE id = @OutboxId;";
+                    UPDATE email_outbox
+                    SET status = 'E',
+                        nextAttemptAtUtc = @FailedAtUtc,
+                        lastError = @ErrorMessage
+                    WHERE id = @OutboxId;";
 
             var command = new CommandDefinition(
                 query,

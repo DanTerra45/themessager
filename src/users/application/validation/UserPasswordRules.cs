@@ -1,27 +1,29 @@
+using Mercadito.src.shared.domain.validation;
+
 namespace Mercadito.src.users.application.validation
 {
     internal static class UserPasswordRules
     {
-        internal static void AddPasswordErrors(Dictionary<string, List<string>> errors, string field, string password)
+        internal static void AddPasswordErrors(ValidationErrorBag errors, string field, string password)
         {
             if (password.Length < 8 || password.Length > 128)
             {
-                UserValidationHelpers.AddError(errors, field, "La contraseña debe tener entre 8 y 128 caracteres.");
+                errors.Add(field, "La contraseña debe tener entre 8 y 128 caracteres.");
             }
 
             if (!ContainsUpper(password))
             {
-                UserValidationHelpers.AddError(errors, field, "La contraseña debe incluir al menos una letra mayúscula.");
+                errors.Add(field, "La contraseña debe incluir al menos una letra mayúscula.");
             }
 
             if (!ContainsLower(password))
             {
-                UserValidationHelpers.AddError(errors, field, "La contraseña debe incluir al menos una letra minúscula.");
+                errors.Add(field, "La contraseña debe incluir al menos una letra minúscula.");
             }
 
             if (!ContainsDigit(password))
             {
-                UserValidationHelpers.AddError(errors, field, "La contraseña debe incluir al menos un número.");
+                errors.Add(field, "La contraseña debe incluir al menos un número.");
             }
         }
 

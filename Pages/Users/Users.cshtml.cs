@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Mercadito.Pages.Infrastructure;
 using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
@@ -6,36 +5,18 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Users
 {
-    public class UsersModel : AppPageModel
+    public class UsersModel(
+        IGetAllUsersUseCase getAllUsersUseCase,
+        IGetAvailableEmployeesUseCase getAvailableEmployeesUseCase,
+        IRegisterUserUseCase registerUserUseCase,
+        ISendAdministrativePasswordResetLinkUseCase sendAdministrativePasswordResetLinkUseCase,
+        IAssignTemporaryPasswordUseCase assignTemporaryPasswordUseCase,
+        IDeactivateUserUseCase deactivateUserUseCase,
+        ILogger<UsersModel> logger) : AppPageModel
     {
-        private readonly IGetAllUsersUseCase _getAllUsersUseCase;
-        private readonly IGetAvailableEmployeesUseCase _getAvailableEmployeesUseCase;
-        private readonly IRegisterUserUseCase _registerUserUseCase;
-        private readonly IResetUserPasswordUseCase _resetUserPasswordUseCase;
-        private readonly IDeactivateUserUseCase _deactivateUserUseCase;
-        private readonly ILogger<UsersModel> _logger;
-
-        public UsersModel(
-            IGetAllUsersUseCase getAllUsersUseCase,
-            IGetAvailableEmployeesUseCase getAvailableEmployeesUseCase,
-            IRegisterUserUseCase registerUserUseCase,
-            IResetUserPasswordUseCase resetUserPasswordUseCase,
-            IDeactivateUserUseCase deactivateUserUseCase,
-            ILogger<UsersModel> logger)
-        {
-            _getAllUsersUseCase = getAllUsersUseCase;
-            _getAvailableEmployeesUseCase = getAvailableEmployeesUseCase;
-            _registerUserUseCase = registerUserUseCase;
-            _resetUserPasswordUseCase = resetUserPasswordUseCase;
-            _deactivateUserUseCase = deactivateUserUseCase;
-            _logger = logger;
-        }
-
-        [BindProperty]
         public CreateUserDto NewUser { get; set; } = new();
-
-        [BindProperty]
-        public ResetUserPasswordDto ResetPassword { get; set; } = new();
+        public SendAdministrativePasswordResetLinkDto SendResetLink { get; set; } = new();
+        public AssignTemporaryPasswordDto TemporaryPassword { get; set; } = new();
 
         [BindProperty]
         public long DeactivateUserId { get; set; }
@@ -43,7 +24,8 @@ namespace Mercadito.Pages.Users
         public IReadOnlyList<UserListItem> ActiveUsers { get; private set; } = [];
         public IReadOnlyList<AvailableEmployeeOption> AvailableEmployees { get; private set; } = [];
         public bool ShowCreateModal { get; private set; }
-        public bool ShowResetPasswordModal { get; private set; }
+        public bool ShowSendResetLinkModal { get; private set; }
+        public bool ShowTemporaryPasswordModal { get; private set; }
         public bool ShowDeactivateModal { get; private set; }
         public string DeactivateUsername { get; private set; } = string.Empty;
 
@@ -52,19 +34,17 @@ namespace Mercadito.Pages.Users
             await LoadPageDataAsync();
         }
 
-        public async Task<IActionResult> OnPostCreateAsync()
+        public async Task<IActionResult> OnPostCreateAsync([Bind(Prefix = "NewUser")] CreateUserDto newUser)
         {
+            ArgumentNullException.ThrowIfNull(newUser);
+
+            NewUser = newUser;
             NewUser.SetupUrlBase = BuildResetUrlBase();
+
             var actor = BuildAuditActor();
-            var result = await _registerUserUseCase.ExecuteAsync(NewUser, actor, HttpContext.RequestAborted);
+            var result = await registerUserUseCase.ExecuteAsync(NewUser, actor, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
-                if (result.Errors.Count == 0)
-                {
-                    TempData["ErrorMessage"] = result.ErrorMessage;
-                    return RedirectToPage();
-                }
-
                 ApplyResultErrors(result, "NewUser");
                 ShowCreateModal = true;
                 await LoadPageDataAsync();
@@ -75,27 +55,46 @@ namespace Mercadito.Pages.Users
             return RedirectToPage();
         }
 
-        public async Task<IActionResult> OnPostResetPasswordAsync()
+        public async Task<IActionResult> OnPostSendResetLinkAsync([Bind(Prefix = "SendResetLink")] SendAdministrativePasswordResetLinkDto sendResetLink)
         {
+            ArgumentNullException.ThrowIfNull(sendResetLink);
+
+            SendResetLink = sendResetLink;
+            SendResetLink.ResetUrlBase = BuildResetUrlBase();
+
             var actor = BuildAuditActor();
-            var result = await _resetUserPasswordUseCase.ExecuteAsync(ResetPassword, actor, HttpContext.RequestAborted);
+            var result = await sendAdministrativePasswordResetLinkUseCase.ExecuteAsync(SendResetLink, actor, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
-                if (result.Errors.Count == 0)
-                {
-                    TempData["ErrorMessage"] = result.ErrorMessage;
-                    return RedirectToPage();
-                }
-
-                ApplyResultErrors(result, "ResetPassword");
-                ResetPassword.Password = string.Empty;
-                ResetPassword.ConfirmPassword = string.Empty;
-                ShowResetPasswordModal = true;
+                ApplyResultErrors(result, "SendResetLink");
+                ShowSendResetLinkModal = true;
                 await LoadPageDataAsync();
                 return Page();
             }
 
-            TempData["SuccessMessage"] = $"Contraseña restablecida para {ResetPassword.Username}.";
+            TempData["SuccessMessage"] = $"Se envió un enlace de restablecimiento a {SendResetLink.Email}. La contraseña actual quedó invalidada.";
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostAssignTemporaryPasswordAsync([Bind(Prefix = "TemporaryPassword")] AssignTemporaryPasswordDto temporaryPassword)
+        {
+            ArgumentNullException.ThrowIfNull(temporaryPassword);
+
+            TemporaryPassword = temporaryPassword;
+
+            var actor = BuildAuditActor();
+            var result = await assignTemporaryPasswordUseCase.ExecuteAsync(TemporaryPassword, actor, HttpContext.RequestAborted);
+            if (result.IsFailure)
+            {
+                ApplyResultErrors(result, "TemporaryPassword");
+                TemporaryPassword.Password = string.Empty;
+                TemporaryPassword.ConfirmPassword = string.Empty;
+                ShowTemporaryPasswordModal = true;
+                await LoadPageDataAsync();
+                return Page();
+            }
+
+            TempData["SuccessMessage"] = $"Contraseña temporal asignada para {TemporaryPassword.Username}. Debe cambiarla en su próximo inicio de sesión.";
             return RedirectToPage();
         }
 
@@ -103,7 +102,7 @@ namespace Mercadito.Pages.Users
         {
             var userId = DeactivateUserId;
             var actor = BuildAuditActor();
-            var result = await _deactivateUserUseCase.ExecuteAsync(userId, actor, HttpContext.RequestAborted);
+            var result = await deactivateUserUseCase.ExecuteAsync(userId, actor, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 TempData["ErrorMessage"] = result.ErrorMessage;
@@ -124,10 +123,10 @@ namespace Mercadito.Pages.Users
 
         private async Task LoadPageDataAsync()
         {
-            var usersResult = await _getAllUsersUseCase.ExecuteAsync(HttpContext.RequestAborted);
+            var usersResult = await getAllUsersUseCase.ExecuteAsync(HttpContext.RequestAborted);
             if (usersResult.IsFailure)
             {
-                _logger.LogError("No se pudo cargar el listado de usuarios: {Message}", usersResult.ErrorMessage);
+                logger.LogError("No se pudo cargar el listado de usuarios: {Message}", usersResult.ErrorMessage);
                 TempData["ErrorMessage"] = "No se pudo cargar el listado de usuarios.";
                 ActiveUsers = [];
             }
@@ -138,10 +137,10 @@ namespace Mercadito.Pages.Users
 
             DeactivateUsername = ResolveUsername(DeactivateUserId);
 
-            var employeesResult = await _getAvailableEmployeesUseCase.ExecuteAsync(HttpContext.RequestAborted);
+            var employeesResult = await getAvailableEmployeesUseCase.ExecuteAsync(HttpContext.RequestAborted);
             if (employeesResult.IsFailure)
             {
-                _logger.LogError("No se pudo cargar el listado de empleados disponibles: {Message}", employeesResult.ErrorMessage);
+                logger.LogError("No se pudo cargar el listado de empleados disponibles: {Message}", employeesResult.ErrorMessage);
                 TempData["ErrorMessage"] = "No se pudo cargar el listado de empleados disponibles.";
                 AvailableEmployees = [];
                 return;
@@ -152,7 +151,7 @@ namespace Mercadito.Pages.Users
 
         private string BuildResetUrlBase()
         {
-            return BuildAbsolutePathUrl("/ResetPassword");
+            return BuildAbsolutePathUrl("/ResetPassword").ToString();
         }
 
         private string ResolveUsername(long userId)
@@ -163,7 +162,12 @@ namespace Mercadito.Pages.Users
             }
 
             var matchedUser = ActiveUsers.FirstOrDefault(user => user.Id == userId);
-            return matchedUser?.Username ?? string.Empty;
+            if (matchedUser == null)
+            {
+                return string.Empty;
+            }
+
+            return matchedUser.Username;
         }
 
         private static bool NeedsDeactivateModal(string errorMessage)

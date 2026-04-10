@@ -1,25 +1,18 @@
 using System.Text.Json;
 using Mercadito.src.audit.application.ports.input;
 using Mercadito.src.audit.domain.entities;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.audit.application.services
 {
-    public sealed class AuditTrailService : IAuditTrailService
+    public sealed class AuditTrailService(
+        IRegisterAuditEntryUseCase registerAuditEntryUseCase,
+        ILogger<AuditTrailService> logger) : IAuditTrailService
     {
-        private readonly IRegisterAuditEntryUseCase _registerAuditEntryUseCase;
-        private readonly ILogger<AuditTrailService> _logger;
-
-        public AuditTrailService(
-            IRegisterAuditEntryUseCase registerAuditEntryUseCase,
-            ILogger<AuditTrailService> logger)
-        {
-            _registerAuditEntryUseCase = registerAuditEntryUseCase;
-            _logger = logger;
-        }
-
         public Result ValidateActor(AuditActor actor)
         {
+            ArgumentNullException.ThrowIfNull(actor);
+
             if (actor == null || actor.UserId <= 0 || string.IsNullOrWhiteSpace(actor.Username))
             {
                 return Result.Failure("Se requiere un usuario autenticado para registrar la operación.");
@@ -37,14 +30,28 @@ namespace Mercadito.src.audit.application.services
             object? newData,
             CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(actor);
+
             var actorValidation = ValidateActor(actor);
             if (actorValidation.IsFailure)
             {
-                _logger.LogWarning("No se registró auditoría para {TableName} {RecordId}: actor inválido.", tableName, recordId);
+                logger.LogWarning("No se registró auditoría para {TableName} {RecordId}: actor inválido.", tableName, recordId);
                 return;
             }
 
-            var auditResult = await _registerAuditEntryUseCase.ExecuteAsync(
+            string? previousDataJson = null;
+            if (previousData != null)
+            {
+                previousDataJson = JsonSerializer.Serialize(previousData);
+            }
+
+            string? newDataJson = null;
+            if (newData != null)
+            {
+                newDataJson = JsonSerializer.Serialize(newData);
+            }
+
+            var auditResult = await registerAuditEntryUseCase.ExecuteAsync(
                 new AuditEntry
                 {
                     UserId = actor.UserId,
@@ -54,15 +61,15 @@ namespace Mercadito.src.audit.application.services
                     RecordId = recordId,
                     IpAddress = actor.IpAddress,
                     UserAgent = actor.UserAgent,
-                    PreviousDataJson = previousData == null ? null : JsonSerializer.Serialize(previousData),
-                    NewDataJson = newData == null ? null : JsonSerializer.Serialize(newData),
+                    PreviousDataJson = previousDataJson,
+                    NewDataJson = newDataJson,
                     Timestamp = DateTime.UtcNow
                 },
                 cancellationToken);
 
             if (auditResult.IsFailure)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "No se pudo registrar auditoría para {TableName} {RecordId}: {Message}",
                     tableName,
                     recordId,

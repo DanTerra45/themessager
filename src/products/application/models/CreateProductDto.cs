@@ -1,5 +1,6 @@
+using Mercadito.src.shared.presentation.validation;
+using Mercadito.src.shared.domain.validation;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Mercadito.src.products.application.models
 {
@@ -37,7 +38,7 @@ namespace Mercadito.src.products.application.models
         public decimal? Price { get; set; }
 
         [Display(Name = "Categorías")]
-        public List<long> CategoryIds { get; set; } = [];
+        public ICollection<long> CategoryIds { get; set; } = [];
 
         public CreateProductDto()
         {
@@ -52,6 +53,8 @@ namespace Mercadito.src.products.application.models
             decimal price,
             IReadOnlyCollection<long> categoryIds)
         {
+            ArgumentNullException.ThrowIfNull(categoryIds);
+
             Name = name;
             Description = description;
             Stock = stock;
@@ -67,27 +70,31 @@ namespace Mercadito.src.products.application.models
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (string.IsNullOrWhiteSpace(Name))
+            var normalizedName = ValidationText.NormalizeCollapsed(Name);
+            var normalizedDescription = ValidationText.NormalizeTrimmed(Description);
+            var normalizedBatch = ValidationText.NormalizeTrimmed(Batch);
+
+            if (string.IsNullOrWhiteSpace(normalizedName))
             {
                 yield return new ValidationResult("El nombre es obligatorio", [nameof(Name)]);
             }
 
-            if (string.IsNullOrWhiteSpace(Description))
+            if (string.IsNullOrWhiteSpace(normalizedDescription))
             {
                 yield return new ValidationResult("La descripción es obligatoria", [nameof(Description)]);
             }
 
-            if (ContainsControlCharacters(Name))
+            if (ContainsControlCharacters(normalizedName))
             {
                 yield return new ValidationResult("El nombre contiene caracteres no permitidos", [nameof(Name)]);
             }
 
-            if (ContainsControlCharacters(Description))
+            if (ContainsControlCharacters(normalizedDescription))
             {
                 yield return new ValidationResult("La descripción contiene caracteres no permitidos", [nameof(Description)]);
             }
 
-            if (string.IsNullOrWhiteSpace(Batch))
+            if (string.IsNullOrWhiteSpace(normalizedBatch))
             {
                 yield return new ValidationResult("Lote es obligatorio", [nameof(Batch)]);
             }
@@ -142,4 +149,3 @@ namespace Mercadito.src.products.application.models
         }
     }
 }
-

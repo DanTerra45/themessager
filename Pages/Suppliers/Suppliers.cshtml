@@ -3,11 +3,6 @@
 @{
     ViewData["Title"] = "Proveedores";
     ViewData["UseToasts"] = true;
-
-    string BuildTooltipMessage(IEnumerable<string> messages)
-    {
-        return string.Join(" ", messages.Where(message => !string.IsNullOrWhiteSpace(message)).Select(message => $"• {message.Trim()}"));
-    }
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -22,6 +17,8 @@
 
 <section class="mb-4 listing-filter-wrap">
     <form method="post" asp-page-handler="Filter" class="listing-filter-form">
+        <input type="hidden" name="sortBy" value="@Model.SortBy" />
+        <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
         <section class="listing-search-field">
             <label for="suppliersSearchTerm" class="visually-hidden">Buscar proveedor</label>
             <input type="search"
@@ -50,44 +47,100 @@
 {
     <section class="table-responsive table-shadow-safe-wrap">
         <table class="table table-hover align-middle">
-                <thead class="text-center">
+            <thead class="text-center">
+                <tr>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por código">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="code" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <button type="submit" class="sort-button">
+                                Código <i class="bi @Model.GetSortIcon("code")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por razón social">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="name" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <button type="submit" class="sort-button">
+                                Razón social <i class="bi @Model.GetSortIcon("name")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por contacto">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="contact" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <button type="submit" class="sort-button">
+                                Contacto <i class="bi @Model.GetSortIcon("contact")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por teléfono">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="phone" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <button type="submit" class="sort-button">
+                                Teléfono <i class="bi @Model.GetSortIcon("phone")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por rubro">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="rubro" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <button type="submit" class="sort-button">
+                                Rubro <i class="bi @Model.GetSortIcon("rubro")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="text-center fw-bold">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var supplier in Model.ActiveSuppliers)
+                {
                     <tr>
-                        <th>Código</th>
-                        <th>Razón social</th>
-                        <th>Contacto</th>
-                        <th>Teléfono</th>
-                        <th>Rubro</th>
-                        <th class="text-center">Acciones</th>
+                        <td style="font-family: var(--font-mono);" class="fw-bold">@supplier.Codigo</td>
+                        <td class="fw-bold">@supplier.RazonSocial</td>
+                        <td>@supplier.Contacto</td>
+                        <td style="font-family: var(--font-mono);">@supplier.Telefono</td>
+                        <td>@supplier.Rubro</td>
+                        <td class="text-center">
+                            <button type="button" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;" disabled title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button type="button" 
+                                    class="b-btn b-btn-secondary ms-1" 
+                                    style="padding: 0.25rem 0.5rem;" 
+                                    title="Editar registro"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#editarProveedorModal"
+                                    data-id="@supplier.Id"
+                                    data-details-url="@Url.Page("/Suppliers/Suppliers", "Details", new { id = supplier.Id })">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button"
+                                    class="b-btn b-btn-danger ms-1"
+                                    style="padding: 0.25rem 0.5rem;"
+                                    title="Eliminar proveedor"
+                                    aria-label="Eliminar proveedor"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteSupplierModal"
+                                    data-id="@supplier.Id"
+                                    data-name="@supplier.RazonSocial">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach (var supplier in Model.ActiveSuppliers)
-                    {
-                        <tr>
-                            <td style="font-family: var(--font-mono);" class="fw-bold">@supplier.Codigo</td>
-                            <td class="fw-bold">@supplier.RazonSocial</td>
-                            <td>@supplier.Contacto</td>
-                            <td style="font-family: var(--font-mono);">@supplier.Telefono</td>
-                            <td>@supplier.Rubro</td>
-                            <td class="text-center">
-                                <button type="button" class="b-btn b-btn-secondary" style="padding: 0.25rem 0.5rem;" disabled title="Ver detalle">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                                <button type="button" 
-                                        class="b-btn b-btn-secondary ms-1" 
-                                        style="padding: 0.25rem 0.5rem;" 
-                                        title="Editar registro"
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#editarProveedorModal"
-                                        data-id="@supplier.Id"
-                                        data-details-url="@Url.Page("/Suppliers/Suppliers", "Details", new { id = supplier.Id })">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                }
+            </tbody>
+        </table>
     </section>
 }
 else
@@ -104,235 +157,44 @@ else
     </aside>
 }
 
-<form method="post" asp-page-handler="Create" class="needs-validation" novalidate autocomplete="off" id="createSupplierForm">
-    <input type="hidden" id="showModalOnError" value="@(Model.ShowModalOnError && Model.ActiveModal == "create" ? "true" : "false")" />
-    <section class="modal fade" id="nuevoProveedorModal" tabindex="-1" aria-labelledby="nuevoProveedorModalLabel" aria-hidden="true">
-        <section class="modal-dialog modal-dialog-centered">
-            <article class="modal-content">
-                <header class="modal-header">
-                    <h5 class="modal-title" id="nuevoProveedorModalLabel" style="font-family: var(--font-display); font-weight: 800;">
-                        <i class="bi bi-building-add me-2"></i> Registrar Proveedor
+<section class="modal fade" id="deleteSupplierModal" tabindex="-1" aria-labelledby="deleteSupplierModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Delete" id="deleteSupplierForm">
+                <input type="hidden" name="id" id="DeleteSupplierId" />
+
+                <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; color: white;" id="deleteSupplierModalLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Confirmar eliminación
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
+
                 <section class="modal-body p-4">
-                     
-                    <!-- Código -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Código
-                            @if (Model.FieldHints.TryGetValue("Codigo", out var codigoHints) && codigoHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(codigoHints)">i</span>
-                            }
-                            @if (Model.CodigoErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Codigo" data-error-message="@BuildTooltipMessage(Model.CodigoErrors)" aria-label="@BuildTooltipMessage(Model.CodigoErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control supplier-code-readonly @(Model.CodigoErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="Codigo" 
-                               value="@Model.NextSupplierCodePreview"
-                               readonly
-                               autocomplete="off" />
-                    </section>
-
-                    <!-- Razón Social -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Razón social
-                            @if (Model.FieldHints.TryGetValue("Nombre", out var nombreHints) && nombreHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(nombreHints)">i</span>
-                            }
-                            @if (Model.RazonSocialErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="RazonSocial" data-error-message="@BuildTooltipMessage(Model.RazonSocialErrors)" aria-label="@BuildTooltipMessage(Model.RazonSocialErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.RazonSocialErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="RazonSocial" 
-                               placeholder="Ejemplo: Distribuidora Centro" />
-                    </section>
-
-                    <!-- Dirección -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Dirección
-                            @if (Model.FieldHints.TryGetValue("Direccion", out var direccionHints) && direccionHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(direccionHints)">i</span>
-                            }
-                            @if (Model.DireccionErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Direccion" data-error-message="@BuildTooltipMessage(Model.DireccionErrors)" aria-label="@BuildTooltipMessage(Model.DireccionErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.DireccionErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="Direccion" 
-                               placeholder="Calle, número, zona" />
-                    </section>
-
-                    <!-- Contacto -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Contacto
-                            @if (Model.FieldHints.TryGetValue("Contacto", out var contactoHints) && contactoHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(contactoHints)">i</span>
-                            }
-                            @if (Model.ContactoErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Contacto" data-error-message="@BuildTooltipMessage(Model.ContactoErrors)" aria-label="@BuildTooltipMessage(Model.ContactoErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.ContactoErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="Contacto" 
-                               placeholder="Nombre del contacto" />
-                    </section>
-
-                    <!-- Rubro -->
-                    <section class="mb-0">
-                        <label class="form-label fw-bold">
-                            Rubro
-                            @if (Model.FieldHints.TryGetValue("Rubro", out var rubroHints) && rubroHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(rubroHints)">i</span>
-                            }
-                            @if (Model.RubroErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="Rubro" data-error-message="@BuildTooltipMessage(Model.RubroErrors)" aria-label="@BuildTooltipMessage(Model.RubroErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.RubroErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="Rubro" 
-                               placeholder="Ejemplo: Alimentos" />
-                    </section>
+                    <p class="mb-3" style="font-size: 1.1rem;">¿Está seguro de eliminar el proveedor seleccionado?</p>
+                    <p class="mb-0" style="font-family: var(--font-mono); padding: 1rem; background-color: var(--mrc-surface-alt); border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm);">
+                        Proveedor: <strong id="deleteSupplierName" style="font-size: 1.2rem;">-</strong>
+                    </p>
                 </section>
+
                 <footer class="modal-footer">
-                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="b-btn">Guardar</button>
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn b-btn-danger">
+                        <i class="bi bi-trash me-1"></i> Eliminar
+                    </button>
                 </footer>
-            </article>
-        </section>
+            </form>
+        </article>
     </section>
-</form>
+</section>
 
-<form method="post" asp-page-handler="Edit" class="needs-validation" novalidate autocomplete="off" id="updateSupplierForm">
-    <input type="hidden" id="showEditModalOnError" value="@(Model.ShowModalOnError && Model.ActiveModal == "edit" ? "true" : "false")" />
-    <input type="hidden" asp-for="EditId" id="editProveedorId" />
-    <input type="hidden" asp-for="EditTelefono" id="EditTelefono" />
-    <section class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" aria-hidden="true">
-        <section class="modal-dialog modal-dialog-centered">
-            <article class="modal-content">
-                <header class="modal-header">
-                    <h5 class="modal-title" id="editarProveedorModalLabel" style="font-family: var(--font-display); font-weight: 800;">
-                        <i class="bi bi-pencil-square me-2"></i> Editar Proveedor
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </header>
-                <section class="modal-body p-4">
-                     
-                    <!-- Código -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Código
-                            @if (Model.FieldHints.TryGetValue("Codigo", out var editCodigoHints) && editCodigoHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editCodigoHints)">i</span>
-                            }
-                            @if (Model.EditCodigoErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditCodigo" data-error-message="@BuildTooltipMessage(Model.EditCodigoErrors)" aria-label="@BuildTooltipMessage(Model.EditCodigoErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control supplier-code-readonly @(Model.EditCodigoErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="EditCodigo" 
-                               readonly
-                               autocomplete="off" />
-                    </section>
+<partial name="_CreateSupplierModal" model="Model" />
+<partial name="_EditSupplierModal" model="Model" />
+<section id="suppliersPageConfig"
+         data-show-create-modal="@Model.ShowCreateSupplierModal.ToString().ToLowerInvariant()"
+         data-show-edit-modal="@Model.ShowEditSupplierModal.ToString().ToLowerInvariant()"
+         hidden></section>
 
-                    <!-- Razón Social -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Razón social
-                            @if (Model.FieldHints.TryGetValue("Nombre", out var editNombreHints) && editNombreHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editNombreHints)">i</span>
-                            }
-                            @if (Model.EditRazonSocialErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditRazonSocial" data-error-message="@BuildTooltipMessage(Model.EditRazonSocialErrors)" aria-label="@BuildTooltipMessage(Model.EditRazonSocialErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.EditRazonSocialErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="EditRazonSocial" 
-                               placeholder="Ejemplo: Distribuidora Centro" />
-                    </section>
-
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Dirección
-                            @if (Model.FieldHints.TryGetValue("Direccion", out var editDireccionHints) && editDireccionHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editDireccionHints)">i</span>
-                            }
-                            @if (Model.EditDireccionErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditDireccion" data-error-message="@BuildTooltipMessage(Model.EditDireccionErrors)" aria-label="@BuildTooltipMessage(Model.EditDireccionErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.EditDireccionErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="EditDireccion" 
-                               placeholder="Calle, número, zona" />
-                    </section>
-
-                    <!-- Contacto -->
-                    <section class="mb-3">
-                        <label class="form-label fw-bold">
-                            Contacto
-                            @if (Model.FieldHints.TryGetValue("Contacto", out var editContactoHints) && editContactoHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editContactoHints)">i</span>
-                            }
-                            @if (Model.EditContactoErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditContacto" data-error-message="@BuildTooltipMessage(Model.EditContactoErrors)" aria-label="@BuildTooltipMessage(Model.EditContactoErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.EditContactoErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="EditContacto" 
-                               placeholder="Nombre del contacto" />
-                    </section>
-
-                    <!-- Rubro -->
-                    <section class="mb-0">
-                        <label class="form-label fw-bold">
-                            Rubro
-                            @if (Model.FieldHints.TryGetValue("Rubro", out var editRubroHints) && editRubroHints.Count > 0)
-                            {
-                                <span class="info-tooltip" tabindex="0" data-info-message="@BuildTooltipMessage(editRubroHints)">i</span>
-                            }
-                            @if (Model.EditRubroErrors?.Count > 0)
-                            {
-                                <span class="validation-icon-inline field-validation-error" data-valmsg-for="EditRubro" data-error-message="@BuildTooltipMessage(Model.EditRubroErrors)" aria-label="@BuildTooltipMessage(Model.EditRubroErrors)"></span>
-                            }
-                        </label>
-                        <input class="form-control @(Model.EditRubroErrors?.Count > 0 ? "is-invalid" : "")" 
-                               asp-for="EditRubro" 
-                               placeholder="Ejemplo: Alimentos" />
-                    </section>
-                </section>
-                <footer class="modal-footer">
-                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="b-btn">Actualizar</button>
-                </footer>
-            </article>
-        </section>
-    </section>
-</form>
-
-<!-- Toasts -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1060;">
     @if (TempData["SuccessMessage"] is string successMsg && !string.IsNullOrWhiteSpace(successMsg))
     {
@@ -366,62 +228,5 @@ else
 </div>
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Abrir modal de crear si hay errores
-            var showModal = document.getElementById('showModalOnError').value === 'true';
-            if (showModal) {
-                var modalElement = document.getElementById('nuevoProveedorModal');
-                var modal = new bootstrap.Modal(modalElement);
-                modal.show();
-            }
-
-            // Abrir modal de editar si hay errores
-            var showEditModal = document.getElementById('showEditModalOnError').value === 'true';
-            if (showEditModal) {
-                var modalElement = document.getElementById('editarProveedorModal');
-                var modal = new bootstrap.Modal(modalElement);
-                modal.show();
-            }
-
-            // Transferir datos del proveedor al modal de edición
-            var editarModal = document.getElementById('editarProveedorModal');
-            if (editarModal) {
-                editarModal.addEventListener('show.bs.modal', async function(event) {
-                    var button = event.relatedTarget;
-                    if (!button) {
-                        return;
-                    }
-
-                    var detailsUrl = button.getAttribute('data-details-url');
-                    if (!detailsUrl) {
-                        return;
-                    }
-
-                    try {
-                        var response = await fetch(detailsUrl, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-
-                        if (!response.ok) {
-                            throw new Error('No se pudo cargar el proveedor.');
-                        }
-
-                        var supplier = await response.json();
-                        document.getElementById('editProveedorId').value = supplier.id;
-                        document.getElementById('EditCodigo').value = supplier.codigo;
-                        document.getElementById('EditRazonSocial').value = supplier.nombre;
-                        document.getElementById('EditDireccion').value = supplier.direccion;
-                        document.getElementById('EditContacto').value = supplier.contacto;
-                        document.getElementById('EditTelefono').value = supplier.telefono || '';
-                        document.getElementById('EditRubro').value = supplier.rubro;
-                    } catch (error) {
-                        console.error(error);
-                    }
-                });
-            }
-        });
-    </script>
+    <script src="~/js/pages/suppliers-page.js" asp-append-version="true"></script>
 }

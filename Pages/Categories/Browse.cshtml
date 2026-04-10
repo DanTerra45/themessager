@@ -2,8 +2,26 @@
 @model Mercadito.Pages.Categories.BrowseModel
 @{
     ViewData["Title"] = "Consulta de categorías";
-    var firstPageCategoryId = Model.Categories.Count > 0 ? Model.Categories[0].Id : 0;
-    var lastPageCategoryId = Model.Categories.Count > 0 ? Model.Categories[Model.Categories.Count - 1].Id : 0;
+    var firstPageCategoryId = 0L;
+    var lastPageCategoryId = 0L;
+    if (Model.Categories.Count > 0)
+    {
+        firstPageCategoryId = Model.Categories[0].Id;
+        lastPageCategoryId = Model.Categories[Model.Categories.Count - 1].Id;
+    }
+
+    var disablePreviousPage = !Model.HasPreviousPage || Model.CurrentPage <= 1;
+    var previousPageCss = string.Empty;
+    if (disablePreviousPage)
+    {
+        previousPageCss = "disabled";
+    }
+
+    var nextPageCss = string.Empty;
+    if (!Model.HasNextPage)
+    {
+        nextPageCss = "disabled";
+    }
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -95,11 +113,15 @@
                         </td>
                         <td class="text-center">
                             @{
-                                var productStatus = category.ProductCount == 0
-                                    ? "danger"
-                                    : category.ProductCount <= 5
-                                        ? "warning"
-                                        : "good";
+                                var productStatus = "good";
+                                if (category.ProductCount == 0)
+                                {
+                                    productStatus = "danger";
+                                }
+                                else if (category.ProductCount <= 5)
+                                {
+                                    productStatus = "warning";
+                                }
                             }
 
                             <mark class="status-badge" data-status="@productStatus">@category.ProductCount</mark>
@@ -126,13 +148,13 @@
     <section class="d-flex justify-content-center mt-4">
         <nav aria-label="Paginación de categorías">
             <ul class="pagination">
-                <li class="page-item @((!Model.HasPreviousPage || Model.CurrentPage <= 1) ? "disabled" : "")">
+                <li class="page-item @previousPageCss">
                     <form method="post" asp-page-handler="Navigate" class="d-inline">
                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                         <input type="hidden" name="navigationMode" value="prev" />
                         <input type="hidden" name="cursorCategoryId" value="@firstPageCategoryId" />
-                        <button type="submit" class="page-link" disabled="@(!Model.HasPreviousPage || Model.CurrentPage <= 1)">
+                        <button type="submit" class="page-link" disabled="@disablePreviousPage">
                             <i class="bi bi-chevron-left me-1"></i>Anterior
                         </button>
                     </form>
@@ -142,7 +164,7 @@
                     <button type="button" class="page-link">@Model.CurrentPage</button>
                 </li>
 
-                <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
+                <li class="page-item @nextPageCss">
                     <form method="post" asp-page-handler="Navigate" class="d-inline">
                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />

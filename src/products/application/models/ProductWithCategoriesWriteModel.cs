@@ -8,4 +8,3 @@ namespace Mercadito.src.products.application.models
         public required IReadOnlyList<long> CategoryIds { get; set; }
     }
 }
-

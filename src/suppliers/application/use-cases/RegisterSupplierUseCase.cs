@@ -1,29 +1,23 @@
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
-using Mercadito.src.shared.domain.validator;
-using Shared.Domain;
+using Mercadito.src.shared.domain.validation;
+using Mercadito.src.shared.domain;
 using System.ComponentModel.DataAnnotations;
+using Mercadito.src.shared.domain.exceptions;
 
-namespace Mercadito.src.suppliers.application.use_cases
+namespace Mercadito.src.suppliers.application.usecases
 {
-    public class RegisterSupplierUseCase : IRegisterSupplierUseCase
+    public class RegisterSupplierUseCase(
+        ISupplierRepository repository,
+        IValidator<CreateSupplierDto, SupplierDto> validator) : IRegisterSupplierUseCase
     {
-        private readonly ISupplierRepository _repository;
-        private readonly IValidator<CreateSupplierDto, SupplierDto> _validator;
-
-        public RegisterSupplierUseCase(ISupplierRepository repository, IValidator<CreateSupplierDto, SupplierDto> validator)
-        {
-            _repository = repository;
-            _validator = validator;
-        }
-
         public async Task<Result<long>> ExecuteAsync(CreateSupplierDto dto, CancellationToken cancellationToken = default)
         {
-            var validationResult = _validator.Validate(dto);
+            var validationResult = validator.Validate(dto);
             if (validationResult.IsFailure)
             {
-                return Result<long>.Failure(validationResult.Errors);
+                return Result.Failure<long>(validationResult.Errors);
             }
 
             try
@@ -39,18 +33,21 @@ namespace Mercadito.src.suppliers.application.use_cases
                     Telefono = supplier.Telefono
                 };
 
-                var id = await _repository.CreateAsync(normalizedDto, cancellationToken);
-                return Result<long>.Success(id);
+                var id = await repository.CreateAsync(normalizedDto, cancellationToken);
+                return Result.Success(id);
             }
             catch (BusinessValidationException validationException)
             {
-                return validationException.Errors.Count > 0
-                    ? Result<long>.Failure(validationException.Errors)
-                    : Result<long>.Failure(validationException.Message);
+                if (validationException.Errors.Count > 0)
+                {
+                    return Result.Failure<long>(validationException.Errors);
+                }
+
+                return Result.Failure<long>(validationException.Message);
             }
             catch (ValidationException validationException)
             {
-                return Result<long>.Failure(validationException.Message);
+                return Result.Failure<long>(validationException.Message);
             }
         }
     }

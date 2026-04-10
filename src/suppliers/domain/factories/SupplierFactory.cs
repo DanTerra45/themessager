@@ -1,34 +1,38 @@
-using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.domain.entities;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.src.suppliers.domain.factories
 {
     public class SupplierFactory : ISupplierFactory
     {
-        public Supplier CreateForInsert(CreateSupplierDto dto)
+        public Supplier CreateForInsert(CreateSupplierValues input)
         {
+            ArgumentNullException.ThrowIfNull(input);
+
             return new Supplier
             {
-                RazonSocial = dto.Nombre,
-                Direccion = dto.Direccion,
-                Telefono = string.IsNullOrWhiteSpace(dto.Telefono) ? string.Empty : dto.Telefono.Trim(),
-                Contacto = dto.Contacto,
-                Rubro = dto.Rubro,
-                Codigo = dto.Codigo
+                RazonSocial = ValidationText.NormalizeCollapsed(input.Nombre),
+                Direccion = ValidationText.NormalizeCollapsed(input.Direccion),
+                Telefono = ValidationText.NormalizeTrimmed(input.Telefono),
+                Contacto = ValidationText.NormalizeCollapsed(input.Contacto),
+                Rubro = ValidationText.NormalizeCollapsed(input.Rubro),
+                Codigo = ValidationText.NormalizeUpperTrimmed(input.Codigo)
             };
         }
 
-        public Supplier CreateForUpdate(UpdateSupplierDto dto)
+        public Supplier CreateForUpdate(UpdateSupplierValues input)
         {
+            ArgumentNullException.ThrowIfNull(input);
+
             return new Supplier
             {
-                Id = dto.Id,
-                RazonSocial = dto.Nombre,
-                Direccion = dto.Direccion,
-                Telefono = string.IsNullOrWhiteSpace(dto.Telefono) ? string.Empty : dto.Telefono.Trim(),
-                Contacto = dto.Contacto,
-                Rubro = dto.Rubro,
-                Codigo = dto.Codigo
+                Id = input.Id,
+                RazonSocial = ValidationText.NormalizeCollapsed(input.Nombre),
+                Direccion = ValidationText.NormalizeCollapsed(input.Direccion),
+                Telefono = ValidationText.NormalizeTrimmed(input.Telefono),
+                Contacto = ValidationText.NormalizeCollapsed(input.Contacto),
+                Rubro = ValidationText.NormalizeCollapsed(input.Rubro),
+                Codigo = ValidationText.NormalizeUpperTrimmed(input.Codigo)
             };
         }
     }

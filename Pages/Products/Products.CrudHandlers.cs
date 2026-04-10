@@ -1,5 +1,6 @@
 using Mercadito.src.products.application.models;
 using Microsoft.AspNetCore.Mvc;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages.Products
 {
@@ -57,7 +58,7 @@ namespace Mercadito.Pages.Products
                 TempData["SuccessMessage"] = "Producto agregado exitosamente.";
                 return RedirectToCurrentState();
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al crear producto");
                 TempData["ErrorMessage"] = "Error al guardar el producto. Intente nuevamente.";
@@ -110,7 +111,7 @@ namespace Mercadito.Pages.Products
                 TempData["SuccessMessage"] = "Producto actualizado correctamente.";
                 return RedirectToCurrentState();
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al actualizar producto");
                 TempData["ErrorMessage"] = "Error al actualizar el producto. Intente nuevamente.";
@@ -143,7 +144,7 @@ namespace Mercadito.Pages.Products
                     TempData["ErrorMessage"] = "El producto no existe o ya estaba desactivado.";
                 }
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al eliminar producto");
                 TempData["ErrorMessage"] = "No se pudo eliminar el producto.";
@@ -153,5 +154,3 @@ namespace Mercadito.Pages.Products
         }
     }
 }
-
-

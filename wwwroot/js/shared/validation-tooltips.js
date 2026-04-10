@@ -53,7 +53,10 @@
             var message = normalizeMessage(span.textContent);
             var hasError = span.classList.contains('field-validation-error');
             var relatedLabel = resolveRelatedLabel(root, span);
-            var infoIcon = relatedLabel ? relatedLabel.querySelector('.info-tooltip') : null;
+            var infoIcon = null;
+            if (relatedLabel) {
+                infoIcon = relatedLabel.querySelector('.info-tooltip');
+            }
 
             if (hasError) {
                 span.setAttribute('data-error-message', message);
@@ -65,7 +68,12 @@
 
             if (infoIcon) {
                 infoIcon.classList.toggle('d-none', hasError);
-                infoIcon.setAttribute('aria-hidden', hasError ? 'true' : 'false');
+                var ariaHidden = 'false';
+                if (hasError) {
+                    ariaHidden = 'true';
+                }
+
+                infoIcon.setAttribute('aria-hidden', ariaHidden);
             }
         }
     }
@@ -127,7 +135,12 @@
 
         for (var index = 0; index < roots.length; index++) {
             var root = roots[index];
-            var form = root && root.tagName === 'FORM' ? root : (root ? root.querySelector('form') : null);
+            var form = null;
+            if (root && root.tagName === 'FORM') {
+                form = root;
+            } else if (root) {
+                form = root.querySelector('form');
+            }
             if (!form) {
                 continue;
             }

@@ -1,3 +1,4 @@
+using Mercadito.src.shared.domain.validation;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.src.categories.application.models
@@ -32,22 +33,25 @@ namespace Mercadito.src.categories.application.models
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (string.IsNullOrWhiteSpace(Name))
+            var normalizedName = ValidationText.NormalizeCollapsed(Name);
+            var normalizedDescription = ValidationText.NormalizeTrimmed(Description);
+
+            if (string.IsNullOrWhiteSpace(normalizedName))
             {
                 yield return new ValidationResult("El nombre es obligatorio", [nameof(Name)]);
             }
 
-            if (string.IsNullOrWhiteSpace(Description))
+            if (string.IsNullOrWhiteSpace(normalizedDescription))
             {
                 yield return new ValidationResult("La descripción es obligatoria", [nameof(Description)]);
             }
 
-            if (ContainsControlCharacters(Name))
+            if (ContainsControlCharacters(normalizedName))
             {
                 yield return new ValidationResult("El nombre contiene caracteres no permitidos", [nameof(Name)]);
             }
 
-            if (ContainsControlCharacters(Description))
+            if (ContainsControlCharacters(normalizedDescription))
             {
                 yield return new ValidationResult("La descripción contiene caracteres no permitidos", [nameof(Description)]);
             }
@@ -67,4 +71,3 @@ namespace Mercadito.src.categories.application.models
         }
     }
 }
-

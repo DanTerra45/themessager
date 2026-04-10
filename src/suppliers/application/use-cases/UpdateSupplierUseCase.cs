@@ -1,29 +1,23 @@
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
-using Mercadito.src.shared.domain.validator;
-using Shared.Domain;
+using Mercadito.src.shared.domain.validation;
+using Mercadito.src.shared.domain;
 using System.ComponentModel.DataAnnotations;
+using Mercadito.src.shared.domain.exceptions;
 
-namespace Mercadito.src.suppliers.application.use_cases
+namespace Mercadito.src.suppliers.application.usecases
 {
-    public class UpdateSupplierUseCase : IUpdateSupplierUseCase
+    public class UpdateSupplierUseCase(
+        ISupplierRepository repository,
+        IValidator<UpdateSupplierDto, SupplierDto> validator) : IUpdateSupplierUseCase
     {
-        private readonly ISupplierRepository _repository;
-        private readonly IValidator<UpdateSupplierDto, SupplierDto> _validator;
-
-        public UpdateSupplierUseCase(ISupplierRepository repository, IValidator<UpdateSupplierDto, SupplierDto> validator)
-        {
-            _repository = repository;
-            _validator = validator;
-        }
-
         public async Task<Result<int>> ExecuteAsync(UpdateSupplierDto dto, CancellationToken cancellationToken = default)
         {
-            var validationResult = _validator.Validate(dto);
+            var validationResult = validator.Validate(dto);
             if (validationResult.IsFailure)
             {
-                return Result<int>.Failure(validationResult.Errors);
+                return Result.Failure<int>(validationResult.Errors);
             }
 
             try
@@ -42,32 +36,35 @@ namespace Mercadito.src.suppliers.application.use_cases
 
                 if (string.IsNullOrWhiteSpace(normalizedDto.Telefono))
                 {
-                    var currentSupplier = await _repository.GetByIdAsync(normalizedDto.Id, cancellationToken);
+                    var currentSupplier = await repository.GetByIdAsync(normalizedDto.Id, cancellationToken);
                     if (currentSupplier == null)
                     {
-                        return Result<int>.Failure("Proveedor no encontrado.");
+                        return Result.Failure<int>("Proveedor no encontrado.");
                     }
 
                     normalizedDto.Telefono = currentSupplier.Telefono;
                 }
 
-                var rowsAffected = await _repository.UpdateAsync(normalizedDto, cancellationToken);
+                var rowsAffected = await repository.UpdateAsync(normalizedDto, cancellationToken);
                 if (rowsAffected == 0)
                 {
-                    return Result<int>.Failure("Proveedor no encontrado.");
+                    return Result.Failure<int>("Proveedor no encontrado.");
                 }
 
-                return Result<int>.Success(rowsAffected);
+                return Result.Success(rowsAffected);
             }
             catch (BusinessValidationException validationException)
             {
-                return validationException.Errors.Count > 0
-                    ? Result<int>.Failure(validationException.Errors)
-                    : Result<int>.Failure(validationException.Message);
+                if (validationException.Errors.Count > 0)
+                {
+                    return Result.Failure<int>(validationException.Errors);
+                }
+
+                return Result.Failure<int>(validationException.Message);
             }
             catch (ValidationException validationException)
             {
-                return Result<int>.Failure(validationException.Message);
+                return Result.Failure<int>(validationException.Message);
             }
         }
     }

@@ -3,6 +3,7 @@ using Mercadito.src.notifications.application.models;
 using Mercadito.src.notifications.application.ports.output;
 using Mercadito.src.notifications.infrastructure.options;
 using Microsoft.Extensions.Options;
+using MySqlConnector;
 
 namespace Mercadito.src.notifications.infrastructure.background
 {
@@ -17,6 +18,10 @@ namespace Mercadito.src.notifications.infrastructure.background
             IOptions<EmailOutboxOptions> options,
             ILogger<EmailOutboxDispatcher> logger)
         {
+            ArgumentNullException.ThrowIfNull(serviceScopeFactory);
+            ArgumentNullException.ThrowIfNull(options);
+            ArgumentNullException.ThrowIfNull(logger);
+
             _serviceScopeFactory = serviceScopeFactory;
             _options = options.Value;
             _logger = logger;
@@ -34,7 +39,11 @@ namespace Mercadito.src.notifications.infrastructure.background
                 {
                     break;
                 }
-                catch (Exception exception)
+                catch (MySqlException exception)
+                {
+                    _logger.LogError(exception, "Error al procesar la cola de correos.");
+                }
+                catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
                 {
                     _logger.LogError(exception, "Error al procesar la cola de correos.");
                 }
@@ -67,24 +76,32 @@ namespace Mercadito.src.notifications.infrastructure.background
             {
                 try
                 {
+                    var toName = string.Empty;
+                    if (message.ToName != null)
+                    {
+                        toName = message.ToName;
+                    }
+
+                    var htmlBody = string.Empty;
+                    if (message.HtmlBody != null)
+                    {
+                        htmlBody = message.HtmlBody;
+                    }
+
                     await emailSender.SendAsync(
                         new EmailMessage
                         {
                             ToAddress = message.ToAddress,
-                            ToName = message.ToName is null ? string.Empty : message.ToName,
+                            ToName = toName,
                             Subject = message.Subject,
                             PlainTextBody = message.PlainTextBody,
-                            HtmlBody = message.HtmlBody is null ? string.Empty : message.HtmlBody
+                            HtmlBody = htmlBody
                         },
                         cancellationToken);
 
                     await emailOutboxRepository.MarkSentAsync(message.Id, DateTime.UtcNow, cancellationToken);
                 }
                 catch (EmailDeliveryException exception)
-                {
-                    await HandleDeliveryFailureAsync(emailOutboxRepository, message, exception.Message, cancellationToken);
-                }
-                catch (Exception exception)
                 {
                     await HandleDeliveryFailureAsync(emailOutboxRepository, message, exception.Message, cancellationToken);
                 }

@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
-namespace Mercadito
+namespace Mercadito.src.shared.presentation.validation
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
-    public class PositiveAttribute : ValidationAttribute, IClientModelValidator
+    public sealed class PositiveAttribute : ValidationAttribute, IClientModelValidator
     {
         [Required(ErrorMessage = "El {0} es obligatorio")]
         public required string FieldName { get; set; }
@@ -16,9 +16,12 @@ namespace Mercadito
 
         private string BuildPositiveMessage(bool allowZero)
         {
-            return allowZero
-                ? $"El {FieldName} debe ser un número entero positivo"
-                : $"El {FieldName} debe ser un número decimal positivo";
+            if (allowZero)
+            {
+                return $"El {FieldName} debe ser un número entero positivo";
+            }
+
+            return $"El {FieldName} debe ser un número decimal positivo";
         }
 
         public void AddValidation(ClientModelValidationContext context)
@@ -33,7 +36,11 @@ namespace Mercadito
             }
 
             var allowZero = modelType == typeof(int);
-            var allowZeroFlag = allowZero ? "true" : "false";
+            var allowZeroFlag = "false";
+            if (allowZero)
+            {
+                allowZeroFlag = "true";
+            }
 
             MergeAttribute(context.Attributes, "data-val", "true");
             MergeAttribute(context.Attributes, "data-val-positive", BuildPositiveMessage(allowZero));

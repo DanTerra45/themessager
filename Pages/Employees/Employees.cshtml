@@ -5,8 +5,38 @@
     ViewData["Title"] = "Empleados";
     ViewData["UseToasts"] = true;
     var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
-    var firstPageEmployeeId = Model.Employees.Count > 0 ? Model.Employees[0].Id : 0;
-    var lastPageEmployeeId = Model.Employees.Count > 0 ? Model.Employees[Model.Employees.Count - 1].Id : 0;
+    var firstPageEmployeeId = 0L;
+    var lastPageEmployeeId = 0L;
+    if (Model.Employees.Count > 0)
+    {
+        firstPageEmployeeId = Model.Employees[0].Id;
+        lastPageEmployeeId = Model.Employees[Model.Employees.Count - 1].Id;
+    }
+
+    var disablePreviousPage = !Model.HasPreviousPage || Model.CurrentPage <= 1;
+    var previousPageCss = string.Empty;
+    if (disablePreviousPage)
+    {
+        previousPageCss = "disabled";
+    }
+
+    var nextPageCss = string.Empty;
+    if (!Model.HasNextPage)
+    {
+        nextPageCss = "disabled";
+    }
+
+    var newEmployeeCiValue = string.Empty;
+    if (Model.NewEmployee != null && Model.NewEmployee.Ci.HasValue && Model.NewEmployee.Ci.Value != 0)
+    {
+        newEmployeeCiValue = Model.NewEmployee.Ci.Value.ToString();
+    }
+
+    var editEmployeeCiValue = string.Empty;
+    if (Model.EditEmployee != null && Model.EditEmployee.Ci.HasValue && Model.EditEmployee.Ci.Value != 0)
+    {
+        editEmployeeCiValue = Model.EditEmployee.Ci.Value.ToString();
+    }
 }
 
 <header class="dash-header d-flex justify-content-between align-items-end">
@@ -121,8 +151,11 @@
                             }
                             <td class="text-center" style="font-family: var(--font-mono);">
                                 @{
-                                    // hide CI when zero
-                                    var ciPart = emp.Ci != 0 ? emp.Ci.ToString() : string.Empty;
+                                    var ciPart = string.Empty;
+                                    if (emp.Ci != 0)
+                                    {
+                                        ciPart = emp.Ci.ToString();
+                                    }
                                     var employeeCiDisplay = ciPart;
                                     if (!string.IsNullOrWhiteSpace(emp.Complemento) && !string.IsNullOrEmpty(ciPart))
                                     {
@@ -175,17 +208,16 @@
             </table>
         </section>
 
-        <!-- Paginación -->
         <section class="d-flex justify-content-center mt-4">
             <nav aria-label="Paginación de empleados">
                 <ul class="pagination">
-                    <li class="page-item @((!Model.HasPreviousPage || Model.CurrentPage <= 1) ? "disabled" : "")">
+                    <li class="page-item @previousPageCss">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
                             <input type="hidden" name="sortBy" value="@Model.SortBy" />
                             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                             <input type="hidden" name="navigationMode" value="prev" />
                             <input type="hidden" name="cursorEmployeeId" value="@firstPageEmployeeId" />
-                            <button type="submit" class="page-link" disabled="@(!Model.HasPreviousPage || Model.CurrentPage <= 1)">
+                            <button type="submit" class="page-link" disabled="@disablePreviousPage">
                                 <i class="bi bi-chevron-left me-1"></i>Anterior
                             </button>
                         </form>
@@ -195,7 +227,7 @@
                         <button type="button" class="page-link">@Model.CurrentPage</button>
                     </li>
 
-                    <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
+                    <li class="page-item @nextPageCss">
                         <form method="post" asp-page-handler="Navigate" class="d-inline">
                             <input type="hidden" name="sortBy" value="@Model.SortBy" />
                             <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
@@ -225,7 +257,6 @@
     }
 </section>
 
-<!-- Modals -->
 <section class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
@@ -249,7 +280,7 @@
                                 <span asp-validation-for="NewEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
                             <input asp-for="NewEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off"
-                                   value="@(Model?.NewEmployee != null && Model.NewEmployee.Ci.HasValue && Model.NewEmployee.Ci.Value != 0 ? Model.NewEmployee.Ci.Value.ToString() : string.Empty)" />
+                                   value="@newEmployeeCiValue" />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Complemento" class="form-label fw-bold">
@@ -257,7 +288,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Si se llena, debe tener formato número+letra (ejemplo: 1A).">i</span>
                                 <span asp-validation-for="NewEmployee.Complemento" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" />
+                            <input asp-for="NewEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" data-normalize="trim-upper" />
                         </section>
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.Cargo" class="form-label fw-bold">
@@ -298,7 +329,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="NewEmployee.Nombres" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.Nombres" class="form-control" autocomplete="off" />
+                            <input asp-for="NewEmployee.Nombres" class="form-control" autocomplete="off" data-normalize="collapse" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.PrimerApellido" class="form-label fw-bold">
@@ -306,7 +337,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="NewEmployee.PrimerApellido" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" autocomplete="off" />
+                            <input asp-for="NewEmployee.PrimerApellido" class="form-control" autocomplete="off" data-normalize="collapse" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="NewEmployee.SegundoApellido" class="form-label fw-bold">
@@ -314,15 +345,15 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Si se llena, solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="NewEmployee.SegundoApellido" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.SegundoApellido" class="form-control" autocomplete="off" />
+                            <input asp-for="NewEmployee.SegundoApellido" class="form-control" autocomplete="off" data-normalize="collapse" />
                         </section>
                         <section class="col-md-6 mt-2 mt-md-4">
                             <label asp-for="NewEmployee.NumeroContacto" class="form-label fw-bold">
                                 Número de teléfono/domicilio
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese 8 dígitos. El sistema asumirá prefijo +591 al guardar.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese exactamente 8 dígitos.">i</span>
                                 <span asp-validation-for="NewEmployee.NumeroContacto" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" inputmode="numeric" autocomplete="off" />
+                            <input asp-for="NewEmployee.NumeroContacto" class="form-control" inputmode="numeric" autocomplete="off" data-normalize="trim" />
                         </section>
                     </section>
                 </section>
@@ -337,7 +368,6 @@
     </section>
 </section>
 
-<!-- Edit modal: render empty value if CI is null or 0 -->
 <section class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel" aria-hidden="true">
     <section class="modal-dialog modal-lg modal-dialog-centered">
         <article class="modal-content">
@@ -361,7 +391,7 @@
                                 <span asp-validation-for="EditEmployee.Ci" class="validation-icon-inline"></span>
                             </label>
                             <input asp-for="EditEmployee.Ci" type="text" class="form-control" inputmode="numeric" autocomplete="off"
-                                   value="@(Model?.EditEmployee != null && Model.EditEmployee.Ci.HasValue && Model.EditEmployee.Ci.Value != 0 ? Model.EditEmployee.Ci.Value.ToString() : string.Empty)" />
+                                   value="@editEmployeeCiValue" />
                         </section>
                         <section class="col-md-2 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Complemento" class="form-label fw-bold">
@@ -369,7 +399,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Si se llena, debe tener formato número+letra (ejemplo: 1A).">i</span>
                                 <span asp-validation-for="EditEmployee.Complemento" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" />
+                            <input asp-for="EditEmployee.Complemento" class="form-control text-uppercase js-uppercase" autocomplete="off" data-normalize="trim-upper" />
                         </section>
                         <section class="col-md-5 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.Cargo" class="form-label fw-bold">
@@ -410,7 +440,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="EditEmployee.Nombres" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.Nombres" class="form-control" autocomplete="off" />
+                            <input asp-for="EditEmployee.Nombres" class="form-control" autocomplete="off" data-normalize="collapse" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.PrimerApellido" class="form-label fw-bold">
@@ -418,7 +448,7 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="EditEmployee.PrimerApellido" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" autocomplete="off" />
+                            <input asp-for="EditEmployee.PrimerApellido" class="form-control" autocomplete="off" data-normalize="collapse" />
                         </section>
                         <section class="col-md-4 mb-2 mb-md-0">
                             <label asp-for="EditEmployee.SegundoApellido" class="form-label fw-bold">
@@ -426,15 +456,15 @@
                                 <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Si se llena, solo letras y separadores válidos (espacio, punto, apóstrofe o guion).">i</span>
                                 <span asp-validation-for="EditEmployee.SegundoApellido" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" autocomplete="off" />
+                            <input asp-for="EditEmployee.SegundoApellido" class="form-control" autocomplete="off" data-normalize="collapse" />
                         </section>
                         <section class="col-md-6 mt-2 mt-md-4">
                             <label asp-for="EditEmployee.NumeroContacto" class="form-label fw-bold">
                                 Número de teléfono/domicilio
-                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese 8 dígitos. El sistema asumirá prefijo +591 al guardar.">i</span>
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Ingrese exactamente 8 dígitos.">i</span>
                                 <span asp-validation-for="EditEmployee.NumeroContacto" class="validation-icon-inline"></span>
                             </label>
-                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" inputmode="numeric" autocomplete="off" />
+                            <input asp-for="EditEmployee.NumeroContacto" class="form-control" inputmode="numeric" autocomplete="off" data-normalize="trim" />
                         </section>
                     </section>
                 </section>
@@ -449,7 +479,6 @@
     </section>
 </section>
 
-<!-- Brutalist Toasts -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1060;">
     @if (TempData["SuccessMessage"] is string successMsg && !string.IsNullOrWhiteSpace(successMsg))
     {

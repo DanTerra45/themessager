@@ -1,5 +1,5 @@
-﻿using System.Globalization;
-using MySqlConnector;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages.Employees
 {
@@ -20,14 +20,14 @@ namespace Mercadito.Pages.Employees
 
                 if (loadedEmployees.Count == 0 && CurrentAnchorEmployeeId > 0)
                 {
-                    loadedEmployees = (await _employeeManagementUseCase.GetPageByCursorAsync(
+                    loadedEmployees = [.. await _employeeManagementUseCase.GetPageByCursorAsync(
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorEmployeeId,
                         isNextPage: false,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
 
                     if (loadedEmployees.Count > 0 && CurrentPage > 1)
                     {
@@ -39,32 +39,22 @@ namespace Mercadito.Pages.Employees
                 {
                     CurrentAnchorEmployeeId = 0;
                     CurrentPage = 1;
-                    loadedEmployees = (await _employeeManagementUseCase.GetPageFromAnchorAsync(
+                    loadedEmployees = [.. await _employeeManagementUseCase.GetPageFromAnchorAsync(
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorEmployeeId,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
                 }
 
                 Employees = loadedEmployees;
-                CurrentAnchorEmployeeId = Employees.Count > 0 ? Employees[0].Id : 0;
+                CurrentAnchorEmployeeId = _listingPageStateService.ResolveCurrentAnchorId(Employees, employee => employee.Id);
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar empleados");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar empleados");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar empleados");
                 ModelState.AddModelError(string.Empty, "Error al cargar los empleados.");
                 Employees = [];
                 HasPreviousPage = false;
@@ -100,31 +90,14 @@ namespace Mercadito.Pages.Employees
                 }
 
                 Employees = [.. employees];
-                CurrentAnchorEmployeeId = Employees.Count > 0 ? Employees[0].Id : 0;
-                if (isNextPage)
-                {
-                    CurrentPage++;
-                }
-                else if (CurrentPage > 1)
-                {
-                    CurrentPage--;
-                }
+                CurrentAnchorEmployeeId = _listingPageStateService.ResolveCurrentAnchorId(Employees, employee => employee.Id);
+                CurrentPage = _listingPageStateService.MoveCurrentPage(CurrentPage, isNextPage);
 
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar empleados con cursor");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar empleados con cursor");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar empleados con cursor");
                 await LoadEmployeesFromAnchorAsync();
             }
         }
@@ -165,65 +138,17 @@ namespace Mercadito.Pages.Employees
 
         private void SetPendingNavigation(string navigationMode, long cursorEmployeeId)
         {
-            if (cursorEmployeeId <= 0 || !TryResolveNavigationMode(navigationMode, out var normalizedNavigationMode))
-            {
-                ClearPendingNavigation();
-                return;
-            }
-
-            HttpContext.Session.SetString(PendingNavigationModeSessionKey, normalizedNavigationMode);
-            HttpContext.Session.SetString(PendingNavigationCursorEmployeeIdSessionKey, cursorEmployeeId.ToString(CultureInfo.InvariantCulture));
+            _listingPageStateService.SetPendingNavigation(HttpContext.Session, ListingSessionKeys, navigationMode, cursorEmployeeId);
         }
 
-        private PendingNavigationState? PopPendingNavigation()
+        private KeysetPendingNavigationState? PopPendingNavigation()
         {
-            var rawNavigationMode = HttpContext.Session.GetString(PendingNavigationModeSessionKey);
-            var rawCursorEmployeeId = HttpContext.Session.GetString(PendingNavigationCursorEmployeeIdSessionKey);
-            ClearPendingNavigation();
-
-            if (!TryResolveNavigationMode(rawNavigationMode, out var normalizedNavigationMode))
-            {
-                return null;
-            }
-
-            if (!long.TryParse(rawCursorEmployeeId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cursorEmployeeId) || cursorEmployeeId <= 0)
-            {
-                return null;
-            }
-
-            return new PendingNavigationState(
-                string.Equals(normalizedNavigationMode, NavigationModeNext, StringComparison.Ordinal),
-                cursorEmployeeId);
+            return _listingPageStateService.PopPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
         private void ClearPendingNavigation()
         {
-            HttpContext.Session.Remove(PendingNavigationModeSessionKey);
-            HttpContext.Session.Remove(PendingNavigationCursorEmployeeIdSessionKey);
-        }
-
-        private static bool TryResolveNavigationMode(string? navigationMode, out string normalizedNavigationMode)
-        {
-            if (string.Equals(navigationMode, NavigationModeNext, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModeNext;
-                return true;
-            }
-
-            if (string.Equals(navigationMode, NavigationModePrevious, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModePrevious;
-                return true;
-            }
-
-            normalizedNavigationMode = string.Empty;
-            return false;
-        }
-
-        private readonly struct PendingNavigationState(bool isNextPage, long cursorEmployeeId)
-        {
-            public bool IsNextPage { get; } = isNextPage;
-            public long CursorEmployeeId { get; } = cursorEmployeeId;
+            _listingPageStateService.ClearPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
     }
 }

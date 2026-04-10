@@ -1,5 +1,6 @@
 using Mercadito.src.employees.application.models;
 using Microsoft.AspNetCore.Mvc;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages.Employees
 {
@@ -50,7 +51,7 @@ namespace Mercadito.Pages.Employees
                 TempData["SuccessMessage"] = "Empleado agregado exitosamente.";
                 return RedirectToCurrentState();
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al crear empleado");
                 TempData["ErrorMessage"] = "Error al guardar el empleado.";
@@ -102,7 +103,7 @@ namespace Mercadito.Pages.Employees
                 TempData["SuccessMessage"] = "Empleado actualizado correctamente.";
                 return RedirectToCurrentState();
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al actualizar empleado");
                 TempData["ErrorMessage"] = "Error al actualizar el empleado.";
@@ -124,11 +125,16 @@ namespace Mercadito.Pages.Employees
             {
                 var actor = BuildAuditActor();
                 var deleted = await _employeeManagementUseCase.DeleteAsync(id, actor, HttpContext.RequestAborted);
-                TempData[deleted ? "SuccessMessage" : "ErrorMessage"] = deleted
-                    ? "Empleado desactivado."
-                    : "El empleado no existe o ya estaba desactivado.";
+                if (deleted)
+                {
+                    TempData["SuccessMessage"] = "Empleado desactivado.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "El empleado no existe o ya estaba desactivado.";
+                }
             }
-            catch (Exception exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Error al eliminar empleado");
                 TempData["ErrorMessage"] = "No se pudo eliminar el empleado.";
@@ -138,5 +144,3 @@ namespace Mercadito.Pages.Employees
         }
     }
 }
-
-

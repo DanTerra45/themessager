@@ -5,45 +5,34 @@ using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
 using Mercadito.src.users.application.validation;
-using Shared.Domain;
+using Mercadito.src.users.application.emails;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-    public sealed class RequestPasswordResetUseCase : IRequestPasswordResetUseCase
+    public sealed class RequestPasswordResetUseCase(
+        IUserRepository userRepository,
+        IUserAccessWorkflowRepository userAccessWorkflowRepository,
+        IRequestPasswordResetValidator validator,
+        IEmailSender emailSender,
+        ILogger<RequestPasswordResetUseCase> logger) : IRequestPasswordResetUseCase
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IRequestPasswordResetValidator _validator;
-        private readonly IEmailSender _emailSender;
-        private readonly ILogger<RequestPasswordResetUseCase> _logger;
-
-        public RequestPasswordResetUseCase(
-            IUserRepository userRepository,
-            IRequestPasswordResetValidator validator,
-            IEmailSender emailSender,
-            ILogger<RequestPasswordResetUseCase> logger)
-        {
-            _userRepository = userRepository;
-            _validator = validator;
-            _emailSender = emailSender;
-            _logger = logger;
-        }
-
         public async Task<Result<bool>> ExecuteAsync(RequestPasswordResetDto request, CancellationToken cancellationToken = default)
         {
-            var validationResult = _validator.Validate(request);
+            var validationResult = validator.Validate(request);
             if (validationResult.IsFailure)
             {
-                return Result<bool>.Failure(validationResult.Errors);
+                return Result.Failure<bool>(validationResult.Errors);
             }
 
             var normalized = validationResult.Value;
-            var user = await _userRepository.GetActiveByUsernameOrEmailAsync(normalized.Identifier, cancellationToken);
+            var user = await userRepository.GetActiveByUsernameOrEmailAsync(normalized.Identifier, cancellationToken);
             if (user == null || string.IsNullOrWhiteSpace(user.Email))
             {
-                return Result<bool>.Success(true);
+                return Result.Success(true);
             }
 
-            _emailSender.EnsureAvailable();
+            emailSender.EnsureAvailable();
 
             var plainToken = PasswordResetTokenCodec.CreatePlainToken();
             var tokenHash = PasswordResetTokenCodec.HashToken(plainToken);
@@ -61,17 +50,12 @@ namespace Mercadito.src.users.application.use_cases
                     $"Abre este enlace para continuar:\n{resetLink}\n\n" +
                     "El enlace vence en 30 minutos.\n" +
                     "Si no solicitaste este cambio, puedes ignorar este mensaje.\n",
-                HtmlBody =
-                    $"<p>Hola <strong>{user.Username}</strong>,</p>" +
-                    "<p>Recibimos una solicitud para restablecer tu contraseña de Mercadito.</p>" +
-                    $"<p><a href=\"{resetLink}\">Haz clic aquí para restablecer tu contraseña</a></p>" +
-                    "<p>El enlace vence en 30 minutos.</p>" +
-                    "<p>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>"
+                HtmlBody = UserAccessEmailTemplate.BuildPasswordResetHtml(user.Username, resetLink)
             };
 
             try
             {
-                await _userRepository.CreatePasswordResetTokenAndQueueEmailAsync(
+                await userAccessWorkflowRepository.CreatePasswordResetTokenAndQueueEmailAsync(
                     user.Id,
                     tokenHash,
                     expiresAtUtc,
@@ -79,12 +63,12 @@ namespace Mercadito.src.users.application.use_cases
                     emailMessage,
                     cancellationToken);
 
-                return Result<bool>.Success(true);
+                return Result.Success(true);
             }
             catch (EmailDeliveryException deliveryException)
             {
-                _logger.LogWarning(deliveryException, "No se pudo enviar el correo de restablecimiento para el usuario {Username}.", user.Username);
-                return Result<bool>.Failure("No se pudo enviar el correo de restablecimiento. Revisa la configuración SMTP.");
+                logger.LogWarning(deliveryException, "No se pudo enviar el correo de restablecimiento para el usuario {Username}.", user.Username);
+                return Result.Failure<bool>("No se pudo enviar el correo de restablecimiento. Revisa la configuración SMTP.");
             }
         }
 

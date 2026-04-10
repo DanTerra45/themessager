@@ -1,5 +1,6 @@
+using Mercadito.src.shared.domain.validation;
 using Mercadito.src.users.application.models;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 using System.Text.RegularExpressions;
 
 namespace Mercadito.src.users.application.validation
@@ -7,13 +8,26 @@ namespace Mercadito.src.users.application.validation
     public sealed class CreateUserValidator : ICreateUserValidator
     {
         private const string EmailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
-        private readonly Dictionary<string, List<string>> _errors = new();
+        private static readonly string[] AllowedRoles = ["Admin", "Operador", "Auditor"];
+        private readonly ValidationErrorBag _errors = new();
+        private readonly StringRuleSet _stringRules = new();
+
+        public CreateUserValidator()
+        {
+            _stringRules.Add("Email", StringValidationRules.Required("El correo es obligatorio."));
+            _stringRules.Add("Email", StringValidationRules.MaxLength(100, "El correo no puede exceder 100 caracteres."));
+            _stringRules.Add("Email", StringValidationRules.RegexMatch(EmailPattern, "El correo no tiene un formato válido.", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase));
+            _stringRules.Add("Role", StringValidationRules.Required("El rol es obligatorio."));
+            _stringRules.Add("Role", StringValidationRules.OneOf(AllowedRoles, "El rol debe ser Admin, Operador o Auditor."));
+            _stringRules.Add("SetupUrlBase", StringValidationRules.Required("La URL de activación es obligatoria."));
+            _stringRules.Add("SetupUrlBase", StringValidationRules.AbsoluteUri("La URL de activación es inválida."));
+        }
 
         public Result<CreateUserDto> Validate(CreateUserDto input)
         {
             if (input == null)
             {
-                return Result<CreateUserDto>.Failure("El usuario es obligatorio.");
+                return Result.Failure<CreateUserDto>("El usuario es obligatorio.");
             }
 
             _errors.Clear();
@@ -24,28 +38,17 @@ namespace Mercadito.src.users.application.validation
             ValidateRole(normalized.Role);
             ValidateSetupUrlBase(normalized.SetupUrlBase);
 
-            return _errors.Count > 0
-                ? Result<CreateUserDto>.Failure(_errors)
-                : Result<CreateUserDto>.Success(normalized);
+            if (_errors.HasErrors)
+            {
+                return Result.Failure<CreateUserDto>(_errors.ToDictionary());
+            }
+
+            return Result.Success(normalized);
         }
 
         private void ValidateEmail(string email)
         {
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                UserValidationHelpers.AddError(_errors, "Email", "El correo es obligatorio.");
-                return;
-            }
-
-            if (email.Length > 100)
-            {
-                UserValidationHelpers.AddError(_errors, "Email", "El correo no puede exceder 100 caracteres.");
-            }
-
-            if (!Regex.IsMatch(email, EmailPattern, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase))
-            {
-                UserValidationHelpers.AddError(_errors, "Email", "El correo no tiene un formato válido.");
-            }
+            _stringRules.Validate("Email", email, _errors);
         }
 
         private void ValidateEmployee(long? employeeId)
@@ -57,49 +60,29 @@ namespace Mercadito.src.users.application.validation
 
             if (employeeId.Value <= 0)
             {
-                UserValidationHelpers.AddError(_errors, "EmployeeId", "El empleado asociado es inválido.");
+                _errors.Add("EmployeeId", "El empleado asociado es inválido.");
             }
         }
 
         private void ValidateRole(string role)
         {
-            if (string.IsNullOrWhiteSpace(role))
-            {
-                UserValidationHelpers.AddError(_errors, "Role", "El rol es obligatorio.");
-                return;
-            }
-
-            if (!string.Equals(role, "Admin", StringComparison.Ordinal) &&
-                !string.Equals(role, "Operador", StringComparison.Ordinal) &&
-                !string.Equals(role, "Auditor", StringComparison.Ordinal))
-            {
-                UserValidationHelpers.AddError(_errors, "Role", "El rol debe ser Admin, Operador o Auditor.");
-            }
+            _stringRules.Validate("Role", role, _errors);
         }
 
         private void ValidateSetupUrlBase(string setupUrlBase)
         {
-            if (string.IsNullOrWhiteSpace(setupUrlBase))
-            {
-                UserValidationHelpers.AddError(_errors, "SetupUrlBase", "La URL de activación es obligatoria.");
-                return;
-            }
-
-            if (!Uri.TryCreate(setupUrlBase, UriKind.Absolute, out _))
-            {
-                UserValidationHelpers.AddError(_errors, "SetupUrlBase", "La URL de activación es inválida.");
-            }
+            _stringRules.Validate("SetupUrlBase", setupUrlBase, _errors);
         }
 
         private static CreateUserDto Normalize(CreateUserDto input)
         {
             return new CreateUserDto
             {
-                Username = UserValidationHelpers.NormalizeCollapsed(input.Username).ToLowerInvariant(),
-                Email = UserValidationHelpers.NormalizeCollapsed(input.Email),
+                Username = ValidationText.NormalizeLowerTrimmed(input.Username),
+                Email = ValidationText.NormalizeTrimmed(input.Email),
                 EmployeeId = input.EmployeeId,
-                Role = UserValidationHelpers.NormalizeCollapsed(input.Role),
-                SetupUrlBase = UserValidationHelpers.NormalizeCollapsed(input.SetupUrlBase)
+                Role = ValidationText.NormalizeTrimmed(input.Role),
+                SetupUrlBase = ValidationText.NormalizeTrimmed(input.SetupUrlBase)
             };
         }
     }

@@ -1,17 +1,18 @@
+using Mercadito.src.shared.domain.validation;
 using Mercadito.src.users.application.models;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.users.application.validation
 {
     public sealed class CompletePasswordResetValidator : ICompletePasswordResetValidator
     {
-        private readonly Dictionary<string, List<string>> _errors = new();
+        private readonly ValidationErrorBag _errors = new();
 
         public Result<CompletePasswordResetDto> Validate(CompletePasswordResetDto input)
         {
             if (input == null)
             {
-                return Result<CompletePasswordResetDto>.Failure("La solicitud es obligatoria.");
+                return Result.Failure<CompletePasswordResetDto>("La solicitud es obligatoria.");
             }
 
             _errors.Clear();
@@ -19,16 +20,16 @@ namespace Mercadito.src.users.application.validation
 
             if (string.IsNullOrWhiteSpace(normalized.Token))
             {
-                UserValidationHelpers.AddError(_errors, "Token", "El token de restablecimiento es obligatorio.");
+                _errors.Add("Token", "El token de restablecimiento es obligatorio.");
             }
             else if (normalized.Token.Length > 256)
             {
-                UserValidationHelpers.AddError(_errors, "Token", "El token de restablecimiento es inválido.");
+                _errors.Add("Token", "El token de restablecimiento es inválido.");
             }
 
             if (string.IsNullOrWhiteSpace(normalized.Password))
             {
-                UserValidationHelpers.AddError(_errors, "Password", "La contraseña es obligatoria.");
+                _errors.Add("Password", "La contraseña es obligatoria.");
             }
             else
             {
@@ -37,23 +38,26 @@ namespace Mercadito.src.users.application.validation
 
             if (string.IsNullOrWhiteSpace(normalized.ConfirmPassword))
             {
-                UserValidationHelpers.AddError(_errors, "ConfirmPassword", "La confirmación de contraseña es obligatoria.");
+                _errors.Add("ConfirmPassword", "La confirmación de contraseña es obligatoria.");
             }
             else if (!string.Equals(normalized.Password, normalized.ConfirmPassword, StringComparison.Ordinal))
             {
-                UserValidationHelpers.AddError(_errors, "ConfirmPassword", "La confirmación no coincide con la contraseña.");
+                _errors.Add("ConfirmPassword", "La confirmación no coincide con la contraseña.");
             }
 
-            return _errors.Count > 0
-                ? Result<CompletePasswordResetDto>.Failure(_errors)
-                : Result<CompletePasswordResetDto>.Success(normalized);
+            if (_errors.HasErrors)
+            {
+                return Result.Failure<CompletePasswordResetDto>(_errors.ToDictionary());
+            }
+
+            return Result.Success(normalized);
         }
 
         private static CompletePasswordResetDto Normalize(CompletePasswordResetDto input)
         {
             return new CompletePasswordResetDto
             {
-                Token = UserValidationHelpers.NormalizeCollapsed(input.Token),
+                Token = ValidationText.NormalizeTrimmed(input.Token),
                 Password = input.Password,
                 ConfirmPassword = input.ConfirmPassword
             };

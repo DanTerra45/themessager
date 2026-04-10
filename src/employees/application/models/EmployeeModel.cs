@@ -12,4 +12,3 @@ namespace Mercadito.src.employees.application.models
         public string NumeroContacto { get; set; } = string.Empty;
     }
 }
-

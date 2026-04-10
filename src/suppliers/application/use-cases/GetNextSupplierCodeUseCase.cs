@@ -1,33 +1,27 @@
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
+using Mercadito.src.shared.domain.exceptions;
 
-namespace Mercadito.src.suppliers.application.use_cases
+namespace Mercadito.src.suppliers.application.usecases
 {
-    public sealed class GetNextSupplierCodeUseCase : IGetNextSupplierCodeUseCase
+    public sealed class GetNextSupplierCodeUseCase(ISupplierRepository repository) : IGetNextSupplierCodeUseCase
     {
-        private readonly ISupplierRepository _repository;
-
-        public GetNextSupplierCodeUseCase(ISupplierRepository repository)
-        {
-            _repository = repository;
-        }
-
         public async Task<Result<string>> ExecuteAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                var nextCode = await _repository.GetNextSupplierCodeAsync(cancellationToken);
-                return Result<string>.Success(nextCode);
+                var nextCode = await repository.GetNextSupplierCodeAsync(cancellationToken);
+                return Result.Success(nextCode);
             }
             catch (BusinessValidationException validationException)
             {
                 if (validationException.Errors.Count > 0)
                 {
-                    return Result<string>.Failure(validationException.Errors);
+                    return Result.Failure<string>(validationException.Errors);
                 }
 
-                return Result<string>.Failure(new Dictionary<string, List<string>>
+                return Result.Failure<string>(new Dictionary<string, List<string>>
                 {
                     { "Codigo", [validationException.Message] }
                 });

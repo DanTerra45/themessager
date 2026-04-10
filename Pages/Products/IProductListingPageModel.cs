@@ -5,8 +5,8 @@ namespace Mercadito.Pages.Products
 {
     public interface IProductListingPageModel
     {
-        List<ProductWithCategoriesModel> Products { get; }
-        List<CategoryModel> Categories { get; }
+        IReadOnlyList<ProductWithCategoriesModel> Products { get; }
+        IReadOnlyList<CategoryModel> Categories { get; }
         long CategoryFilter { get; }
         int CurrentPage { get; }
         bool HasPreviousPage { get; }

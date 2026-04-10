@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text.Json;
 using Mercadito.src.categories.application.models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,95 +15,58 @@ namespace Mercadito.Pages.Categories
 
         private void StorePendingCreateModal(CreateCategoryDto draft)
         {
-            HttpContext.Session.SetString(PendingCreateModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingCreateDraftSessionKey, JsonSerializer.Serialize(draft));
+            _modalPostbackStateService.StorePendingModalDraft(HttpContext.Session, PendingCreateModalSessionKey, PendingCreateDraftSessionKey, draft);
         }
 
         private void StorePendingEditModal(UpdateCategoryDto draft)
         {
-            HttpContext.Session.SetString(PendingEditModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingEditDraftSessionKey, JsonSerializer.Serialize(draft));
+            _modalPostbackStateService.StorePendingModalDraft(HttpContext.Session, PendingEditModalSessionKey, PendingEditDraftSessionKey, draft);
         }
 
         private void RestorePendingPostbackState()
         {
-            if (PopFlag(PendingCreateModalSessionKey))
+            var createState = _modalPostbackStateService.RestorePendingModalDraft<CreateCategoryDto>(
+                HttpContext.Session,
+                PendingCreateModalSessionKey,
+                PendingCreateDraftSessionKey,
+                _logger);
+            if (createState.ShouldShowModal)
             {
                 ShowCreateCategoryModal = true;
-                var pendingCreateDraft = PopDraft<CreateCategoryDto>(PendingCreateDraftSessionKey);
-                if (pendingCreateDraft != null)
+                if (createState.Draft != null)
                 {
-                    NewCategory = pendingCreateDraft;
+                    NewCategory = createState.Draft;
                 }
             }
-            else
-            {
-                HttpContext.Session.Remove(PendingCreateDraftSessionKey);
-            }
 
-            if (PopFlag(PendingEditModalSessionKey))
+            var editState = _modalPostbackStateService.RestorePendingModalDraft<UpdateCategoryDto>(
+                HttpContext.Session,
+                PendingEditModalSessionKey,
+                PendingEditDraftSessionKey,
+                _logger);
+            if (editState.ShouldShowModal)
             {
                 ShowEditCategoryModal = true;
-                var pendingEditDraft = PopDraft<UpdateCategoryDto>(PendingEditDraftSessionKey);
-                if (pendingEditDraft != null)
+                if (editState.Draft != null)
                 {
-                    EditCategory = pendingEditDraft;
+                    EditCategory = editState.Draft;
                 }
-            }
-            else
-            {
-                HttpContext.Session.Remove(PendingEditDraftSessionKey);
-            }
-        }
-
-        private bool PopFlag(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            return bool.TryParse(rawValue, out var parsedValue) && parsedValue;
-        }
-
-        private T? PopDraft<T>(string sessionKey) where T : class
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return null;
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<T>(rawValue);
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
-                return null;
             }
         }
 
         private void SetPendingEditCategoryId(long categoryId)
         {
-            HttpContext.Session.SetString(EditCategorySessionKey, categoryId.ToString(CultureInfo.InvariantCulture));
+            _modalPostbackStateService.SetPendingEntityId(HttpContext.Session, EditCategorySessionKey, categoryId);
         }
 
         private long PopPendingEditCategoryId()
         {
-            var rawEditCategoryId = HttpContext.Session.GetString(EditCategorySessionKey);
-            HttpContext.Session.Remove(EditCategorySessionKey);
-
-            return long.TryParse(rawEditCategoryId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var editCategoryId)
-                ? editCategoryId
-                : 0;
+            return _modalPostbackStateService.PopPendingEntityId(HttpContext.Session, EditCategorySessionKey);
         }
 
         private void ClearPendingEditCategoryId()
         {
-            HttpContext.Session.Remove(EditCategorySessionKey);
+            _modalPostbackStateService.ClearPendingEntityId(HttpContext.Session, EditCategorySessionKey);
         }
     }
 }
-

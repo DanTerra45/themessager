@@ -1,11 +1,10 @@
 using System.Security.Claims;
 using Mercadito.src.audit.domain.entities;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Shared.Domain;
-using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
+using Mercadito.src.shared.domain;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Text.Json;
+using System.Globalization;
 
 namespace Mercadito.Pages.Infrastructure
 {
@@ -16,9 +15,9 @@ namespace Mercadito.Pages.Infrastructure
             var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userId = 0L;
 
-            if (!string.IsNullOrWhiteSpace(userIdValue))
+            if (!string.IsNullOrWhiteSpace(userIdValue) && long.TryParse(userIdValue, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedUserId))
             {
-                long.TryParse(userIdValue, out userId);
+                userId = parsedUserId;
             }
 
             var username = string.Empty;
@@ -38,6 +37,8 @@ namespace Mercadito.Pages.Infrastructure
 
         protected void ApplyResultErrors(Result result, string prefix = "")
         {
+            ArgumentNullException.ThrowIfNull(result);
+
             ApplyValidationErrors(prefix, result.Errors);
 
             if (result.Errors.Count == 0 && !string.IsNullOrWhiteSpace(result.ErrorMessage))
@@ -48,13 +49,22 @@ namespace Mercadito.Pages.Infrastructure
 
         protected void ApplyValidationErrors(string prefix, IReadOnlyDictionary<string, List<string>> errors)
         {
+            ArgumentNullException.ThrowIfNull(errors);
+
             foreach (var error in errors)
             {
-                var key = string.IsNullOrWhiteSpace(error.Key)
-                    ? string.Empty
-                    : string.IsNullOrWhiteSpace(prefix)
-                        ? error.Key
-                        : string.Concat(prefix, ".", error.Key);
+                var key = string.Empty;
+                if (!string.IsNullOrWhiteSpace(error.Key))
+                {
+                    if (string.IsNullOrWhiteSpace(prefix))
+                    {
+                        key = error.Key;
+                    }
+                    else
+                    {
+                        key = string.Concat(prefix, ".", error.Key);
+                    }
+                }
 
                 foreach (var message in error.Value)
                 {
@@ -125,8 +135,10 @@ namespace Mercadito.Pages.Infrastructure
             }
         }
 
-        protected string BuildAbsolutePathUrl(string relativePath)
+        protected Uri BuildAbsolutePathUrl(string relativePath)
         {
+            ArgumentNullException.ThrowIfNull(relativePath);
+
             var pathBase = Request.PathBase.Value;
             if (string.IsNullOrWhiteSpace(pathBase))
             {
@@ -139,7 +151,7 @@ namespace Mercadito.Pages.Infrastructure
                 normalizedPath = "/" + normalizedPath;
             }
 
-            return $"{Request.Scheme}://{Request.Host}{pathBase}{normalizedPath}";
+            return new Uri($"{Request.Scheme}://{Request.Host}{pathBase}{normalizedPath}", UriKind.Absolute);
         }
 
         private static string GetModelErrorMessage(ModelError error)

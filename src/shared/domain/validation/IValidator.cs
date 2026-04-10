@@ -1,6 +1,4 @@
-using Shared.Domain;
-
-namespace Mercadito.src.shared.domain.validator
+namespace Mercadito.src.shared.domain.validation
 {
     public interface IValidator<TInput, TOutput>
     {

@@ -4,7 +4,6 @@ using Mercadito.src.notifications.application.models;
 using Mercadito.src.notifications.application.exceptions;
 using Mercadito.src.notifications.application.ports.output;
 using Mercadito.src.notifications.infrastructure.options;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
@@ -21,6 +20,10 @@ namespace Mercadito.src.notifications.infrastructure.email
             IHostEnvironment hostEnvironment,
             ILogger<MailKitEmailSender> logger)
         {
+            ArgumentNullException.ThrowIfNull(options);
+            ArgumentNullException.ThrowIfNull(hostEnvironment);
+            ArgumentNullException.ThrowIfNull(logger);
+
             _options = options.Value;
             _hostEnvironment = hostEnvironment;
             _logger = logger;
@@ -41,6 +44,8 @@ namespace Mercadito.src.notifications.infrastructure.email
 
         public async Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(message);
+
             EnsureAvailable();
 
             if (string.IsNullOrWhiteSpace(message.ToAddress))
@@ -71,7 +76,11 @@ namespace Mercadito.src.notifications.infrastructure.email
                 smtpClient.ServerCertificateValidationCallback = (_, _, _, _) => true;
             }
 
-            var secureSocketOptions = _options.UseSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto;
+            var secureSocketOptions = SecureSocketOptions.Auto;
+            if (_options.UseSsl)
+            {
+                secureSocketOptions = SecureSocketOptions.SslOnConnect;
+            }
 
             try
             {

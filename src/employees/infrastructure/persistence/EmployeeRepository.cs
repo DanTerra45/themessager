@@ -1,6 +1,6 @@
 using Mercadito.src.employees.application.ports.output;
 using Dapper;
-using Mercadito.database.interfaces;
+using Mercadito.src.shared.infrastructure.persistence;
 using Mercadito.src.employees.domain.entities;
 using Mercadito.src.employees.application.models;
 using Mercadito.src.shared.domain.repository;
@@ -8,7 +8,8 @@ using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Text;
-using Shared.Domain;
+using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.src.employees.infrastructure.persistence
 {
@@ -19,6 +20,11 @@ namespace Mercadito.src.employees.infrastructure.persistence
         private const int ActiveUnique = 1;
 
         private readonly IDbConnectionFactory _dbConnection = dbConnection;
+
+        private static DataStoreUnavailableException CreateDataStoreUnavailableException(string operation, Exception exception)
+        {
+            return new DataStoreUnavailableException($"No se pudo {operation} porque la base de datos no está disponible.", exception);
+        }
 
         private enum SortFieldDirection
         {
@@ -66,22 +72,12 @@ namespace Mercadito.src.employees.infrastructure.persistence
             return queryBuilder.ToString();
         }
 
-        private static string NormalizeSearchTerm(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                return string.Empty;
-            }
-
-            return searchTerm.Trim();
-        }
-
         private static DynamicParameters BuildEmployeeQueryParameters(string searchTerm, int? pageSize = null, long? cursorEmployeeId = null, long? anchorEmployeeId = null)
         {
             var parameters = new DynamicParameters();
             parameters.Add("ActiveState", ActiveState);
 
-            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var normalizedSearchTerm = ValidationText.NormalizeTrimmed(searchTerm);
             if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
             {
                 parameters.Add("SearchPattern", "%" + normalizedSearchTerm + "%");
@@ -119,15 +115,22 @@ namespace Mercadito.src.employees.infrastructure.persistence
 
         private static string ResolveFieldDirection(SortField field, string primaryDirection, bool reverse)
         {
-            var direction = field.Direction == SortFieldDirection.Primary ? primaryDirection : "ASC";
+            var direction = "ASC";
+            if (field.Direction == SortFieldDirection.Primary)
+            {
+                direction = primaryDirection;
+            }
             if (!reverse)
             {
                 return direction;
             }
 
-            return string.Equals(direction, "ASC", StringComparison.Ordinal)
-                ? "DESC"
-                : "ASC";
+            if (string.Equals(direction, "ASC", StringComparison.Ordinal))
+            {
+                return "DESC";
+            }
+
+            return "ASC";
         }
 
         private static string ResolveNavigationComparator(string fieldDirection, bool isNextPage)
@@ -135,15 +138,30 @@ namespace Mercadito.src.employees.infrastructure.persistence
             var isAscending = string.Equals(fieldDirection, "ASC", StringComparison.Ordinal);
             if (isNextPage)
             {
-                return isAscending ? ">" : "<";
+                if (isAscending)
+                {
+                    return ">";
+                }
+
+                return "<";
             }
 
-            return isAscending ? "<" : ">";
+            if (isAscending)
+            {
+                return "<";
+            }
+
+            return ">";
         }
 
         private static string ResolveAnchorComparator(string fieldDirection)
         {
-            return string.Equals(fieldDirection, "ASC", StringComparison.Ordinal) ? ">" : "<";
+            if (string.Equals(fieldDirection, "ASC", StringComparison.Ordinal))
+            {
+                return ">";
+            }
+
+            return "<";
         }
 
         private static string BuildOrderByClause(string sortBy, string sortDirection, bool reverse = false)
@@ -167,7 +185,13 @@ namespace Mercadito.src.employees.infrastructure.persistence
 
             if (!includesIdColumn)
             {
-                orderSegments.Add($"currentEmployee.Id {(reverse ? "DESC" : "ASC")}");
+                var idDirection = "ASC";
+                if (reverse)
+                {
+                    idDirection = "DESC";
+                }
+
+                orderSegments.Add($"currentEmployee.Id {idDirection}");
             }
 
             return string.Join(", ", orderSegments);
@@ -183,10 +207,20 @@ namespace Mercadito.src.employees.infrastructure.persistence
                 var isAscending = string.Equals(primaryDirection, "ASC", StringComparison.Ordinal);
                 if (isNextPage)
                 {
-                    return isAscending ? "currentEmployee.Id > cursorEmployee.Id" : "currentEmployee.Id < cursorEmployee.Id";
+                    if (isAscending)
+                    {
+                        return "currentEmployee.Id > cursorEmployee.Id";
+                    }
+
+                    return "currentEmployee.Id < cursorEmployee.Id";
                 }
 
-                return isAscending ? "currentEmployee.Id < cursorEmployee.Id" : "currentEmployee.Id > cursorEmployee.Id";
+                if (isAscending)
+                {
+                    return "currentEmployee.Id < cursorEmployee.Id";
+                }
+
+                return "currentEmployee.Id > cursorEmployee.Id";
             }
 
             var sortFields = GetSortFields(normalizedSortBy);
@@ -202,15 +236,19 @@ namespace Mercadito.src.employees.infrastructure.persistence
                 if (index == 0)
                 {
                     conditions.Add($"currentEmployee.{sortField.Column} {comparator} cursorEmployee.{sortField.Column}");
-                    equalityPrefixBuilder.Append($"currentEmployee.{sortField.Column} = cursorEmployee.{sortField.Column}");
+                    equalityPrefixBuilder.Append(FormattableString.Invariant($"currentEmployee.{sortField.Column} = cursorEmployee.{sortField.Column}"));
                     continue;
                 }
 
                 conditions.Add($"({equalityPrefixBuilder} AND currentEmployee.{sortField.Column} {comparator} cursorEmployee.{sortField.Column})");
-                equalityPrefixBuilder.Append($" AND currentEmployee.{sortField.Column} = cursorEmployee.{sortField.Column}");
+                equalityPrefixBuilder.Append(FormattableString.Invariant($" AND currentEmployee.{sortField.Column} = cursorEmployee.{sortField.Column}"));
             }
 
-            var idComparator = isNextPage ? ">" : "<";
+            var idComparator = "<";
+            if (isNextPage)
+            {
+                idComparator = ">";
+            }
             conditions.Add($"({equalityPrefixBuilder} AND currentEmployee.Id {idComparator} cursorEmployee.Id)");
 
             return $"({string.Join(" OR ", conditions)})";
@@ -223,9 +261,12 @@ namespace Mercadito.src.employees.infrastructure.persistence
 
             if (string.Equals(normalizedSortBy, "id", StringComparison.Ordinal))
             {
-                return string.Equals(primaryDirection, "ASC", StringComparison.Ordinal)
-                    ? "currentEmployee.Id >= anchorEmployee.Id"
-                    : "currentEmployee.Id <= anchorEmployee.Id";
+                if (string.Equals(primaryDirection, "ASC", StringComparison.Ordinal))
+                {
+                    return "currentEmployee.Id >= anchorEmployee.Id";
+                }
+
+                return "currentEmployee.Id <= anchorEmployee.Id";
             }
 
             var sortFields = GetSortFields(normalizedSortBy);
@@ -241,12 +282,12 @@ namespace Mercadito.src.employees.infrastructure.persistence
                 if (index == 0)
                 {
                     conditions.Add($"currentEmployee.{sortField.Column} {comparator} anchorEmployee.{sortField.Column}");
-                    equalityPrefixBuilder.Append($"currentEmployee.{sortField.Column} = anchorEmployee.{sortField.Column}");
+                    equalityPrefixBuilder.Append(FormattableString.Invariant($"currentEmployee.{sortField.Column} = anchorEmployee.{sortField.Column}"));
                     continue;
                 }
 
                 conditions.Add($"({equalityPrefixBuilder} AND currentEmployee.{sortField.Column} {comparator} anchorEmployee.{sortField.Column})");
-                equalityPrefixBuilder.Append($" AND currentEmployee.{sortField.Column} = anchorEmployee.{sortField.Column}");
+                equalityPrefixBuilder.Append(FormattableString.Invariant($" AND currentEmployee.{sortField.Column} = anchorEmployee.{sortField.Column}"));
             }
 
             conditions.Add($"({equalityPrefixBuilder} AND currentEmployee.Id >= anchorEmployee.Id)");
@@ -260,7 +301,7 @@ namespace Mercadito.src.employees.infrastructure.persistence
                 return "apellidos";
             }
 
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            var normalizedSortBy = ValidationText.NormalizeLowerTrimmed(sortBy);
             return normalizedSortBy switch
             {
                 "id" => "id",
@@ -274,17 +315,12 @@ namespace Mercadito.src.employees.infrastructure.persistence
 
         private static string NormalizeSortDirection(string sortDirection)
         {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
-        }
-
-        private static string NormalizeComplemento(string? complemento)
-        {
-            if (string.IsNullOrWhiteSpace(complemento))
+            if (string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase))
             {
-                return string.Empty;
+                return "DESC";
             }
 
-            return complemento.Trim().ToUpperInvariant();
+            return "ASC";
         }
 
         private static CommandDefinition BuildActiveEmployeeIdentityExistsCommand(
@@ -327,7 +363,7 @@ namespace Mercadito.src.employees.infrastructure.persistence
             long currentEmployeeId,
             CancellationToken cancellationToken)
         {
-            var normalizedComplemento = NormalizeComplemento(employee.Complemento);
+            var normalizedComplemento = ValidationText.NormalizeUpperTrimmed(employee.Complemento);
             var existsCommand = BuildActiveEmployeeIdentityExistsCommand(
                 employee.Ci,
                 normalizedComplemento,
@@ -356,33 +392,44 @@ namespace Mercadito.src.employees.infrastructure.persistence
                 return [];
             }
 
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
-            var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
-            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
+                var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+                var hasSearchTerm = !string.IsNullOrWhiteSpace(ValidationText.NormalizeTrimmed(searchTerm));
 
-            var queryBuilder = new StringBuilder();
-            queryBuilder.Append("SELECT currentEmployee.Id, currentEmployee.Ci, currentEmployee.Complemento, currentEmployee.Nombres, currentEmployee.PrimerApellido, currentEmployee.SegundoApellido, currentEmployee.Cargo, currentEmployee.NumeroContacto FROM (");
-            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") currentEmployee INNER JOIN (");
-            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") cursorEmployee ON cursorEmployee.Id = @CursorEmployeeId WHERE ");
-            queryBuilder.Append(keysetComparator);
-            queryBuilder.Append($@" ORDER BY {orderByClause}
-                    LIMIT @PageSize");
+                var queryBuilder = new StringBuilder();
+                queryBuilder.Append("SELECT currentEmployee.Id, currentEmployee.Ci, currentEmployee.Complemento, currentEmployee.Nombres, currentEmployee.PrimerApellido, currentEmployee.SegundoApellido, currentEmployee.Cargo, currentEmployee.NumeroContacto FROM (");
+                queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") currentEmployee INNER JOIN (");
+                queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") cursorEmployee ON cursorEmployee.Id = @CursorEmployeeId WHERE ");
+                queryBuilder.Append(keysetComparator);
+                queryBuilder.Append(FormattableString.Invariant($@" ORDER BY {orderByClause}
+                    LIMIT @PageSize"));
 
-            var command = new CommandDefinition(
+                var command = new CommandDefinition(
                 queryBuilder.ToString(),
                 parameters: BuildEmployeeQueryParameters(searchTerm, pageSize, cursorEmployeeId: cursorEmployeeId),
                 cancellationToken: cancellationToken);
 
-            var employees = (await connection.QueryAsync<EmployeeModel>(command)).AsList();
-            if (!isNextPage)
-            {
-                employees.Reverse();
-            }
+                var employees = (await connection.QueryAsync<EmployeeModel>(command)).AsList();
+                if (!isNextPage)
+                {
+                    employees.Reverse();
+                }
 
-            return employees;
+                return employees;
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar empleados", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar empleados", exception);
+            }
         }
 
         public async Task<IReadOnlyList<EmployeeModel>> GetEmployeesFromAnchorAsync(
@@ -393,34 +440,51 @@ namespace Mercadito.src.employees.infrastructure.persistence
             string searchTerm,
             CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var hasAnchor = anchorEmployeeId > 0;
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
-            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
-
-            var queryBuilder = new StringBuilder();
-            queryBuilder.Append("SELECT currentEmployee.Id, currentEmployee.Ci, currentEmployee.Complemento, currentEmployee.Nombres, currentEmployee.PrimerApellido, currentEmployee.SegundoApellido, currentEmployee.Cargo, currentEmployee.NumeroContacto FROM (");
-            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") currentEmployee");
-
-            if (hasAnchor)
+            try
             {
-                queryBuilder.Append(" INNER JOIN (");
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var hasAnchor = anchorEmployeeId > 0;
+                var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+                var hasSearchTerm = !string.IsNullOrWhiteSpace(ValidationText.NormalizeTrimmed(searchTerm));
+
+                var queryBuilder = new StringBuilder();
+                queryBuilder.Append("SELECT currentEmployee.Id, currentEmployee.Ci, currentEmployee.Complemento, currentEmployee.Nombres, currentEmployee.PrimerApellido, currentEmployee.SegundoApellido, currentEmployee.Cargo, currentEmployee.NumeroContacto FROM (");
                 queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
-                queryBuilder.Append(") anchorEmployee ON anchorEmployee.Id = @AnchorEmployeeId WHERE ");
-                queryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
-            }
+                queryBuilder.Append(") currentEmployee");
 
-            queryBuilder.Append($@" ORDER BY {orderByClause}
-                    LIMIT @PageSize");
+                if (hasAnchor)
+                {
+                    queryBuilder.Append(" INNER JOIN (");
+                    queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
+                    queryBuilder.Append(") anchorEmployee ON anchorEmployee.Id = @AnchorEmployeeId WHERE ");
+                    queryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
+                }
 
-            var command = new CommandDefinition(
+                queryBuilder.Append(FormattableString.Invariant($@" ORDER BY {orderByClause}
+                    LIMIT @PageSize"));
+
+                long? effectiveAnchorEmployeeId = null;
+                if (hasAnchor)
+                {
+                    effectiveAnchorEmployeeId = anchorEmployeeId;
+                }
+
+                var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: BuildEmployeeQueryParameters(searchTerm, pageSize, anchorEmployeeId: hasAnchor ? anchorEmployeeId : null),
+                parameters: BuildEmployeeQueryParameters(searchTerm, pageSize, anchorEmployeeId: effectiveAnchorEmployeeId),
                 cancellationToken: cancellationToken);
 
-            var employees = await connection.QueryAsync<EmployeeModel>(command);
-            return employees.AsList();
+                var employees = await connection.QueryAsync<EmployeeModel>(command);
+                return employees.AsList();
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar empleados", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar empleados", exception);
+            }
         }
 
         public async Task<bool> HasEmployeesByCursorAsync(
@@ -436,34 +500,47 @@ namespace Mercadito.src.employees.infrastructure.persistence
                 return false;
             }
 
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
-            var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
-            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
+                var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+                var hasSearchTerm = !string.IsNullOrWhiteSpace(ValidationText.NormalizeTrimmed(searchTerm));
 
-            var queryBuilder = new StringBuilder();
-            queryBuilder.Append("SELECT currentEmployee.Id FROM (");
-            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") currentEmployee INNER JOIN (");
-            queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") cursorEmployee ON cursorEmployee.Id = @CursorEmployeeId WHERE ");
-            queryBuilder.Append(keysetComparator);
-            queryBuilder.Append($@" ORDER BY {orderByClause}
-                    LIMIT 1");
+                var queryBuilder = new StringBuilder();
+                queryBuilder.Append("SELECT currentEmployee.Id FROM (");
+                queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") currentEmployee INNER JOIN (");
+                queryBuilder.Append(BuildEmployeeRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") cursorEmployee ON cursorEmployee.Id = @CursorEmployeeId WHERE ");
+                queryBuilder.Append(keysetComparator);
+                queryBuilder.Append(FormattableString.Invariant($@" ORDER BY {orderByClause}
+                    LIMIT 1"));
 
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
                 parameters: BuildEmployeeQueryParameters(searchTerm, cursorEmployeeId: cursorEmployeeId),
                 cancellationToken: cancellationToken);
 
-            var nextEmployeeId = await connection.QueryFirstOrDefaultAsync<long?>(command);
-            return nextEmployeeId.HasValue;
+                var nextEmployeeId = await connection.QueryFirstOrDefaultAsync<long?>(command);
+                return nextEmployeeId.HasValue;
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar la navegación de empleados", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar la navegación de empleados", exception);
+            }
         }
 
         public async Task<EmployeeModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                const string query = @"SELECT
                     id AS Id,
                     ci AS Ci,
                     complemento AS Complemento,
@@ -475,16 +552,27 @@ namespace Mercadito.src.employees.infrastructure.persistence
                     FROM empleados
                     WHERE id = @Id AND estado = @ActiveState";
 
-            var command = new CommandDefinition(
+                var command = new CommandDefinition(
                 query,
                 parameters: new { Id = id, ActiveState },
                 cancellationToken: cancellationToken);
 
-            return await connection.QueryFirstOrDefaultAsync<EmployeeModel>(command);
+                return await connection.QueryFirstOrDefaultAsync<EmployeeModel>(command);
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar el empleado", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar el empleado", exception);
+            }
         }
 
         public async Task<long> CreateAsync(Employee employee, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(employee);
+
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             await EnsureUniqueActiveIdentityAsync(
                 connection,
@@ -530,10 +618,20 @@ namespace Mercadito.src.employees.infrastructure.persistence
             {
                 throw new BusinessValidationException("Los datos del empleado no cumplen el formato requerido.");
             }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("guardar el empleado", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("guardar el empleado", exception);
+            }
         }
 
         public async Task<int> UpdateAsync(Employee employee, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(employee);
+
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             await EnsureUniqueActiveIdentityAsync(
                 connection,
@@ -584,22 +682,38 @@ namespace Mercadito.src.employees.infrastructure.persistence
             {
                 throw new BusinessValidationException("Los datos del empleado no cumplen el formato requerido.");
             }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("actualizar el empleado", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("actualizar el empleado", exception);
+            }
         }
 
         public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = "UPDATE empleados SET estado = @InactiveState WHERE id = @Id AND estado = @ActiveState";
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                const string query = "UPDATE empleados SET estado = @InactiveState WHERE id = @Id AND estado = @ActiveState";
 
-            var command = new CommandDefinition(
+                var command = new CommandDefinition(
                 query,
                 parameters: new { Id = id, ActiveState, InactiveState },
                 cancellationToken: cancellationToken);
 
-            return await connection.ExecuteAsync(command);
+                return await connection.ExecuteAsync(command);
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("eliminar el empleado", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("eliminar el empleado", exception);
+            }
         }
     }
 }
-
-
-

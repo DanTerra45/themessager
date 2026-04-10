@@ -9,4 +9,3 @@ namespace Mercadito.src.categories.application.models
         public int ProductCount { get; set; }
     }
 }
-

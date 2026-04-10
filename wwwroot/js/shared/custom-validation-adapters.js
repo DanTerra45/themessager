@@ -8,7 +8,10 @@
             return;
         }
 
-        var elementName = element && element.name ? element.name : '';
+        var elementName = '';
+        if (element && element.name) {
+            elementName = element.name;
+        }
         if (!elementName) {
             return;
         }
@@ -21,7 +24,10 @@
     }
 
     $.validator.addMethod('ci', function (value, element, params) {
-        var rawValue = value ? value.toString().trim() : '';
+        var rawValue = '';
+        if (value) {
+            rawValue = value.toString().trim();
+        }
         if (rawValue.length === 0) {
             setDynamicMessage(this, element, 'ci', params.requiredMessage);
             return false;
@@ -57,7 +63,10 @@
     });
 
     $.validator.addMethod('positive', function (value, element, params) {
-        var rawValue = value ? value.toString().trim() : '';
+        var rawValue = '';
+        if (value) {
+            rawValue = value.toString().trim();
+        }
         if (rawValue.length === 0) {
             setDynamicMessage(this, element, 'positive', params.requiredMessage);
             return false;

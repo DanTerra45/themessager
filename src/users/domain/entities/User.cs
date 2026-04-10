@@ -8,6 +8,7 @@ namespace Mercadito.src.users.domain.entities
         public string? Email { get; set; }
         public long? EmployeeId { get; set; }
         public UserRole Role { get; set; } = UserRole.Operador;
+        public bool MustChangePassword { get; set; }
         public string State { get; set; } = "A";
         public DateTime? LastLogin { get; set; }
         public DateTime CreatedAt { get; set; }

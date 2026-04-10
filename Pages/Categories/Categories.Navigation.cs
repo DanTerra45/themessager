@@ -1,5 +1,5 @@
-﻿using System.Globalization;
-using MySqlConnector;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages.Categories
 {
@@ -20,14 +20,14 @@ namespace Mercadito.Pages.Categories
 
                 if (loadedCategories.Count == 0 && CurrentAnchorCategoryId > 0)
                 {
-                    loadedCategories = (await _categoryManagementUseCase.GetPageByCursorAsync(
+                    loadedCategories = [.. await _categoryManagementUseCase.GetPageByCursorAsync(
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorCategoryId,
                         isNextPage: false,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
 
                     if (loadedCategories.Count > 0 && CurrentPage > 1)
                     {
@@ -39,32 +39,22 @@ namespace Mercadito.Pages.Categories
                 {
                     CurrentAnchorCategoryId = 0;
                     CurrentPage = 1;
-                    loadedCategories = (await _categoryManagementUseCase.GetPageFromAnchorAsync(
+                    loadedCategories = [.. await _categoryManagementUseCase.GetPageFromAnchorAsync(
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorCategoryId,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
                 }
 
                 Categories = loadedCategories;
-                CurrentAnchorCategoryId = Categories.Count > 0 ? Categories[0].Id : 0;
+                CurrentAnchorCategoryId = _listingPageStateService.ResolveCurrentAnchorId(Categories, category => category.Id);
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar categorías.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar categorías.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar categorías");
                 ModelState.AddModelError(string.Empty, "Error al cargar las categorías. Intente nuevamente.");
                 Categories = [];
                 HasPreviousPage = false;
@@ -100,31 +90,14 @@ namespace Mercadito.Pages.Categories
                 }
 
                 Categories = [.. categories];
-                CurrentAnchorCategoryId = Categories.Count > 0 ? Categories[0].Id : 0;
-                if (isNextPage)
-                {
-                    CurrentPage++;
-                }
-                else if (CurrentPage > 1)
-                {
-                    CurrentPage--;
-                }
+                CurrentAnchorCategoryId = _listingPageStateService.ResolveCurrentAnchorId(Categories, category => category.Id);
+                CurrentPage = _listingPageStateService.MoveCurrentPage(CurrentPage, isNextPage);
 
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar categorías con cursor.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar categorías con cursor.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar categorías con cursor");
                 await LoadCategoriesFromAnchorAsync();
             }
         }
@@ -169,84 +142,26 @@ namespace Mercadito.Pages.Categories
             {
                 NextCategoryCodePreview = await _categoryManagementUseCase.GetNextCategoryCodePreviewAsync(HttpContext.RequestAborted);
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al generar vista previa de código de categoría.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al generar vista previa de código de categoría.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning(exception, "No se pudo obtener la vista previa del próximo código de categoría");
                 NextCategoryCodePreview = "C00001";
             }
         }
 
         private void SetPendingNavigation(string navigationMode, long cursorCategoryId)
         {
-            if (cursorCategoryId <= 0 || !TryResolveNavigationMode(navigationMode, out var normalizedNavigationMode))
-            {
-                ClearPendingNavigation();
-                return;
-            }
-
-            HttpContext.Session.SetString(PendingNavigationModeSessionKey, normalizedNavigationMode);
-            HttpContext.Session.SetString(PendingNavigationCursorCategoryIdSessionKey, cursorCategoryId.ToString(CultureInfo.InvariantCulture));
+            _listingPageStateService.SetPendingNavigation(HttpContext.Session, ListingSessionKeys, navigationMode, cursorCategoryId);
         }
 
-        private PendingNavigationState? PopPendingNavigation()
+        private KeysetPendingNavigationState? PopPendingNavigation()
         {
-            var rawNavigationMode = HttpContext.Session.GetString(PendingNavigationModeSessionKey);
-            var rawCursorCategoryId = HttpContext.Session.GetString(PendingNavigationCursorCategoryIdSessionKey);
-            ClearPendingNavigation();
-
-            if (!TryResolveNavigationMode(rawNavigationMode, out var normalizedNavigationMode))
-            {
-                return null;
-            }
-
-            if (!long.TryParse(rawCursorCategoryId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cursorCategoryId) || cursorCategoryId <= 0)
-            {
-                return null;
-            }
-
-            return new PendingNavigationState(
-                string.Equals(normalizedNavigationMode, NavigationModeNext, StringComparison.Ordinal),
-                cursorCategoryId);
+            return _listingPageStateService.PopPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
         private void ClearPendingNavigation()
         {
-            HttpContext.Session.Remove(PendingNavigationModeSessionKey);
-            HttpContext.Session.Remove(PendingNavigationCursorCategoryIdSessionKey);
-        }
-
-        private static bool TryResolveNavigationMode(string? navigationMode, out string normalizedNavigationMode)
-        {
-            if (string.Equals(navigationMode, NavigationModeNext, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModeNext;
-                return true;
-            }
-
-            if (string.Equals(navigationMode, NavigationModePrevious, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModePrevious;
-                return true;
-            }
-
-            normalizedNavigationMode = string.Empty;
-            return false;
-        }
-
-        private readonly struct PendingNavigationState(bool isNextPage, long cursorCategoryId)
-        {
-            public bool IsNextPage { get; } = isNextPage;
-            public long CursorCategoryId { get; } = cursorCategoryId;
+            _listingPageStateService.ClearPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
     }
 }

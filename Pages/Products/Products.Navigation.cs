@@ -1,5 +1,5 @@
-﻿using System.Globalization;
-using MySqlConnector;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages.Products
 {
@@ -42,33 +42,23 @@ namespace Mercadito.Pages.Products
                 {
                     CurrentAnchorProductId = 0;
                     CurrentPage = 1;
-                    loadedProducts = (await _productManagementUseCase.GetPageFromAnchorAsync(
+                    loadedProducts = [.. await _productManagementUseCase.GetPageFromAnchorAsync(
                         CategoryFilter,
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorProductId,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
                 }
 
                 Products = loadedProducts;
-                CurrentAnchorProductId = Products.Count > 0 ? Products[0].Id : 0;
+                CurrentAnchorProductId = _listingPageStateService.ResolveCurrentAnchorId(Products, product => product.Id);
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar productos.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar productos.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar productos");
                 Products = [];
                 HasPreviousPage = false;
                 HasNextPage = false;
@@ -105,31 +95,14 @@ namespace Mercadito.Pages.Products
                 }
 
                 Products = [.. result];
-                CurrentAnchorProductId = Products.Count > 0 ? Products[0].Id : 0;
-                if (isNextPage)
-                {
-                    CurrentPage++;
-                }
-                else if (CurrentPage > 1)
-                {
-                    CurrentPage--;
-                }
+                CurrentAnchorProductId = _listingPageStateService.ResolveCurrentAnchorId(Products, product => product.Id);
+                CurrentPage = _listingPageStateService.MoveCurrentPage(CurrentPage, isNextPage);
 
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar productos con cursor.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar productos con cursor.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar productos con cursor");
                 await LoadProductsFromAnchorAsync();
             }
         }
@@ -177,84 +150,26 @@ namespace Mercadito.Pages.Products
             {
                 Categories = [.. await _productManagementUseCase.GetCategoriesAsync(HttpContext.RequestAborted)];
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar categorías para productos.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar categorías para productos.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar categorías");
                 Categories = [];
             }
         }
 
         private void SetPendingNavigation(string navigationMode, long cursorProductId)
         {
-            if (cursorProductId <= 0 || !TryResolveNavigationMode(navigationMode, out var normalizedNavigationMode))
-            {
-                ClearPendingNavigation();
-                return;
-            }
-
-            HttpContext.Session.SetString(PendingNavigationModeSessionKey, normalizedNavigationMode);
-            HttpContext.Session.SetString(PendingNavigationCursorProductIdSessionKey, cursorProductId.ToString(CultureInfo.InvariantCulture));
+            _listingPageStateService.SetPendingNavigation(HttpContext.Session, ListingSessionKeys, navigationMode, cursorProductId);
         }
 
-        private PendingNavigationState? PopPendingNavigation()
+        private KeysetPendingNavigationState? PopPendingNavigation()
         {
-            var rawNavigationMode = HttpContext.Session.GetString(PendingNavigationModeSessionKey);
-            var rawCursorProductId = HttpContext.Session.GetString(PendingNavigationCursorProductIdSessionKey);
-            ClearPendingNavigation();
-
-            if (!TryResolveNavigationMode(rawNavigationMode, out var normalizedNavigationMode))
-            {
-                return null;
-            }
-
-            if (!long.TryParse(rawCursorProductId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cursorProductId) || cursorProductId <= 0)
-            {
-                return null;
-            }
-
-            return new PendingNavigationState(
-                string.Equals(normalizedNavigationMode, NavigationModeNext, StringComparison.Ordinal),
-                cursorProductId);
+            return _listingPageStateService.PopPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
         private void ClearPendingNavigation()
         {
-            HttpContext.Session.Remove(PendingNavigationModeSessionKey);
-            HttpContext.Session.Remove(PendingNavigationCursorProductIdSessionKey);
-        }
-
-        private static bool TryResolveNavigationMode(string? navigationMode, out string normalizedNavigationMode)
-        {
-            if (string.Equals(navigationMode, NavigationModeNext, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModeNext;
-                return true;
-            }
-
-            if (string.Equals(navigationMode, NavigationModePrevious, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModePrevious;
-                return true;
-            }
-
-            normalizedNavigationMode = string.Empty;
-            return false;
-        }
-
-        private readonly struct PendingNavigationState(bool isNextPage, long cursorProductId)
-        {
-            public bool IsNextPage { get; } = isNextPage;
-            public long CursorProductId { get; } = cursorProductId;
+            _listingPageStateService.ClearPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
     }
 }

@@ -1,62 +1,47 @@
 using Mercadito.src.products.domain.entities;
-using Mercadito.src.products.application.models;
-using System;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.src.products.domain.factories
 {
     public class ProductFactory : IProductFactory
     {
-        public Product CreateForInsert(CreateProductDto dto)
+        public Product CreateForInsert(CreateProductValues input)
         {
+            ArgumentNullException.ThrowIfNull(input);
+
             return new Product
             {
-                Name = NormalizeName(dto.Name),
-                Description = NormalizeRequired(dto.Description),
-                Stock = dto.Stock.GetValueOrDefault(0),
-                Batch = NormalizeBatch(dto.Batch),
-                ExpirationDate = dto.ExpirationDate,
-                Price = dto.Price.GetValueOrDefault(0m),
-                CategoryIds = NormalizeCategoryIds(dto.CategoryIds)
+                Name = ValidationText.NormalizeCollapsed(input.Name),
+                Description = ValidationText.NormalizeTrimmed(input.Description),
+                Stock = input.Stock.GetValueOrDefault(0),
+                Batch = ValidationText.NormalizeTrimmed(input.Batch),
+                ExpirationDate = input.ExpirationDate,
+                Price = input.Price.GetValueOrDefault(0m),
+                CategoryIds = NormalizeCategoryIds(input.CategoryIds)
             };
         }
 
-        public Product CreateForUpdate(UpdateProductDto dto)
+        public Product CreateForUpdate(UpdateProductValues input)
         {
+            ArgumentNullException.ThrowIfNull(input);
+
             return new Product
             {
-                Id = dto.Id,
-                Name = NormalizeName(dto.Name),
-                Description = NormalizeRequired(dto.Description),
-                Stock = dto.Stock.GetValueOrDefault(0),
-                Batch = NormalizeBatch(dto.Batch),
-                ExpirationDate = dto.ExpirationDate,
-                Price = dto.Price.GetValueOrDefault(0m),
-                CategoryIds = NormalizeCategoryIds(dto.CategoryIds)
+                Id = input.Id,
+                Name = ValidationText.NormalizeCollapsed(input.Name),
+                Description = ValidationText.NormalizeTrimmed(input.Description),
+                Stock = input.Stock.GetValueOrDefault(0),
+                Batch = ValidationText.NormalizeTrimmed(input.Batch),
+                ExpirationDate = input.ExpirationDate,
+                Price = input.Price.GetValueOrDefault(0m),
+                CategoryIds = NormalizeCategoryIds(input.CategoryIds)
             };
         }
 
-        private static string NormalizeRequired(string value)
+        private static List<long> NormalizeCategoryIds(IEnumerable<long> categoryIds)
         {
-            if (value == null)
-            {
-                return string.Empty;
-            }
+            ArgumentNullException.ThrowIfNull(categoryIds);
 
-            return value.Trim();
-        }
-
-        private static string NormalizeName(string value)
-        {
-            return CollapseSpaces(NormalizeRequired(value));
-        }
-
-        private static string NormalizeBatch(string value)
-        {
-            return NormalizeRequired(value);
-        }
-
-        private static IReadOnlyList<long> NormalizeCategoryIds(IEnumerable<long> categoryIds)
-        {
             var normalizedCategoryIds = new List<long>();
             var distinctCategoryIds = new HashSet<long>();
 
@@ -71,10 +56,5 @@ namespace Mercadito.src.products.domain.factories
             return normalizedCategoryIds;
         }
 
-        private static string CollapseSpaces(string value)
-        {
-            var segments = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            return string.Join(' ', segments);
-        }
     }
 }

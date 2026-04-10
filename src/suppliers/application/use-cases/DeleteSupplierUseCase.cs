@@ -1,27 +1,20 @@
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.suppliers.application.use_cases
+namespace Mercadito.src.suppliers.application.usecases
 {
-    public class DeleteSupplierUseCase : IDeleteSupplierUseCase
+    public class DeleteSupplierUseCase(ISupplierRepository repository) : IDeleteSupplierUseCase
     {
-        private readonly ISupplierRepository _repository;
-
-        public DeleteSupplierUseCase(ISupplierRepository repository)
-        {
-            _repository = repository;
-        }
-
         public async Task<Result<int>> ExecuteAsync(long id, CancellationToken cancellationToken = default)
         {
             if (id <= 0)
             {
-                return Result<int>.Failure(new Dictionary<string, List<string>> { { "Id", new List<string> { "El ID debe ser válido" } } });
+                return Result.Failure<int>(new Dictionary<string, List<string>> { { "Id", new List<string> { "El ID debe ser válido" } } });
             }
 
-            var rowsAffected = await _repository.DeleteAsync(id, cancellationToken);
-            return Result<int>.Success(rowsAffected);
+            var rowsAffected = await repository.DeleteAsync(id, cancellationToken);
+            return Result.Success(rowsAffected);
         }
     }
 }

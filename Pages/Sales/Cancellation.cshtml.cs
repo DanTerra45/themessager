@@ -8,7 +8,7 @@ namespace Mercadito.Pages.Sales
         public int PendingCount { get; private set; }
         public decimal AmountUnderReview { get; private set; }
 
-        public List<CancellationRequestRow> CancellationRequests { get; private set; } = [];
+        public IReadOnlyList<CancellationRequestRow> CancellationRequests { get; private set; } = [];
 
         public void OnGet()
         {

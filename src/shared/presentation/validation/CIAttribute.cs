@@ -2,10 +2,10 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
-namespace Mercadito
+namespace Mercadito.src.shared.presentation.validation
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
-    public class CIAttribute : ValidationAttribute, IClientModelValidator
+    public sealed class CIAttribute : ValidationAttribute, IClientModelValidator
     {
         private const long MinimumCiValue = 1000000L;
         private const long MaximumCiValue = 99999999L;

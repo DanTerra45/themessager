@@ -4,48 +4,38 @@ using Mercadito.src.employees.application.models;
 using Mercadito.src.employees.application.ports.input;
 using Mercadito.src.employees.application.ports.output;
 using Mercadito.src.employees.application.validation;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 using System.ComponentModel.DataAnnotations;
+using Mercadito.src.shared.domain.exceptions;
 
-namespace Mercadito.src.employees.application.use_cases
+namespace Mercadito.src.employees.application.usecases
 {
-    public class EmployeeManagementUseCase : IEmployeeManagementUseCase
+    public class EmployeeManagementUseCase(
+        IEmployeeRepository employeeRepository,
+        ICreateEmployeeValidator createEmployeeValidator,
+        IUpdateEmployeeValidator updateEmployeeValidator,
+        IAuditTrailService auditTrailService) : IEmployeeManagementUseCase
     {
-        private readonly IEmployeeRepository _employeeRepository;
-        private readonly ICreateEmployeeValidator _createEmployeeValidator;
-        private readonly IUpdateEmployeeValidator _updateEmployeeValidator;
-        private readonly IAuditTrailService _auditTrailService;
-
-        public EmployeeManagementUseCase(
-            IEmployeeRepository employeeRepository,
-            ICreateEmployeeValidator createEmployeeValidator,
-            IUpdateEmployeeValidator updateEmployeeValidator,
-            IAuditTrailService auditTrailService)
-        {
-            _employeeRepository = employeeRepository;
-            _createEmployeeValidator = createEmployeeValidator;
-            _updateEmployeeValidator = updateEmployeeValidator;
-            _auditTrailService = auditTrailService;
-        }
-
         public async Task<IReadOnlyList<EmployeeModel>> GetPageByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.GetEmployeesByCursorAsync(pageSize, sortBy, sortDirection, cursorEmployeeId, isNextPage, searchTerm, cancellationToken);
+            var employees = await employeeRepository.GetEmployeesByCursorAsync(pageSize, sortBy, sortDirection, cursorEmployeeId, isNextPage, searchTerm, cancellationToken);
+            return NormalizeContactsForUi(employees);
         }
 
         public async Task<IReadOnlyList<EmployeeModel>> GetPageFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorEmployeeId, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.GetEmployeesFromAnchorAsync(pageSize, sortBy, sortDirection, anchorEmployeeId, searchTerm, cancellationToken);
+            var employees = await employeeRepository.GetEmployeesFromAnchorAsync(pageSize, sortBy, sortDirection, anchorEmployeeId, searchTerm, cancellationToken);
+            return NormalizeContactsForUi(employees);
         }
 
         public async Task<bool> HasEmployeesByCursorAsync(string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
-            return await _employeeRepository.HasEmployeesByCursorAsync(sortBy, sortDirection, cursorEmployeeId, isNextPage, searchTerm, cancellationToken);
+            return await employeeRepository.HasEmployeesByCursorAsync(sortBy, sortDirection, cursorEmployeeId, isNextPage, searchTerm, cancellationToken);
         }
 
         public async Task<UpdateEmployeeDto?> GetForEditAsync(long employeeId, CancellationToken cancellationToken = default)
         {
-            var employee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+            var employee = await employeeRepository.GetByIdAsync(employeeId, cancellationToken);
             if (employee == null)
             {
                 return null;
@@ -66,24 +56,27 @@ namespace Mercadito.src.employees.application.use_cases
 
         public async Task<Result> CreateAsync(CreateEmployeeDto employee, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = _auditTrailService.ValidateActor(actor);
+            var actorValidation = auditTrailService.ValidateActor(actor);
             if (actorValidation.IsFailure)
             {
                 return actorValidation;
             }
 
-            var validationResult = _createEmployeeValidator.Validate(employee);
+            var validationResult = createEmployeeValidator.Validate(employee);
             if (validationResult.IsFailure)
             {
-                return validationResult.Errors.Count > 0
-                    ? Result.Failure(validationResult.Errors)
-                    : Result.Failure(validationResult.ErrorMessage);
+                if (validationResult.Errors.Count > 0)
+                {
+                    return Result.Failure(validationResult.Errors);
+                }
+
+                return Result.Failure(validationResult.ErrorMessage);
             }
 
             try
             {
-                var employeeId = await _employeeRepository.CreateAsync(validationResult.Value, cancellationToken);
-                await _auditTrailService.RecordAsync(
+                var employeeId = await employeeRepository.CreateAsync(validationResult.Value, cancellationToken);
+                await auditTrailService.RecordAsync(
                     actor,
                     AuditAction.Create,
                     "empleados",
@@ -96,9 +89,12 @@ namespace Mercadito.src.employees.application.use_cases
             }
             catch (BusinessValidationException validationException)
             {
-                return validationException.Errors.Count > 0
-                    ? Result.Failure(validationException.Errors)
-                    : Result.Failure(validationException.Message);
+                if (validationException.Errors.Count > 0)
+                {
+                    return Result.Failure(validationException.Errors);
+                }
+
+                return Result.Failure(validationException.Message);
             }
             catch (ValidationException validationException)
             {
@@ -108,30 +104,33 @@ namespace Mercadito.src.employees.application.use_cases
 
         public async Task<Result> UpdateAsync(UpdateEmployeeDto employee, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = _auditTrailService.ValidateActor(actor);
+            var actorValidation = auditTrailService.ValidateActor(actor);
             if (actorValidation.IsFailure)
             {
                 return actorValidation;
             }
 
-            var validationResult = _updateEmployeeValidator.Validate(employee);
+            var validationResult = updateEmployeeValidator.Validate(employee);
             if (validationResult.IsFailure)
             {
-                return validationResult.Errors.Count > 0
-                    ? Result.Failure(validationResult.Errors)
-                    : Result.Failure(validationResult.ErrorMessage);
+                if (validationResult.Errors.Count > 0)
+                {
+                    return Result.Failure(validationResult.Errors);
+                }
+
+                return Result.Failure(validationResult.ErrorMessage);
             }
 
             try
             {
-                var previousEmployee = await _employeeRepository.GetByIdAsync(validationResult.Value.Id, cancellationToken);
-                var affectedRows = await _employeeRepository.UpdateAsync(validationResult.Value, cancellationToken);
+                var previousEmployee = await employeeRepository.GetByIdAsync(validationResult.Value.Id, cancellationToken);
+                var affectedRows = await employeeRepository.UpdateAsync(validationResult.Value, cancellationToken);
                 if (affectedRows == 0)
                 {
                     return Result.Failure("Empleado no encontrado.");
                 }
 
-                await _auditTrailService.RecordAsync(
+                await auditTrailService.RecordAsync(
                     actor,
                     AuditAction.Update,
                     "empleados",
@@ -144,9 +143,12 @@ namespace Mercadito.src.employees.application.use_cases
             }
             catch (BusinessValidationException validationException)
             {
-                return validationException.Errors.Count > 0
-                    ? Result.Failure(validationException.Errors)
-                    : Result.Failure(validationException.Message);
+                if (validationException.Errors.Count > 0)
+                {
+                    return Result.Failure(validationException.Errors);
+                }
+
+                return Result.Failure(validationException.Message);
             }
             catch (ValidationException validationException)
             {
@@ -156,17 +158,17 @@ namespace Mercadito.src.employees.application.use_cases
 
         public async Task<bool> DeleteAsync(long employeeId, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = _auditTrailService.ValidateActor(actor);
+            var actorValidation = auditTrailService.ValidateActor(actor);
             if (actorValidation.IsFailure)
             {
                 return false;
             }
 
-            var previousEmployee = await _employeeRepository.GetByIdAsync(employeeId, cancellationToken);
-            var affectedRows = await _employeeRepository.DeleteAsync(employeeId, cancellationToken);
+            var previousEmployee = await employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+            var affectedRows = await employeeRepository.DeleteAsync(employeeId, cancellationToken);
             if (affectedRows > 0 && previousEmployee != null)
             {
-                await _auditTrailService.RecordAsync(
+                await auditTrailService.RecordAsync(
                     actor,
                     AuditAction.Delete,
                     "empleados",
@@ -197,10 +199,31 @@ namespace Mercadito.src.employees.application.use_cases
 
             if (digitsOnly.Count >= 8)
             {
-                return new string(digitsOnly.GetRange(digitsOnly.Count - 8, 8).ToArray());
+                return new string([.. digitsOnly.GetRange(digitsOnly.Count - 8, 8)]);
             }
 
-            return new string(digitsOnly.ToArray());
+            return new string([.. digitsOnly]);
+        }
+
+        private static List<EmployeeModel> NormalizeContactsForUi(IReadOnlyList<EmployeeModel> employees)
+        {
+            var normalizedEmployees = new List<EmployeeModel>(employees.Count);
+            foreach (var employee in employees)
+            {
+                normalizedEmployees.Add(new EmployeeModel
+                {
+                    Id = employee.Id,
+                    Ci = employee.Ci,
+                    Complemento = employee.Complemento,
+                    Nombres = employee.Nombres,
+                    PrimerApellido = employee.PrimerApellido,
+                    SegundoApellido = employee.SegundoApellido,
+                    Cargo = employee.Cargo,
+                    NumeroContacto = NormalizeContactForUi(employee.NumeroContacto)
+                });
+            }
+
+            return normalizedEmployees;
         }
     }
 }

@@ -2,25 +2,18 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using MySqlConnector;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.Pages;
 
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 [IgnoreAntiforgeryToken]
-public class ErrorModel : PageModel
+public class ErrorModel(ILogger<ErrorModel> logger) : PageModel
 {
     public string? RequestId { get; set; }
     public string UserMessage { get; set; } = "Ha ocurrido un error genérico al procesar su solicitud.";
 
     public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
-
-    private readonly ILogger<ErrorModel> _logger;
-
-    public ErrorModel(ILogger<ErrorModel> logger)
-    {
-        _logger = logger;
-    }
 
     public void OnGet()
     {
@@ -36,7 +29,7 @@ public class ErrorModel : PageModel
         var exceptionFeature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
         if (exceptionFeature?.Error is not null)
         {
-            _logger.LogError(exceptionFeature.Error, "Excepción no manejada en la ruta {Path}", exceptionFeature.Path);
+            logger.LogError(exceptionFeature.Error, "Excepción no manejada en la ruta {Path}", exceptionFeature.Path);
 
             if (IsDatabaseConnectionError(exceptionFeature.Error))
             {
@@ -47,7 +40,7 @@ public class ErrorModel : PageModel
 
     private static bool IsDatabaseConnectionError(Exception exception)
     {
-        if (exception is MySqlException)
+        if (exception is DataStoreUnavailableException)
         {
             return true;
         }
@@ -66,4 +59,3 @@ public class ErrorModel : PageModel
         return false;
     }
 }
-
