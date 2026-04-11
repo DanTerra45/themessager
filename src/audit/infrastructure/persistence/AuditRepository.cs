@@ -1,30 +1,29 @@
 using Dapper;
-using Mercadito.database.interfaces;
+using Mercadito.src.shared.infrastructure.persistence;
 using Mercadito.src.audit.application.ports.output;
 using Mercadito.src.audit.domain.entities;
+using MySqlConnector;
+using Mercadito.src.shared.domain.exceptions;
 
 namespace Mercadito.src.audit.infrastructure.persistence
 {
-    public sealed class AuditRepository : IAuditRepository
+    public sealed class AuditRepository(IDbConnectionFactory dbConnectionFactory) : IAuditRepository
     {
-        private readonly IDbConnectionFactory _dbConnectionFactory;
-
-        public AuditRepository(IDbConnectionFactory dbConnectionFactory)
-        {
-            _dbConnectionFactory = dbConnectionFactory;
-        }
-
         public async Task RegisterAsync(AuditEntry entry, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnectionFactory.CreateConnectionAsync(cancellationToken);
+            ArgumentNullException.ThrowIfNull(entry);
 
-            const string query = @"
-INSERT INTO auditoria
-    (usuarioId, usuarioUsername, accion, tabla, registroId, ipAddress, userAgent, datosAnteriores, datosNuevos, timestamp)
-VALUES
-    (@UserId, @Username, @Action, @TableName, @RecordId, @IpAddress, @UserAgent, @PreviousDataJson, @NewDataJson, @Timestamp);";
+            try
+            {
+                using var connection = await dbConnectionFactory.CreateConnectionAsync(cancellationToken);
 
-            var command = new CommandDefinition(
+                const string query = @"
+                        INSERT INTO auditoria
+                            (usuarioId, usuarioUsername, accion, tabla, registroId, ipAddress, userAgent, datosAnteriores, datosNuevos, timestamp)
+                        VALUES
+                            (@UserId, @Username, @Action, @TableName, @RecordId, @IpAddress, @UserAgent, @PreviousDataJson, @NewDataJson, @Timestamp);";
+
+                var command = new CommandDefinition(
                 query,
                 new
                 {
@@ -41,7 +40,16 @@ VALUES
                 },
                 cancellationToken: cancellationToken);
 
-            await connection.ExecuteAsync(command);
+                await connection.ExecuteAsync(command);
+            }
+            catch (MySqlException exception)
+            {
+                throw new DataStoreUnavailableException("No se pudo registrar la auditoría porque la base de datos no está disponible.", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw new DataStoreUnavailableException("No se pudo registrar la auditoría porque la base de datos no está disponible.", exception);
+            }
         }
 
         private static string ToDatabaseAction(AuditAction action)
@@ -56,3 +64,5 @@ VALUES
         }
     }
 }
+
+

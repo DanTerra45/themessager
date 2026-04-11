@@ -1,0 +1,145 @@
+@model Mercadito.Pages.Suppliers.SuppliersModel
+
+@{
+    string ResolveInvalidClass(string key)
+    {
+        if (ViewData.ModelState.TryGetValue(key, out var entry) && entry.Errors.Count > 0)
+        {
+            return "is-invalid";
+        }
+
+        return string.Empty;
+    }
+
+    var codigoInputClass = "form-control supplier-code-readonly";
+    var codigoInvalidClass = ResolveInvalidClass("EditSupplier.Codigo");
+    if (!string.IsNullOrWhiteSpace(codigoInvalidClass))
+    {
+        codigoInputClass += " " + codigoInvalidClass;
+    }
+
+    var razonSocialInputClass = "form-control";
+    var razonSocialInvalidClass = ResolveInvalidClass("EditSupplier.Nombre");
+    if (!string.IsNullOrWhiteSpace(razonSocialInvalidClass))
+    {
+        razonSocialInputClass += " " + razonSocialInvalidClass;
+    }
+
+    var direccionInputClass = "form-control";
+    var direccionInvalidClass = ResolveInvalidClass("EditSupplier.Direccion");
+    if (!string.IsNullOrWhiteSpace(direccionInvalidClass))
+    {
+        direccionInputClass += " " + direccionInvalidClass;
+    }
+
+    var contactoInputClass = "form-control";
+    var contactoInvalidClass = ResolveInvalidClass("EditSupplier.Contacto");
+    if (!string.IsNullOrWhiteSpace(contactoInvalidClass))
+    {
+        contactoInputClass += " " + contactoInvalidClass;
+    }
+
+    var rubroInputClass = "form-control";
+    var rubroInvalidClass = ResolveInvalidClass("EditSupplier.Rubro");
+    if (!string.IsNullOrWhiteSpace(rubroInvalidClass))
+    {
+        rubroInputClass += " " + rubroInvalidClass;
+    }
+}
+
+<form method="post" asp-page-handler="Edit" class="needs-validation" novalidate autocomplete="off" id="updateSupplierForm">
+    <input type="hidden" asp-for="EditSupplier.Id" />
+    <input type="hidden" asp-for="EditSupplier.Telefono" />
+    <section class="modal fade" id="editarProveedorModal" tabindex="-1" aria-labelledby="editarProveedorModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="editarProveedorModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-pencil-square me-2"></i> Editar Proveedor
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <section class="mb-3">
+                        <label asp-for="EditSupplier.Codigo" class="form-label fw-bold">
+                            Código
+                            @if (Model.EditFieldHints.TryGetValue("EditSupplier.Codigo", out var editCodigoHints) && editCodigoHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(editCodigoHints)">i</span>
+                            }
+                            <span asp-validation-for="EditSupplier.Codigo" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditSupplier.Codigo"
+                               class="@codigoInputClass"
+                               readonly
+                               autocomplete="off" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="EditSupplier.Nombre" class="form-label fw-bold">
+                            Razón social
+                            @if (Model.EditFieldHints.TryGetValue("EditSupplier.Nombre", out var editNombreHints) && editNombreHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(editNombreHints)">i</span>
+                            }
+                            <span asp-validation-for="EditSupplier.Nombre" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditSupplier.Nombre"
+                               class="@razonSocialInputClass"
+                               placeholder="Ejemplo: Distribuidora Centro"
+                               data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="EditSupplier.Direccion" class="form-label fw-bold">
+                            Dirección
+                            @if (Model.EditFieldHints.TryGetValue("EditSupplier.Direccion", out var editDireccionHints) && editDireccionHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(editDireccionHints)">i</span>
+                            }
+                            <span asp-validation-for="EditSupplier.Direccion" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditSupplier.Direccion"
+                               class="@direccionInputClass"
+                               placeholder="Calle, número, zona"
+                               data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="EditSupplier.Contacto" class="form-label fw-bold">
+                            Contacto
+                            @if (Model.EditFieldHints.TryGetValue("EditSupplier.Contacto", out var editContactoHints) && editContactoHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(editContactoHints)">i</span>
+                            }
+                            <span asp-validation-for="EditSupplier.Contacto" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditSupplier.Contacto"
+                               class="@contactoInputClass"
+                               placeholder="Nombre del contacto"
+                               data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-0">
+                        <label asp-for="EditSupplier.Rubro" class="form-label fw-bold">
+                            Rubro
+                            @if (Model.EditFieldHints.TryGetValue("EditSupplier.Rubro", out var editRubroHints) && editRubroHints.Count > 0)
+                            {
+                                <span class="info-tooltip" tabindex="0" data-info-message="@Model.BuildTooltipMessage(editRubroHints)">i</span>
+                            }
+                            <span asp-validation-for="EditSupplier.Rubro" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="EditSupplier.Rubro"
+                               class="@rubroInputClass"
+                               placeholder="Ejemplo: Alimentos"
+                               data-normalize="collapse" />
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="b-btn">Actualizar</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</form>

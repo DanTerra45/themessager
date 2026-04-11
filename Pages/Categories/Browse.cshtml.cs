@@ -1,13 +1,17 @@
-using System.Globalization;
 using Mercadito.Pages.Infrastructure;
 using Mercadito.src.categories.application.models;
 using Mercadito.src.categories.application.ports.input;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
+using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.Pages.Categories
 {
-    public class BrowseModel : AppPageModel
+    public class BrowseModel(
+        ILogger<BrowseModel> logger,
+        IListingPageStateService listingPageStateService,
+        ICategoryManagementUseCase categoryManagementUseCase,
+        IConfiguration configuration) : AppPageModel
     {
         private const string CurrentPageSessionKey = "CategoriesBrowse.CurrentPage";
         private const string CurrentAnchorCategoryIdSessionKey = "CategoriesBrowse.CurrentAnchorCategoryId";
@@ -18,25 +22,28 @@ namespace Mercadito.Pages.Categories
         private const string SearchTermSessionKey = "CategoriesBrowse.SearchTerm";
         private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
-        private const string NavigationModeNext = "next";
-        private const string NavigationModePrevious = "prev";
+        private static readonly KeysetListingSessionKeys ListingSessionKeys = new(
+            CurrentPageSessionKey,
+            CurrentAnchorCategoryIdSessionKey,
+            PendingNavigationModeSessionKey,
+            PendingNavigationCursorCategoryIdSessionKey,
+            SortBySessionKey,
+            SortDirectionSessionKey,
+            SearchTermSessionKey);
+        private static readonly ListingPageStateOptions ListingStateOptions = new(
+            ListingSessionKeys,
+            DefaultSortBy,
+            DefaultSortDirection,
+            NormalizeSortBy,
+            NormalizeSortDirection,
+            ValidationText.NormalizeTrimmed);
 
-        private readonly ILogger<BrowseModel> _logger;
-        private readonly ICategoryManagementUseCase _categoryManagementUseCase;
-        private readonly int _defaultPageSize;
+        private readonly ILogger<BrowseModel> _logger = logger;
+        private readonly IListingPageStateService _listingPageStateService = listingPageStateService;
+        private readonly ICategoryManagementUseCase _categoryManagementUseCase = categoryManagementUseCase;
+        private readonly int _defaultPageSize = PaginationSettings.ResolveDefaultPageSize(configuration);
 
-        public BrowseModel(
-            ILogger<BrowseModel> logger,
-            ICategoryManagementUseCase categoryManagementUseCase,
-            IConfiguration configuration)
-        {
-            _logger = logger;
-            _categoryManagementUseCase = categoryManagementUseCase;
-            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
-            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
-        }
-
-        public List<CategoryModel> Categories { get; set; } = [];
+        public IReadOnlyList<CategoryModel> Categories { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
         public bool HasPreviousPage { get; set; }
         public bool HasNextPage { get; set; }
@@ -53,7 +60,7 @@ namespace Mercadito.Pages.Categories
             var pendingNavigation = PopPendingNavigation();
             if (pendingNavigation.HasValue)
             {
-                await LoadCategoriesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorCategoryId);
+                await LoadCategoriesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorId);
             }
             else
             {
@@ -66,7 +73,13 @@ namespace Mercadito.Pages.Categories
         public IActionResult OnPostFilter(string sortBy = "", string sortDirection = "", string searchTerm = "", bool clear = false)
         {
             LoadStateFromSession();
-            SetSearchAndSortState(clear ? string.Empty : searchTerm, sortBy, sortDirection);
+            var effectiveSearchTerm = searchTerm;
+            if (clear)
+            {
+                effectiveSearchTerm = string.Empty;
+            }
+
+            SetSearchAndSortState(effectiveSearchTerm, sortBy, sortDirection);
             CurrentPage = 1;
             CurrentAnchorCategoryId = 0;
             ClearPendingNavigation();
@@ -97,87 +110,33 @@ namespace Mercadito.Pages.Categories
 
         public string GetSortIcon(string columnName)
         {
-            var normalizedColumn = NormalizeSortBy(columnName);
-            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
-            {
-                return "bi-arrow-down-up";
-            }
-
-            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "bi-sort-down"
-                : "bi-sort-up";
+            return _listingPageStateService.GetSortIcon(SortBy, SortDirection, columnName, ListingStateOptions);
         }
 
         private void SetSearchAndSortState(string searchTerm, string sortBy, string sortDirection)
         {
             SearchTerm = ResolveSearchTermFromRequest(searchTerm);
-
-            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
-            {
-                LoadSortStateFromSession();
-                return;
-            }
-
-            SortBy = NormalizeSortBy(sortBy);
-            SortDirection = NormalizeSortDirection(sortDirection);
+            (SortBy, SortDirection) = _listingPageStateService.ResolveSortState(HttpContext.Session, ListingStateOptions, sortBy, sortDirection);
         }
 
         private void LoadStateFromSession()
         {
-            var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
-            CurrentPage = !currentPageInSession.HasValue || currentPageInSession.Value <= 0
-                ? 1
-                : currentPageInSession.Value;
-
-            var rawAnchorCategoryId = HttpContext.Session.GetString(CurrentAnchorCategoryIdSessionKey);
-            CurrentAnchorCategoryId = long.TryParse(rawAnchorCategoryId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedAnchorCategoryId) && parsedAnchorCategoryId >= 0
-                ? parsedAnchorCategoryId
-                : 0;
-
-            LoadSortStateFromSession();
-            SearchTerm = NormalizeSearchTerm(HttpContext.Session.GetString(SearchTermSessionKey) ?? string.Empty);
+            ListingState = _listingPageStateService.LoadState(HttpContext.Session, ListingStateOptions);
         }
 
         private void SaveStateInSession()
         {
-            HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
-            HttpContext.Session.SetString(CurrentAnchorCategoryIdSessionKey, Math.Max(CurrentAnchorCategoryId, 0).ToString(CultureInfo.InvariantCulture));
-            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
-            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
-            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
+            _listingPageStateService.SaveState(HttpContext.Session, ListingState, ListingStateOptions);
         }
 
         private void NormalizeCurrentState()
         {
-            CurrentPage = CurrentPage > 0 ? CurrentPage : 1;
-            CurrentAnchorCategoryId = CurrentAnchorCategoryId >= 0 ? CurrentAnchorCategoryId : 0;
-            if (CurrentAnchorCategoryId == 0)
-            {
-                CurrentPage = 1;
-            }
-
-            SortBy = NormalizeSortBy(SortBy);
-            SortDirection = NormalizeSortDirection(SortDirection);
-            SearchTerm = NormalizeSearchTerm(SearchTerm);
-        }
-
-        private void LoadSortStateFromSession()
-        {
-            SortBy = NormalizeSortBy(HttpContext.Session.GetString(SortBySessionKey) ?? string.Empty);
-            SortDirection = NormalizeSortDirection(HttpContext.Session.GetString(SortDirectionSessionKey) ?? string.Empty);
+            ListingState = _listingPageStateService.NormalizeState(ListingState, ListingStateOptions);
         }
 
         private void ToggleSort(string sortBy)
         {
-            var normalizedSortBy = NormalizeSortBy(sortBy);
-            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
-            {
-                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-                return;
-            }
-
-            SortBy = normalizedSortBy;
-            SortDirection = DefaultSortDirection;
+            (SortBy, SortDirection) = _listingPageStateService.ToggleSort(SortBy, SortDirection, sortBy, ListingStateOptions);
         }
 
         private static string NormalizeSortBy(string sortBy)
@@ -187,7 +146,7 @@ namespace Mercadito.Pages.Categories
                 return DefaultSortBy;
             }
 
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            var normalizedSortBy = ValidationText.NormalizeLowerTrimmed(sortBy);
             return normalizedSortBy switch
             {
                 "code" => "code",
@@ -198,32 +157,33 @@ namespace Mercadito.Pages.Categories
 
         private static string NormalizeSortDirection(string sortDirection)
         {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "desc"
-                : "asc";
+            if (string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+            {
+                return "desc";
+            }
+
+            return "asc";
         }
 
         private string ResolveSearchTermFromRequest(string searchTerm)
         {
-            var hasSearchTermInForm = Request.HasFormContentType && Request.Form.ContainsKey("searchTerm");
-            var hasSearchTermInQuery = Request.Query.ContainsKey("searchTerm");
-
-            if (hasSearchTermInForm || hasSearchTermInQuery)
-            {
-                return NormalizeSearchTerm(searchTerm);
-            }
-
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                return NormalizeSearchTerm(HttpContext.Session.GetString(SearchTermSessionKey) ?? string.Empty);
-            }
-
-            return NormalizeSearchTerm(searchTerm);
+            return _listingPageStateService.ResolveSearchTermFromRequest(Request, HttpContext.Session, ListingStateOptions, searchTerm);
         }
 
-        private static string NormalizeSearchTerm(string searchTerm)
+        private KeysetListingSessionState ListingState
         {
-            return string.IsNullOrWhiteSpace(searchTerm) ? string.Empty : searchTerm.Trim();
+            get
+            {
+                return new KeysetListingSessionState(CurrentPage, CurrentAnchorCategoryId, SortBy, SortDirection, SearchTerm);
+            }
+            set
+            {
+                CurrentPage = value.CurrentPage;
+                CurrentAnchorCategoryId = value.CurrentAnchorId;
+                SortBy = value.SortBy;
+                SortDirection = value.SortDirection;
+                SearchTerm = value.SearchTerm;
+            }
         }
 
         private async Task LoadCategoriesFromAnchorAsync()
@@ -241,14 +201,14 @@ namespace Mercadito.Pages.Categories
 
                 if (loadedCategories.Count == 0 && CurrentAnchorCategoryId > 0)
                 {
-                    loadedCategories = (await _categoryManagementUseCase.GetPageByCursorAsync(
+                    loadedCategories = [.. await _categoryManagementUseCase.GetPageByCursorAsync(
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorCategoryId,
                         isNextPage: false,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
 
                     if (loadedCategories.Count > 0 && CurrentPage > 1)
                     {
@@ -260,32 +220,22 @@ namespace Mercadito.Pages.Categories
                 {
                     CurrentAnchorCategoryId = 0;
                     CurrentPage = 1;
-                    loadedCategories = (await _categoryManagementUseCase.GetPageFromAnchorAsync(
+                    loadedCategories = [.. await _categoryManagementUseCase.GetPageFromAnchorAsync(
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorCategoryId,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
                 }
 
                 Categories = loadedCategories;
-                CurrentAnchorCategoryId = Categories.Count > 0 ? Categories[0].Id : 0;
+                CurrentAnchorCategoryId = _listingPageStateService.ResolveCurrentAnchorId(Categories, category => category.Id);
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar consulta de categorías.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar consulta de categorías.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar consulta de categorías");
                 Categories = [];
                 HasPreviousPage = false;
                 HasNextPage = false;
@@ -320,31 +270,14 @@ namespace Mercadito.Pages.Categories
                 }
 
                 Categories = [.. categories];
-                CurrentAnchorCategoryId = Categories.Count > 0 ? Categories[0].Id : 0;
-                if (isNextPage)
-                {
-                    CurrentPage++;
-                }
-                else if (CurrentPage > 1)
-                {
-                    CurrentPage--;
-                }
+                CurrentAnchorCategoryId = _listingPageStateService.ResolveCurrentAnchorId(Categories, category => category.Id);
+                CurrentPage = _listingPageStateService.MoveCurrentPage(CurrentPage, isNextPage);
 
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar consulta de categorías con cursor.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar consulta de categorías con cursor.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar consulta de categorías con cursor");
                 await LoadCategoriesFromAnchorAsync();
             }
         }
@@ -385,65 +318,18 @@ namespace Mercadito.Pages.Categories
 
         private void SetPendingNavigation(string navigationMode, long cursorCategoryId)
         {
-            if (cursorCategoryId <= 0 || !TryResolveNavigationMode(navigationMode, out var normalizedNavigationMode))
-            {
-                ClearPendingNavigation();
-                return;
-            }
-
-            HttpContext.Session.SetString(PendingNavigationModeSessionKey, normalizedNavigationMode);
-            HttpContext.Session.SetString(PendingNavigationCursorCategoryIdSessionKey, cursorCategoryId.ToString(CultureInfo.InvariantCulture));
+            _listingPageStateService.SetPendingNavigation(HttpContext.Session, ListingSessionKeys, navigationMode, cursorCategoryId);
         }
 
-        private PendingNavigationState? PopPendingNavigation()
+        private KeysetPendingNavigationState? PopPendingNavigation()
         {
-            var rawNavigationMode = HttpContext.Session.GetString(PendingNavigationModeSessionKey);
-            var rawCursorCategoryId = HttpContext.Session.GetString(PendingNavigationCursorCategoryIdSessionKey);
-            ClearPendingNavigation();
-
-            if (!TryResolveNavigationMode(rawNavigationMode, out var normalizedNavigationMode))
-            {
-                return null;
-            }
-
-            if (!long.TryParse(rawCursorCategoryId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cursorCategoryId) || cursorCategoryId <= 0)
-            {
-                return null;
-            }
-
-            return new PendingNavigationState(
-                string.Equals(normalizedNavigationMode, NavigationModeNext, StringComparison.Ordinal),
-                cursorCategoryId);
+            return _listingPageStateService.PopPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
         private void ClearPendingNavigation()
         {
-            HttpContext.Session.Remove(PendingNavigationModeSessionKey);
-            HttpContext.Session.Remove(PendingNavigationCursorCategoryIdSessionKey);
+            _listingPageStateService.ClearPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
-        private static bool TryResolveNavigationMode(string? navigationMode, out string normalizedNavigationMode)
-        {
-            if (string.Equals(navigationMode, NavigationModeNext, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModeNext;
-                return true;
-            }
-
-            if (string.Equals(navigationMode, NavigationModePrevious, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModePrevious;
-                return true;
-            }
-
-            normalizedNavigationMode = string.Empty;
-            return false;
-        }
-
-        private readonly struct PendingNavigationState(bool isNextPage, long cursorCategoryId)
-        {
-            public bool IsNextPage { get; } = isNextPage;
-            public long CursorCategoryId { get; } = cursorCategoryId;
-        }
     }
 }

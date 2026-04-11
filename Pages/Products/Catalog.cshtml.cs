@@ -1,14 +1,18 @@
-using System.Globalization;
 using Mercadito.Pages.Infrastructure;
 using Mercadito.src.categories.application.models;
 using Mercadito.src.products.application.models;
 using Mercadito.src.products.application.ports.input;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
+using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.Pages.Products
 {
-    public class CatalogModel : AppPageModel, IProductListingPageModel
+    public class CatalogModel(
+        ILogger<CatalogModel> logger,
+        IListingPageStateService listingPageStateService,
+        IProductManagementUseCase productManagementUseCase,
+        IConfiguration configuration) : AppPageModel, IProductListingPageModel
     {
         private const string CurrentPageSessionKey = "Catalog.CurrentPage";
         private const string CategoryFilterSessionKey = "Catalog.CategoryFilter";
@@ -24,26 +28,29 @@ namespace Mercadito.Pages.Products
         private const string OrderPresetAlphabeticalAsc = "az";
         private const string OrderPresetAlphabeticalDesc = "za";
         private const string OrderPresetCustom = "custom";
-        private const string NavigationModeNext = "next";
-        private const string NavigationModePrevious = "prev";
+        private static readonly KeysetListingSessionKeys ListingSessionKeys = new(
+            CurrentPageSessionKey,
+            CurrentAnchorProductIdSessionKey,
+            PendingNavigationModeSessionKey,
+            PendingNavigationCursorProductIdSessionKey,
+            SortBySessionKey,
+            SortDirectionSessionKey,
+            SearchTermSessionKey);
+        private static readonly ListingPageStateOptions ListingStateOptions = new(
+            ListingSessionKeys,
+            DefaultSortBy,
+            DefaultSortDirection,
+            NormalizeSortBy,
+            NormalizeSortDirection,
+            ValidationText.NormalizeTrimmed);
 
-        private readonly ILogger<CatalogModel> _logger;
-        private readonly IProductManagementUseCase _productManagementUseCase;
-        private readonly int _defaultPageSize;
+        private readonly ILogger<CatalogModel> _logger = logger;
+        private readonly IListingPageStateService _listingPageStateService = listingPageStateService;
+        private readonly IProductManagementUseCase _productManagementUseCase = productManagementUseCase;
+        private readonly int _defaultPageSize = PaginationSettings.ResolveDefaultPageSize(configuration);
 
-        public CatalogModel(
-            ILogger<CatalogModel> logger,
-            IProductManagementUseCase productManagementUseCase,
-            IConfiguration configuration)
-        {
-            _logger = logger;
-            _productManagementUseCase = productManagementUseCase;
-            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
-            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
-        }
-
-        public List<ProductWithCategoriesModel> Products { get; set; } = [];
-        public List<CategoryModel> Categories { get; set; } = [];
+        public IReadOnlyList<ProductWithCategoriesModel> Products { get; set; } = [];
+        public IReadOnlyList<CategoryModel> Categories { get; set; } = [];
         public long CategoryFilter { get; set; }
         public int CurrentPage { get; set; } = 1;
         public bool HasPreviousPage { get; set; }
@@ -63,7 +70,7 @@ namespace Mercadito.Pages.Products
             var pendingNavigation = PopPendingNavigation();
             if (pendingNavigation.HasValue)
             {
-                await LoadProductsByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorProductId);
+                await LoadProductsByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorId);
             }
             else
             {
@@ -129,15 +136,7 @@ namespace Mercadito.Pages.Products
 
         public string GetSortIcon(string columnName)
         {
-            var normalizedColumn = NormalizeSortBy(columnName);
-            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
-            {
-                return "bi-arrow-down-up";
-            }
-
-            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "bi-sort-down"
-                : "bi-sort-up";
+            return _listingPageStateService.GetSortIcon(SortBy, SortDirection, columnName, ListingStateOptions);
         }
 
         private async Task LoadProductsFromAnchorAsync()
@@ -177,33 +176,23 @@ namespace Mercadito.Pages.Products
                 {
                     CurrentAnchorProductId = 0;
                     CurrentPage = 1;
-                    loadedProducts = (await _productManagementUseCase.GetPageFromAnchorAsync(
+                    loadedProducts = [.. await _productManagementUseCase.GetPageFromAnchorAsync(
                         CategoryFilter,
                         _defaultPageSize,
                         SortBy,
                         SortDirection,
                         CurrentAnchorProductId,
                         SearchTerm,
-                        cancellationToken)).ToList();
+                        cancellationToken)];
                 }
 
                 Products = loadedProducts;
-                CurrentAnchorProductId = Products.Count > 0 ? Products[0].Id : 0;
+                CurrentAnchorProductId = _listingPageStateService.ResolveCurrentAnchorId(Products, product => product.Id);
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar catálogo.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar catálogo.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar catálogo");
                 Products = [];
                 HasPreviousPage = false;
                 HasNextPage = false;
@@ -240,31 +229,14 @@ namespace Mercadito.Pages.Products
                 }
 
                 Products = [.. result];
-                CurrentAnchorProductId = Products.Count > 0 ? Products[0].Id : 0;
-                if (isNextPage)
-                {
-                    CurrentPage++;
-                }
-                else if (CurrentPage > 1)
-                {
-                    CurrentPage--;
-                }
+                CurrentAnchorProductId = _listingPageStateService.ResolveCurrentAnchorId(Products, product => product.Id);
+                CurrentPage = _listingPageStateService.MoveCurrentPage(CurrentPage, isNextPage);
 
                 await UpdateNavigationFlagsAsync();
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar catálogo con cursor.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar catálogo con cursor.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar catálogo con cursor");
                 await LoadProductsFromAnchorAsync();
             }
         }
@@ -312,56 +284,35 @@ namespace Mercadito.Pages.Products
             {
                 Categories = [.. await _productManagementUseCase.GetCategoriesAsync(HttpContext.RequestAborted)];
             }
-            catch (MySqlException exception)
+            catch (DataStoreUnavailableException exception)
             {
                 _logger.LogError(exception, "Base de datos no disponible al cargar categorías para catálogo.");
-                throw;
-            }
-            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
-            {
-                _logger.LogError(exception, "Base de datos no disponible al cargar categorías para catálogo.");
-                throw;
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Error al cargar categorías del catálogo");
                 Categories = [];
             }
         }
 
         private void SetFilterAndState(long categoryFilter, string sortBy, string sortDirection, string searchTerm)
         {
-            CategoryFilter = categoryFilter >= 0 ? categoryFilter : 0;
-            SearchTerm = ResolveSearchTermFromRequest(searchTerm);
-
-            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
+            CategoryFilter = 0;
+            if (categoryFilter >= 0)
             {
-                LoadSortStateFromSession();
-                OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
-                return;
+                CategoryFilter = categoryFilter;
             }
-
-            SortBy = NormalizeSortBy(sortBy);
-            SortDirection = NormalizeSortDirection(sortDirection);
+            SearchTerm = ResolveSearchTermFromRequest(searchTerm);
+            (SortBy, SortDirection) = _listingPageStateService.ResolveSortState(HttpContext.Session, ListingStateOptions, sortBy, sortDirection);
             OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
         }
 
         private void NormalizeCurrentState()
         {
-            CurrentPage = CurrentPage > 0 ? CurrentPage : 1;
-            CategoryFilter = CategoryFilter >= 0 ? CategoryFilter : 0;
-            CurrentAnchorProductId = CurrentAnchorProductId >= 0 ? CurrentAnchorProductId : 0;
-            if (CurrentAnchorProductId == 0)
+            if (CategoryFilter < 0)
             {
-                CurrentPage = 1;
+                CategoryFilter = 0;
             }
-
-            SearchTerm = NormalizeSearchTerm(SearchTerm);
-            SortBy = NormalizeSortBy(SortBy);
-            SortDirection = NormalizeSortDirection(SortDirection);
+            ListingState = _listingPageStateService.NormalizeState(ListingState, ListingStateOptions);
             OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
 
-            if (CategoryFilter > 0 && Categories.Count > 0 && !Categories.Exists(category => category.Id == CategoryFilter))
+            if (CategoryFilter > 0 && Categories.Count > 0 && !Categories.Any(category => category.Id == CategoryFilter))
             {
                 CategoryFilter = 0;
             }
@@ -369,56 +320,20 @@ namespace Mercadito.Pages.Products
 
         private void LoadStateFromSession()
         {
-            var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
-            CurrentPage = !currentPageInSession.HasValue || currentPageInSession.Value <= 0
-                ? 1
-                : currentPageInSession.Value;
-
-            var rawCategoryFilter = HttpContext.Session.GetString(CategoryFilterSessionKey);
-            CategoryFilter = long.TryParse(rawCategoryFilter, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedCategoryFilter) && parsedCategoryFilter >= 0
-                ? parsedCategoryFilter
-                : 0;
-
-            var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
-            SearchTerm = NormalizeSearchTerm(persistedSearchTerm ?? string.Empty);
-
-            var rawAnchorProductId = HttpContext.Session.GetString(CurrentAnchorProductIdSessionKey);
-            CurrentAnchorProductId = long.TryParse(rawAnchorProductId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedAnchorProductId) && parsedAnchorProductId >= 0
-                ? parsedAnchorProductId
-                : 0;
-
-            LoadSortStateFromSession();
+            ListingState = _listingPageStateService.LoadState(HttpContext.Session, ListingStateOptions);
+            CategoryFilter = _listingPageStateService.LoadNonNegativeLong(HttpContext.Session, CategoryFilterSessionKey);
+            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
         }
 
         private void SaveStateInSession()
         {
-            HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
-            HttpContext.Session.SetString(CategoryFilterSessionKey, Math.Max(CategoryFilter, 0).ToString(CultureInfo.InvariantCulture));
-            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
-            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
-            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
-            HttpContext.Session.SetString(CurrentAnchorProductIdSessionKey, Math.Max(CurrentAnchorProductId, 0).ToString(CultureInfo.InvariantCulture));
-        }
-
-        private void LoadSortStateFromSession()
-        {
-            SortBy = NormalizeSortBy(HttpContext.Session.GetString(SortBySessionKey) ?? string.Empty);
-            SortDirection = NormalizeSortDirection(HttpContext.Session.GetString(SortDirectionSessionKey) ?? string.Empty);
-            OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
+            _listingPageStateService.SaveState(HttpContext.Session, ListingState, ListingStateOptions);
+            _listingPageStateService.SaveNonNegativeLong(HttpContext.Session, CategoryFilterSessionKey, CategoryFilter);
         }
 
         private void ToggleSort(string sortBy)
         {
-            var normalizedSortBy = NormalizeSortBy(sortBy);
-            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
-            {
-                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-                OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
-                return;
-            }
-
-            SortBy = normalizedSortBy;
-            SortDirection = DefaultSortDirection;
+            (SortBy, SortDirection) = _listingPageStateService.ToggleSort(SortBy, SortDirection, sortBy, ListingStateOptions);
             OrderPreset = ResolveOrderPreset(SortBy, SortDirection);
         }
 
@@ -463,78 +378,38 @@ namespace Mercadito.Pages.Products
 
         private void SetPendingNavigation(string navigationMode, long cursorProductId)
         {
-            if (cursorProductId <= 0 || !TryResolveNavigationMode(navigationMode, out var normalizedNavigationMode))
-            {
-                ClearPendingNavigation();
-                return;
-            }
-
-            HttpContext.Session.SetString(PendingNavigationModeSessionKey, normalizedNavigationMode);
-            HttpContext.Session.SetString(PendingNavigationCursorProductIdSessionKey, cursorProductId.ToString(CultureInfo.InvariantCulture));
+            _listingPageStateService.SetPendingNavigation(HttpContext.Session, ListingSessionKeys, navigationMode, cursorProductId);
         }
 
-        private PendingNavigationState? PopPendingNavigation()
+        private KeysetPendingNavigationState? PopPendingNavigation()
         {
-            var rawNavigationMode = HttpContext.Session.GetString(PendingNavigationModeSessionKey);
-            var rawCursorProductId = HttpContext.Session.GetString(PendingNavigationCursorProductIdSessionKey);
-            ClearPendingNavigation();
-
-            if (!TryResolveNavigationMode(rawNavigationMode, out var normalizedNavigationMode))
-            {
-                return null;
-            }
-
-            if (!long.TryParse(rawCursorProductId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var cursorProductId) || cursorProductId <= 0)
-            {
-                return null;
-            }
-
-            return new PendingNavigationState(
-                string.Equals(normalizedNavigationMode, NavigationModeNext, StringComparison.Ordinal),
-                cursorProductId);
+            return _listingPageStateService.PopPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
         private void ClearPendingNavigation()
         {
-            HttpContext.Session.Remove(PendingNavigationModeSessionKey);
-            HttpContext.Session.Remove(PendingNavigationCursorProductIdSessionKey);
-        }
-
-        private static bool TryResolveNavigationMode(string? navigationMode, out string normalizedNavigationMode)
-        {
-            if (string.Equals(navigationMode, NavigationModeNext, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModeNext;
-                return true;
-            }
-
-            if (string.Equals(navigationMode, NavigationModePrevious, StringComparison.OrdinalIgnoreCase))
-            {
-                normalizedNavigationMode = NavigationModePrevious;
-                return true;
-            }
-
-            normalizedNavigationMode = string.Empty;
-            return false;
+            _listingPageStateService.ClearPendingNavigation(HttpContext.Session, ListingSessionKeys);
         }
 
         private string ResolveSearchTermFromRequest(string searchTerm)
         {
-            var hasSearchTermInForm = Request.HasFormContentType && Request.Form.ContainsKey("searchTerm");
-            var hasSearchTermInQuery = Request.Query.ContainsKey("searchTerm");
+            return _listingPageStateService.ResolveSearchTermFromRequest(Request, HttpContext.Session, ListingStateOptions, searchTerm);
+        }
 
-            if (hasSearchTermInForm || hasSearchTermInQuery)
+        private KeysetListingSessionState ListingState
+        {
+            get
             {
-                return NormalizeSearchTerm(searchTerm);
+                return new KeysetListingSessionState(CurrentPage, CurrentAnchorProductId, SortBy, SortDirection, SearchTerm);
             }
-
-            if (string.IsNullOrWhiteSpace(searchTerm))
+            set
             {
-                var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
-                return NormalizeSearchTerm(persistedSearchTerm ?? string.Empty);
+                CurrentPage = value.CurrentPage;
+                CurrentAnchorProductId = value.CurrentAnchorId;
+                SearchTerm = value.SearchTerm;
+                SortBy = value.SortBy;
+                SortDirection = value.SortDirection;
             }
-
-            return NormalizeSearchTerm(searchTerm);
         }
 
         private static string NormalizeOrderPreset(string orderPreset)
@@ -544,7 +419,7 @@ namespace Mercadito.Pages.Products
                 return string.Empty;
             }
 
-            var normalizedOrderPreset = orderPreset.Trim().ToLowerInvariant();
+            var normalizedOrderPreset = ValidationText.NormalizeLowerTrimmed(orderPreset);
             return normalizedOrderPreset switch
             {
                 OrderPresetRecent => OrderPresetRecent,
@@ -585,7 +460,7 @@ namespace Mercadito.Pages.Products
                 return DefaultSortBy;
             }
 
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            var normalizedSortBy = ValidationText.NormalizeLowerTrimmed(sortBy);
             return normalizedSortBy switch
             {
                 "id" => "id",
@@ -599,22 +474,12 @@ namespace Mercadito.Pages.Products
 
         private static string NormalizeSortDirection(string sortDirection)
         {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "desc"
-                : "asc";
-        }
+            if (string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+            {
+                return "desc";
+            }
 
-        private static string NormalizeSearchTerm(string searchTerm)
-        {
-            return string.IsNullOrWhiteSpace(searchTerm)
-                ? string.Empty
-                : searchTerm.Trim();
-        }
-
-        private readonly struct PendingNavigationState(bool isNextPage, long cursorProductId)
-        {
-            public bool IsNextPage { get; } = isNextPage;
-            public long CursorProductId { get; } = cursorProductId;
+            return "asc";
         }
     }
 }

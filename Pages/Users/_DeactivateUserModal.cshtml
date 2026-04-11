@@ -1,0 +1,36 @@
+@model Mercadito.Pages.Users.UsersModel
+@{
+    var deactivateTargetUsername = "este usuario";
+    if (!string.IsNullOrWhiteSpace(Model.DeactivateUsername))
+    {
+        deactivateTargetUsername = Model.DeactivateUsername;
+    }
+}
+
+<form method="post" asp-page-handler="Deactivate">
+    <section class="modal fade" id="deactivateUserModal" tabindex="-1" aria-labelledby="deactivateUserModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <input asp-for="DeactivateUserId" type="hidden" />
+                <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
+                    <h5 class="modal-title" id="deactivateUserModalLabel" style="font-family: var(--font-display); font-weight: 800; color: white;">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Confirmar baja
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <p class="mb-3" style="font-size: 1.1rem;">Se dará de baja al usuario seleccionado.</p>
+                    <p class="mb-0" style="font-family: var(--font-mono); padding: 1rem; background-color: var(--mrc-surface-alt); border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm);">
+                        Usuario: <strong id="deactivateUserName" style="font-size: 1.2rem;">@deactivateTargetUsername</strong>
+                    </p>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn b-btn-danger">
+                        <i class="bi bi-person-dash me-1"></i> Dar de baja
+                    </button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</form>

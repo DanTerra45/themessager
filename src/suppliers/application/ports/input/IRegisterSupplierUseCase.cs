@@ -1,5 +1,5 @@
 using Mercadito.src.suppliers.application.models;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.suppliers.application.ports.input
 {

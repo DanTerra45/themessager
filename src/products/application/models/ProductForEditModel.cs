@@ -9,7 +9,6 @@ namespace Mercadito.src.products.application.models
         public required string Batch { get; set; }
         public DateOnly ExpirationDate { get; set; }
         public decimal Price { get; set; }
-        public List<long> CategoryIds { get; set; } = [];
+        public IReadOnlyList<long> CategoryIds { get; set; } = [];
     }
 }
-

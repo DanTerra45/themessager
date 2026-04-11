@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
     internal static class PasswordResetTokenCodec
     {

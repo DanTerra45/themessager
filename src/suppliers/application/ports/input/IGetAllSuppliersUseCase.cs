@@ -1,10 +1,10 @@
 using Mercadito.src.suppliers.application.models;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.suppliers.application.ports.input
 {
     public interface IGetAllSuppliersUseCase
     {
-        Task<Result<List<SupplierDto>>> ExecuteAsync(CancellationToken cancellationToken = default);
+        Task<Result<IReadOnlyList<SupplierDto>>> ExecuteAsync(CancellationToken cancellationToken = default);
     }
 }

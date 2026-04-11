@@ -1,13 +1,12 @@
-using Mercadito.database;
-using Mercadito.database.interfaces;
+using Mercadito.src.shared.infrastructure.persistence;
 using Mercadito.src.audit.application.ports.input;
 using Mercadito.src.audit.application.ports.output;
 using Mercadito.src.audit.application.services;
-using Mercadito.src.audit.application.use_cases;
+using Mercadito.src.audit.application.usecases;
 using Mercadito.src.audit.infrastructure.persistence;
 using Mercadito.src.categories.application.ports.input;
 using Mercadito.src.categories.application.ports.output;
-using Mercadito.src.categories.application.use_cases;
+using Mercadito.src.categories.application.usecases;
 using Mercadito.src.categories.application.validation;
 using Mercadito.src.categories.domain.factories;
 using Mercadito.src.categories.infrastructure.persistence;
@@ -18,30 +17,33 @@ using Mercadito.src.notifications.infrastructure.options;
 using Mercadito.src.notifications.infrastructure.persistence;
 using Mercadito.src.employees.application.ports.input;
 using Mercadito.src.employees.application.ports.output;
-using Mercadito.src.employees.application.use_cases;
+using Mercadito.src.employees.application.usecases;
 using Mercadito.src.employees.application.validation;
 using Mercadito.src.employees.domain.factories;
 using Mercadito.src.employees.infrastructure.persistence;
 using Mercadito.src.products.application.ports.input;
 using Mercadito.src.products.application.ports.output;
-using Mercadito.src.products.application.use_cases;
+using Mercadito.src.products.application.usecases;
 using Mercadito.src.products.application.validation;
 using Mercadito.src.products.domain.factories;
 using Mercadito.src.products.infrastructure.persistence;
-using Mercadito.src.shared.domain.validator;
+using Mercadito.src.shared.domain.validation;
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
-using Mercadito.src.suppliers.application.use_cases;
+using Mercadito.src.suppliers.application.usecases;
 using Mercadito.src.suppliers.application.validation;
 using Mercadito.src.suppliers.domain.factories;
 using Mercadito.src.suppliers.infrastructure.persistence;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
-using Mercadito.src.users.application.use_cases;
+using Mercadito.src.users.application.usecases;
 using Mercadito.src.users.application.validation;
+using Mercadito.src.users.application;
 using Mercadito.src.users.infrastructure.persistence;
 using Mercadito.src.users.infrastructure.security;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.Pages.Shared.Navigation;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Globalization;
 
@@ -68,6 +70,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Account/Login", "/Login");
     options.Conventions.AddPageRoute("/Account/ForgotPassword", "/ForgotPassword");
     options.Conventions.AddPageRoute("/Account/ResetPassword", "/ResetPassword/{token?}");
+    options.Conventions.AddPageRoute("/Account/ChangePassword", "/ChangePassword");
     options.Conventions.AddPageRoute("/Sales/Sales", "/Sales/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Cancellation", "/Sales/Cancellation/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Reports", "/Sales/Reports/{handler?}");
@@ -96,18 +99,18 @@ builder.Services
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("OperatorOrAdmin", policy => policy.RequireRole("Admin", "Operador"));
-    options.AddPolicy("AuditorOrAdmin", policy => policy.RequireRole("Admin", "Auditor"));
-});
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+    .AddPolicy("OperatorOrAdmin", policy => policy.RequireRole("Admin", "Operador"))
+    .AddPolicy("AuditorOrAdmin", policy => policy.RequireRole("Admin", "Auditor"));
 
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Email"));
 builder.Services.Configure<EmailOutboxOptions>(builder.Configuration.GetSection("EmailOutbox"));
 
 builder.Services.AddSingleton<IDbConnectionFactory, MySqlConnectionFactory>();
 builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
+builder.Services.AddSingleton<IListingPageStateService, ListingPageStateService>();
+builder.Services.AddSingleton<IModalPostbackStateService, ModalPostbackStateService>();
 builder.Services.AddHostedService<EmailOutboxDispatcher>();
 
 builder.Services.AddScoped<ProductRepository>();
@@ -125,6 +128,7 @@ builder.Services.AddScoped<ISupplierRepository>(serviceProvider => serviceProvid
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<IUserRepository>(serviceProvider => serviceProvider.GetRequiredService<UserRepository>());
+builder.Services.AddScoped<IUserAccessWorkflowRepository>(serviceProvider => serviceProvider.GetRequiredService<UserRepository>());
 builder.Services.AddScoped<EmailOutboxRepository>();
 builder.Services.AddScoped<IEmailOutboxRepository>(serviceProvider => serviceProvider.GetRequiredService<EmailOutboxRepository>());
 builder.Services.AddScoped<AuditRepository>();
@@ -141,6 +145,8 @@ builder.Services.AddSingleton<IPasswordVerifier>(serviceProvider => serviceProvi
 
 builder.Services.AddSingleton<IValidator<CreateSupplierDto, SupplierDto>, CreateSupplierValidator>();
 builder.Services.AddSingleton<IValidator<UpdateSupplierDto, SupplierDto>, UpdateSupplierValidator>();
+builder.Services.AddSingleton<ISupplierFormHintsProvider>(serviceProvider =>
+    (ISupplierFormHintsProvider)serviceProvider.GetRequiredService<IValidator<CreateSupplierDto, SupplierDto>>());
 builder.Services.AddSingleton<ICreateProductValidator, CreateProductValidator>();
 builder.Services.AddSingleton<IUpdateProductValidator, UpdateProductValidator>();
 builder.Services.AddSingleton<ICreateCategoryValidator, CreateCategoryValidator>();
@@ -148,7 +154,9 @@ builder.Services.AddSingleton<IUpdateCategoryValidator, UpdateCategoryValidator>
 builder.Services.AddSingleton<ICreateEmployeeValidator, CreateEmployeeValidator>();
 builder.Services.AddSingleton<IUpdateEmployeeValidator, UpdateEmployeeValidator>();
 builder.Services.AddSingleton<ICreateUserValidator, CreateUserValidator>();
-builder.Services.AddSingleton<IResetUserPasswordValidator, ResetUserPasswordValidator>();
+builder.Services.AddSingleton<IAssignTemporaryPasswordValidator, AssignTemporaryPasswordValidator>();
+builder.Services.AddSingleton<ISendAdministrativePasswordResetLinkValidator, SendAdministrativePasswordResetLinkValidator>();
+builder.Services.AddSingleton<IForcePasswordChangeValidator, ForcePasswordChangeValidator>();
 builder.Services.AddSingleton<ILoginUserValidator, LoginUserValidator>();
 builder.Services.AddSingleton<IRequestPasswordResetValidator, RequestPasswordResetValidator>();
 builder.Services.AddSingleton<ICompletePasswordResetValidator, CompletePasswordResetValidator>();
@@ -162,7 +170,9 @@ builder.Services.AddScoped<IRequestPasswordResetUseCase, RequestPasswordResetUse
 builder.Services.AddScoped<IValidatePasswordResetTokenUseCase, ValidatePasswordResetTokenUseCase>();
 builder.Services.AddScoped<ICompletePasswordResetUseCase, CompletePasswordResetUseCase>();
 builder.Services.AddScoped<IRegisterUserUseCase, RegisterUserUseCase>();
-builder.Services.AddScoped<IResetUserPasswordUseCase, ResetUserPasswordUseCase>();
+builder.Services.AddScoped<ISendAdministrativePasswordResetLinkUseCase, SendAdministrativePasswordResetLinkUseCase>();
+builder.Services.AddScoped<IAssignTemporaryPasswordUseCase, AssignTemporaryPasswordUseCase>();
+builder.Services.AddScoped<IForcePasswordChangeUseCase, ForcePasswordChangeUseCase>();
 builder.Services.AddScoped<IDeactivateUserUseCase, DeactivateUserUseCase>();
 builder.Services.AddScoped<IGetAllUsersUseCase, GetAllUsersUseCase>();
 builder.Services.AddScoped<IGetAvailableEmployeesUseCase, GetAvailableEmployeesUseCase>();
@@ -173,6 +183,7 @@ builder.Services.AddScoped<IGetSupplierByIdUseCase, GetSupplierByIdUseCase>();
 builder.Services.AddScoped<IGetNextSupplierCodeUseCase, GetNextSupplierCodeUseCase>();
 builder.Services.AddScoped<IUpdateSupplierUseCase, UpdateSupplierUseCase>();
 builder.Services.AddScoped<IDeleteSupplierUseCase, DeleteSupplierUseCase>();
+builder.Services.AddScoped<INavigationMenuService, NavigationMenuService>();
 
 var app = builder.Build();
 
@@ -191,8 +202,52 @@ app.UseRouting();
 app.UseSession();
 
 app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    if (RequiresForcedPasswordChangeRedirect(context))
+    {
+        context.Response.Redirect("/ChangePassword");
+        return;
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapRazorPages();
 
 await app.RunAsync();
+
+static bool RequiresForcedPasswordChangeRedirect(HttpContext context)
+{
+    if (context.User.Identity?.IsAuthenticated != true)
+    {
+        return false;
+    }
+
+    var mustChangePasswordClaim = context.User.FindFirst(UserClaimTypes.MustChangePassword);
+    if (mustChangePasswordClaim == null)
+    {
+        return false;
+    }
+
+    if (!string.Equals(mustChangePasswordClaim.Value, "true", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    var requestPath = context.Request.Path;
+    if (requestPath.StartsWithSegments("/ChangePassword") || requestPath.StartsWithSegments("/Account/ChangePassword"))
+    {
+        return false;
+    }
+
+    if (requestPath.StartsWithSegments("/Login") || requestPath.StartsWithSegments("/Account/Login"))
+    {
+        return false;
+    }
+
+    return true;
+}

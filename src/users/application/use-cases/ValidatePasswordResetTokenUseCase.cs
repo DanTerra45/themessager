@@ -1,34 +1,28 @@
 using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
+using Mercadito.src.shared.domain.validation;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-    public sealed class ValidatePasswordResetTokenUseCase : IValidatePasswordResetTokenUseCase
+    public sealed class ValidatePasswordResetTokenUseCase(IUserAccessWorkflowRepository userAccessWorkflowRepository) : IValidatePasswordResetTokenUseCase
     {
-        private readonly IUserRepository _userRepository;
-
-        public ValidatePasswordResetTokenUseCase(IUserRepository userRepository)
-        {
-            _userRepository = userRepository;
-        }
-
         public async Task<Result<PasswordResetTokenInfo>> ExecuteAsync(string token, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return Result<PasswordResetTokenInfo>.Failure("El enlace de restablecimiento es inválido.");
+                return Result.Failure<PasswordResetTokenInfo>("El enlace de restablecimiento es inválido.");
             }
 
-            var tokenHash = PasswordResetTokenCodec.HashToken(token.Trim());
-            var tokenInfo = await _userRepository.GetValidPasswordResetTokenAsync(tokenHash, DateTime.UtcNow, cancellationToken);
+            var tokenHash = PasswordResetTokenCodec.HashToken(ValidationText.NormalizeTrimmed(token));
+            var tokenInfo = await userAccessWorkflowRepository.GetValidPasswordResetTokenAsync(tokenHash, DateTime.UtcNow, cancellationToken);
             if (tokenInfo == null)
             {
-                return Result<PasswordResetTokenInfo>.Failure("El enlace de restablecimiento es inválido o ya venció.");
+                return Result.Failure<PasswordResetTokenInfo>("El enlace de restablecimiento es inválido o ya venció.");
             }
 
-            return Result<PasswordResetTokenInfo>.Success(tokenInfo);
+            return Result.Success(tokenInfo);
         }
     }
 }

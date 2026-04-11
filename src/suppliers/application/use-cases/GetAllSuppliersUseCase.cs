@@ -2,24 +2,17 @@ using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
 using Mercadito.src.suppliers.domain.entities;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.suppliers.application.use_cases
+namespace Mercadito.src.suppliers.application.usecases
 {
-    public class GetAllSuppliersUseCase : IGetAllSuppliersUseCase
+    public class GetAllSuppliersUseCase(ISupplierRepository repository) : IGetAllSuppliersUseCase
     {
-        private readonly ISupplierRepository _repository;
-
-        public GetAllSuppliersUseCase(ISupplierRepository repository)
+        public async Task<Result<IReadOnlyList<SupplierDto>>> ExecuteAsync(CancellationToken cancellationToken = default)
         {
-            _repository = repository;
-        }
-
-        public async Task<Result<List<SupplierDto>>> ExecuteAsync(CancellationToken cancellationToken = default)
-        {
-            var suppliers = await _repository.GetAllAsync(cancellationToken);
+            var suppliers = await repository.GetAllAsync(cancellationToken);
             var dtos = suppliers.Select(MapToDto).ToList();
-            return Result<List<SupplierDto>>.Success(dtos);
+            return Result.Success<IReadOnlyList<SupplierDto>>(dtos);
         }
 
         private static SupplierDto MapToDto(Supplier supplier)

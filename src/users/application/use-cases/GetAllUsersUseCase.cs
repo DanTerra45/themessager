@@ -1,23 +1,16 @@
 using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-    public sealed class GetAllUsersUseCase : IGetAllUsersUseCase
+    public sealed class GetAllUsersUseCase(IUserRepository userRepository) : IGetAllUsersUseCase
     {
-        private readonly IUserRepository _userRepository;
-
-        public GetAllUsersUseCase(IUserRepository userRepository)
-        {
-            _userRepository = userRepository;
-        }
-
         public async Task<Result<IReadOnlyList<UserListItem>>> ExecuteAsync(CancellationToken cancellationToken = default)
         {
-            var users = await _userRepository.GetAllActiveAsync(cancellationToken);
-            return Result<IReadOnlyList<UserListItem>>.Success(users);
+            var users = await userRepository.GetAllActiveAsync(cancellationToken);
+            return Result.Success(users);
         }
     }
 }

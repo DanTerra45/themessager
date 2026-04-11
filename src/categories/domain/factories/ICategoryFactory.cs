@@ -1,12 +1,21 @@
 using Mercadito.src.categories.domain.entities;
-using Mercadito.src.categories.application.models;
 
 namespace Mercadito.src.categories.domain.factories
 {
+    public sealed record CreateCategoryValues(
+        string Code,
+        string Name,
+        string Description);
+
+    public sealed record UpdateCategoryValues(
+        long Id,
+        string Code,
+        string Name,
+        string Description);
+
     public interface ICategoryFactory
     {
-        Category CreateForInsert(CreateCategoryDto dto);
-        Category CreateForUpdate(UpdateCategoryDto dto);
+        Category CreateForInsert(CreateCategoryValues input);
+        Category CreateForUpdate(UpdateCategoryValues input);
     }
 }
-

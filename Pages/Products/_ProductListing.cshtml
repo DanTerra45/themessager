@@ -1,11 +1,46 @@
 @model Mercadito.Pages.Products.IProductListingPageModel
 @{
-    var showIdColumn = ViewData["ShowIdColumn"] as bool? ?? false;
-    var showActionsColumn = ViewData["ShowActionsColumn"] as bool? ?? false;
-    var showStockColumn = ViewData["ShowStockColumn"] as bool? ?? true;
-    var showBatchColumn = ViewData["ShowBatchColumn"] as bool? ?? true;
-    var showExpirationColumn = ViewData["ShowExpirationColumn"] as bool? ?? true;
-    var showPriceColumn = ViewData["ShowPriceColumn"] as bool? ?? true;
+    var rawShowIdColumn = ViewData["ShowIdColumn"] as bool?;
+    var showIdColumn = false;
+    if (rawShowIdColumn.HasValue)
+    {
+        showIdColumn = rawShowIdColumn.Value;
+    }
+
+    var rawShowActionsColumn = ViewData["ShowActionsColumn"] as bool?;
+    var showActionsColumn = false;
+    if (rawShowActionsColumn.HasValue)
+    {
+        showActionsColumn = rawShowActionsColumn.Value;
+    }
+
+    var rawShowStockColumn = ViewData["ShowStockColumn"] as bool?;
+    var showStockColumn = true;
+    if (rawShowStockColumn.HasValue)
+    {
+        showStockColumn = rawShowStockColumn.Value;
+    }
+
+    var rawShowBatchColumn = ViewData["ShowBatchColumn"] as bool?;
+    var showBatchColumn = true;
+    if (rawShowBatchColumn.HasValue)
+    {
+        showBatchColumn = rawShowBatchColumn.Value;
+    }
+
+    var rawShowExpirationColumn = ViewData["ShowExpirationColumn"] as bool?;
+    var showExpirationColumn = true;
+    if (rawShowExpirationColumn.HasValue)
+    {
+        showExpirationColumn = rawShowExpirationColumn.Value;
+    }
+
+    var rawShowPriceColumn = ViewData["ShowPriceColumn"] as bool?;
+    var showPriceColumn = true;
+    if (rawShowPriceColumn.HasValue)
+    {
+        showPriceColumn = rawShowPriceColumn.Value;
+    }
 
     var selectedFilterCategoryName = "Todas las categorías";
     foreach (var category in Model.Categories)
@@ -35,8 +70,26 @@
         selectedOrderPresetName = "Z-A";
     }
 
-    var firstPageProductId = Model.Products.Count > 0 ? Model.Products[0].Id : 0;
-    var lastPageProductId = Model.Products.Count > 0 ? Model.Products[Model.Products.Count - 1].Id : 0;
+    var firstPageProductId = 0L;
+    var lastPageProductId = 0L;
+    if (Model.Products.Count > 0)
+    {
+        firstPageProductId = Model.Products[0].Id;
+        lastPageProductId = Model.Products[Model.Products.Count - 1].Id;
+    }
+
+    var disablePreviousPage = !Model.HasPreviousPage || Model.CurrentPage <= 1;
+    var previousPageCss = string.Empty;
+    if (disablePreviousPage)
+    {
+        previousPageCss = "disabled";
+    }
+
+    var nextPageCss = string.Empty;
+    if (!Model.HasNextPage)
+    {
+        nextPageCss = "disabled";
+    }
 }
 
 @if (Model.Products.Count > 0 || Model.CategoryFilter != 0 || !string.IsNullOrWhiteSpace(Model.SearchTerm))
@@ -294,9 +347,11 @@
                                 @if (product.Categories.Count > 0)
                                 {
                                     var maxVisibleCategories = 3;
-                                    var visibleCategoriesCount = product.Categories.Count < maxVisibleCategories
-                                        ? product.Categories.Count
-                                        : maxVisibleCategories;
+                                    var visibleCategoriesCount = maxVisibleCategories;
+                                    if (product.Categories.Count < maxVisibleCategories)
+                                    {
+                                        visibleCategoriesCount = product.Categories.Count;
+                                    }
                                     var hiddenCategoriesCount = product.Categories.Count - visibleCategoriesCount;
 
                                     for (var categoryIndex = 0; categoryIndex < visibleCategoriesCount; categoryIndex++)
@@ -390,7 +445,7 @@
                                                 data-bs-target="#deleteProductModal"
                                                 data-id="@product.Id"
                                                 data-name="@product.Name"
-                                                data-has-categories="@(product.Categories.Count > 0 ? "true" : "false")">
+                                                data-has-categories="@(product.Categories.Count > 0)">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </menu>
@@ -419,14 +474,14 @@
     <section class="d-flex justify-content-center mt-4">
         <nav aria-label="Paginación de productos">
             <ul class="pagination">
-                <li class="page-item @((!Model.HasPreviousPage || Model.CurrentPage <= 1) ? "disabled" : "")">
+                <li class="page-item @previousPageCss">
                     <form method="post" asp-page-handler="Navigate" class="d-inline">
                         <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                         <input type="hidden" name="sortBy" value="@Model.SortBy" />
                         <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
                         <input type="hidden" name="navigationMode" value="prev" />
                         <input type="hidden" name="cursorProductId" value="@firstPageProductId" />
-                        <button type="submit" class="page-link" disabled="@(!Model.HasPreviousPage || Model.CurrentPage <= 1)">
+                        <button type="submit" class="page-link" disabled="@disablePreviousPage">
                             <i class="bi bi-chevron-left me-1"></i>Anterior
                         </button>
                     </form>
@@ -436,7 +491,7 @@
                     <button type="button" class="page-link">@Model.CurrentPage</button>
                 </li>
 
-                <li class="page-item @(!Model.HasNextPage ? "disabled" : "")">
+                <li class="page-item @nextPageCss">
                     <form method="post" asp-page-handler="Navigate" class="d-inline">
                         <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
                         <input type="hidden" name="sortBy" value="@Model.SortBy" />

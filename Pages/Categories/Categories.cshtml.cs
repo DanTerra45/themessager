@@ -1,15 +1,17 @@
 using Mercadito.src.categories.application.models;
 using Mercadito.src.categories.application.ports.input;
 using Mercadito.Pages.Infrastructure;
-using Microsoft.AspNetCore.Http;
+using Mercadito.src.shared.domain.validation;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
-using System.Globalization;
-using System.Text.Json;
 
 namespace Mercadito.Pages.Categories
 {
-    public partial class CategoriesModel : AppPageModel
+    public partial class CategoriesModel(
+        ILogger<CategoriesModel> logger,
+        IListingPageStateService listingPageStateService,
+        IModalPostbackStateService modalPostbackStateService,
+        ICategoryManagementUseCase categoryManagementUseCase,
+        IConfiguration configuration) : AppPageModel
     {
         private const string CurrentPageSessionKey = "Categories.CurrentPage";
         private const string CurrentAnchorCategoryIdSessionKey = "Categories.CurrentAnchorCategoryId";
@@ -27,14 +29,29 @@ namespace Mercadito.Pages.Categories
         private const string SearchTermSessionKey = "Categories.SearchTerm";
         private const string DefaultSortBy = "name";
         private const string DefaultSortDirection = "asc";
-        private const string NavigationModeNext = "next";
-        private const string NavigationModePrevious = "prev";
+        private static readonly KeysetListingSessionKeys ListingSessionKeys = new(
+            CurrentPageSessionKey,
+            CurrentAnchorCategoryIdSessionKey,
+            PendingNavigationModeSessionKey,
+            PendingNavigationCursorCategoryIdSessionKey,
+            SortBySessionKey,
+            SortDirectionSessionKey,
+            SearchTermSessionKey);
+        private static readonly ListingPageStateOptions ListingStateOptions = new(
+            ListingSessionKeys,
+            DefaultSortBy,
+            DefaultSortDirection,
+            NormalizeSortBy,
+            NormalizeSortDirection,
+            ValidationText.NormalizeTrimmed);
 
-        private readonly ILogger<CategoriesModel> _logger;
-        private readonly ICategoryManagementUseCase _categoryManagementUseCase;
-        private readonly int _defaultPageSize;
+        private readonly ILogger<CategoriesModel> _logger = logger;
+        private readonly IListingPageStateService _listingPageStateService = listingPageStateService;
+        private readonly IModalPostbackStateService _modalPostbackStateService = modalPostbackStateService;
+        private readonly ICategoryManagementUseCase _categoryManagementUseCase = categoryManagementUseCase;
+        private readonly int _defaultPageSize = PaginationSettings.ResolveDefaultPageSize(configuration);
 
-        public List<CategoryModel> Categories { get; set; } = [];
+        public IReadOnlyList<CategoryModel> Categories { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
         public bool HasPreviousPage { get; set; }
         public bool HasNextPage { get; set; }
@@ -49,17 +66,6 @@ namespace Mercadito.Pages.Categories
         public bool ShowEditCategoryModal { get; set; }
         public bool ShowCreateCategoryModal { get; set; }
 
-        public CategoriesModel(
-            ILogger<CategoriesModel> logger,
-            ICategoryManagementUseCase categoryManagementUseCase,
-            IConfiguration configuration)
-        {
-            _logger = logger;
-            _categoryManagementUseCase = categoryManagementUseCase;
-            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
-            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
-        }
-
         public async Task OnGetAsync()
         {
             LoadStateFromSession();
@@ -68,7 +74,7 @@ namespace Mercadito.Pages.Categories
             var pendingNavigation = PopPendingNavigation();
             if (pendingNavigation.HasValue)
             {
-                await LoadCategoriesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorCategoryId);
+                await LoadCategoriesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorId);
             }
             else
             {
@@ -104,7 +110,13 @@ namespace Mercadito.Pages.Categories
         public IActionResult OnPostFilter(string sortBy = "", string sortDirection = "", string searchTerm = "", bool clear = false)
         {
             LoadStateFromSession();
-            SetSearchAndSortState(clear ? string.Empty : searchTerm, sortBy, sortDirection);
+        var effectiveSearchTerm = searchTerm;
+        if (clear)
+        {
+            effectiveSearchTerm = string.Empty;
+        }
+
+        SetSearchAndSortState(effectiveSearchTerm, sortBy, sortDirection);
             CurrentPage = 1;
             CurrentAnchorCategoryId = 0;
 
@@ -160,5 +172,3 @@ namespace Mercadito.Pages.Categories
 
     }
 }
-
-

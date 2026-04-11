@@ -1,6 +1,6 @@
 :root {
-  /* Brutalist Design */
-  /* Utilitarian Fresh Palette */
+  
+  
   --mrc-bg: #f5f4f0;
   --mrc-surface: #ffffff;
   --mrc-surface-alt: #e9e8e2;
@@ -64,7 +64,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   border-color: var(--mrc-ink);
 }
 
-/* Navbar overrides */
+
 .navbar {
   background-color: var(--mrc-surface) !important;
   border-bottom: 2px solid var(--mrc-ink) !important;
@@ -157,7 +157,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   }
 }
 
-/* Cards / Articles */
+
 .b-card {
   background-color: var(--mrc-surface);
   border: 2px solid var(--mrc-ink);
@@ -171,7 +171,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   box-shadow: 6px 6px 0px var(--mrc-ink);
 }
 
-/* Buttons */
+
 .b-btn {
   display: inline-flex;
   align-items: center;
@@ -243,7 +243,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   color: white;
 }
 
-/* Headers */
+
 .dash-header {
   margin-bottom: 2rem;
   border-bottom: 4px solid var(--mrc-ink);
@@ -255,7 +255,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   text-transform: uppercase;
 }
 
-/* Tables */
+
 .table {
   border-collapse: separate;
   border-spacing: 0;
@@ -336,7 +336,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   color: var(--mrc-ink);
 }
 
-/* Modals */
+
 .modal-content {
   border: 2px solid var(--mrc-ink);
   border-radius: var(--radius-md);
@@ -373,7 +373,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   border-top: 2px solid var(--mrc-ink);
 }
 
-/* Pagination */
+
 .pagination {
   gap: 0.5rem;
 }
@@ -436,7 +436,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   border-top: none;
 }
 
-/* Hover dropdowns for navbar */
+
 @media (min-width: 576px) {
   .nav-item.dropdown:hover > .dropdown-menu {
     display: block;
@@ -454,7 +454,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   color: var(--mrc-ink) !important;
 }
 
-/* Modal form controls */
+
 .form-control, .form-select {
   border: 2px solid var(--mrc-ink);
   border-radius: var(--radius-sm);
@@ -472,7 +472,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   font-weight: bold;
 }
 
-/* Number inputs spin buttons (hide them for cleaner look) */
+
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none !important;
@@ -880,7 +880,7 @@ input[type="number"] {
   outline: none;
 }
 
-/* Custom Badges */
+
 mark.status-badge {
   background-color: var(--mrc-accent);
   color: var(--mrc-ink);
@@ -909,7 +909,7 @@ mark.status-badge[data-status="good"], .badge.bg-success {
   border: 1px solid var(--mrc-ink);
 }
 
-/* Legacy Classes */
+
 .app-brand-logo { width: 36px; height: 36px; display: block; }
 .truncate-description-category { max-width: 250px; }
 .truncate-description-product { max-width: 200px; }
@@ -1044,7 +1044,7 @@ mark.status-badge[data-status="good"], .badge.bg-success {
   --bs-gutter-y: 0.4rem;
 }
 
-/* Validation Styles */
+
 span[data-valmsg-for] {
   display: none !important;
 }
@@ -1081,7 +1081,7 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for] {
   pointer-events: auto;
 }
 
-/* The Warning Icon (Fake element drawn inside the span) */
+
 span.field-validation-error[data-valmsg-for]::before {
   content: '\F33B';
   font-family: 'bootstrap-icons';
@@ -1108,7 +1108,7 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for]::before {
   line-height: 1;
 }
 
-/* The Tooltip Bubble (Drawn when hovering the icon) */
+
 span.field-validation-error[data-valmsg-for]::after {
   content: attr(data-error-message);
   position: absolute;
@@ -1141,7 +1141,7 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for]::after {
   transform: translateX(-50%);
 }
 
-/* Show the tooltip on hover */
+
 span.field-validation-error[data-valmsg-for]:hover::after {
   opacity: 1;
   visibility: visible;
@@ -1152,7 +1152,7 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for]:hover::after
   transform: translateX(-50%) translateY(-4px);
 }
 
-/* Optional info tooltip for helper text */
+
 .info-tooltip {
   display: inline-flex;
   align-items: center;
@@ -1219,7 +1219,7 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for]:hover::after
   margin-left: 0.15rem;
 }
 
-/* We need relative positioning on the parent containers so the absolute icon aligns correctly */
+
 .input-group, .col-md-6, .col-md-4, .col-md-5, .col-md-2 {
   position: relative;
 }
@@ -1387,7 +1387,7 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for]:hover::after
   background-size: 0.8em;
 }
 
-/* Category Dropdown Container */
+
 .dropdown-fade-container {
   display: flex;
   gap: 0.4rem;
@@ -1397,7 +1397,19 @@ span.validation-icon-inline.field-validation-error[data-valmsg-for]:hover::after
   width: 100%;
 }
 
-/* Brutalist Air Datepicker Overrides */
+.users-actions-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 5.75rem;
+}
+
+.users-actions-wrap .b-btn {
+  margin: 0;
+}
+
+
 .air-datepicker {
   --adp-font-family: var(--font-mono);
   --adp-border-color: var(--mrc-ink);

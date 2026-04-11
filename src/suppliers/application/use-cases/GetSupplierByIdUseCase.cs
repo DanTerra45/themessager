@@ -2,33 +2,26 @@ using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
 using Mercadito.src.suppliers.domain.entities;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.suppliers.application.use_cases
+namespace Mercadito.src.suppliers.application.usecases
 {
-    public class GetSupplierByIdUseCase : IGetSupplierByIdUseCase
+    public class GetSupplierByIdUseCase(ISupplierRepository repository) : IGetSupplierByIdUseCase
     {
-        private readonly ISupplierRepository _repository;
-
-        public GetSupplierByIdUseCase(ISupplierRepository repository)
-        {
-            _repository = repository;
-        }
-
         public async Task<Result<SupplierDto>> ExecuteAsync(long id, CancellationToken cancellationToken = default)
         {
             if (id <= 0)
             {
-                return Result<SupplierDto>.Failure(new Dictionary<string, List<string>> { { "Id", new List<string> { "El ID debe ser válido" } } });
+                return Result.Failure<SupplierDto>(new Dictionary<string, List<string>> { { "Id", new List<string> { "El ID debe ser válido" } } });
             }
 
-            var supplier = await _repository.GetByIdAsync(id, cancellationToken);
+            var supplier = await repository.GetByIdAsync(id, cancellationToken);
             if (supplier == null)
             {
-                return Result<SupplierDto>.Failure(new Dictionary<string, List<string>> { { "NotFound", new List<string> { "Proveedor no encontrado" } } });
+                return Result.Failure<SupplierDto>(new Dictionary<string, List<string>> { { "NotFound", new List<string> { "Proveedor no encontrado" } } });
             }
 
-            return Result<SupplierDto>.Success(MapToDto(supplier));
+            return Result.Success(MapToDto(supplier));
         }
 
         private static SupplierDto MapToDto(Supplier supplier)

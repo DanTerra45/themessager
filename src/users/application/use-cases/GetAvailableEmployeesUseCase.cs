@@ -1,23 +1,16 @@
 using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-    public sealed class GetAvailableEmployeesUseCase : IGetAvailableEmployeesUseCase
+    public sealed class GetAvailableEmployeesUseCase(IUserRepository userRepository) : IGetAvailableEmployeesUseCase
     {
-        private readonly IUserRepository _userRepository;
-
-        public GetAvailableEmployeesUseCase(IUserRepository userRepository)
-        {
-            _userRepository = userRepository;
-        }
-
         public async Task<Result<IReadOnlyList<AvailableEmployeeOption>>> ExecuteAsync(CancellationToken cancellationToken = default)
         {
-            var employees = await _userRepository.GetAvailableEmployeesAsync(cancellationToken);
-            return Result<IReadOnlyList<AvailableEmployeeOption>>.Success(employees);
+            var employees = await userRepository.GetAvailableEmployeesAsync(cancellationToken);
+            return Result.Success(employees);
         }
     }
 }

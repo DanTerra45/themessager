@@ -2,55 +2,45 @@ using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
 using Mercadito.src.users.application.validation;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-    public sealed class AuthenticateUserUseCase : IAuthenticateUserUseCase
+    public sealed class AuthenticateUserUseCase(
+        IUserRepository userRepository,
+        IPasswordVerifier passwordVerifier,
+        ILoginUserValidator validator) : IAuthenticateUserUseCase
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IPasswordVerifier _passwordVerifier;
-        private readonly ILoginUserValidator _validator;
-
-        public AuthenticateUserUseCase(
-            IUserRepository userRepository,
-            IPasswordVerifier passwordVerifier,
-            ILoginUserValidator validator)
-        {
-            _userRepository = userRepository;
-            _passwordVerifier = passwordVerifier;
-            _validator = validator;
-        }
-
         public async Task<Result<AuthenticatedUser>> ExecuteAsync(LoginUserCommand command, CancellationToken cancellationToken = default)
         {
-            var validationResult = _validator.Validate(command);
+            var validationResult = validator.Validate(command);
             if (validationResult.IsFailure)
             {
-                return Result<AuthenticatedUser>.Failure(validationResult.Errors);
+                return Result.Failure<AuthenticatedUser>(validationResult.Errors);
             }
 
             var normalizedCommand = validationResult.Value;
-            var user = await _userRepository.GetActiveByUsernameAsync(normalizedCommand.Username, cancellationToken);
+            var user = await userRepository.GetActiveByUsernameAsync(normalizedCommand.Username, cancellationToken);
             if (user == null)
             {
-                return Result<AuthenticatedUser>.Failure("Usuario o contraseña inválidos.");
+                return Result.Failure<AuthenticatedUser>("Usuario o contraseña inválidos.");
             }
 
-            if (!_passwordVerifier.Verify(normalizedCommand.Password, user.PasswordHash))
+            if (!passwordVerifier.Verify(normalizedCommand.Password, user.PasswordHash))
             {
-                return Result<AuthenticatedUser>.Failure("Usuario o contraseña inválidos.");
+                return Result.Failure<AuthenticatedUser>("Usuario o contraseña inválidos.");
             }
 
             var lastLogin = DateTime.UtcNow;
-            await _userRepository.UpdateLastLoginAsync(user.Id, lastLogin, cancellationToken);
+            await userRepository.UpdateLastLoginAsync(user.Id, lastLogin, cancellationToken);
 
-            return Result<AuthenticatedUser>.Success(new AuthenticatedUser
+            return Result.Success(new AuthenticatedUser
             {
                 Id = user.Id,
                 Username = user.Username,
                 Role = user.Role,
                 EmployeeId = user.EmployeeId,
+                MustChangePassword = user.MustChangePassword,
                 LastLogin = lastLogin
             });
         }

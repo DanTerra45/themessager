@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text.Json;
 using Mercadito.src.employees.application.models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,95 +15,58 @@ namespace Mercadito.Pages.Employees
 
         private void StorePendingCreateModal(CreateEmployeeDto draft)
         {
-            HttpContext.Session.SetString(PendingCreateModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingCreateDraftSessionKey, JsonSerializer.Serialize(draft));
+            _modalPostbackStateService.StorePendingModalDraft(HttpContext.Session, PendingCreateModalSessionKey, PendingCreateDraftSessionKey, draft);
         }
 
         private void StorePendingEditModal(UpdateEmployeeDto draft)
         {
-            HttpContext.Session.SetString(PendingEditModalSessionKey, bool.TrueString);
-            HttpContext.Session.SetString(PendingEditDraftSessionKey, JsonSerializer.Serialize(draft));
+            _modalPostbackStateService.StorePendingModalDraft(HttpContext.Session, PendingEditModalSessionKey, PendingEditDraftSessionKey, draft);
         }
 
         private void RestorePendingPostbackState()
         {
-            if (PopFlag(PendingCreateModalSessionKey))
+            var createState = _modalPostbackStateService.RestorePendingModalDraft<CreateEmployeeDto>(
+                HttpContext.Session,
+                PendingCreateModalSessionKey,
+                PendingCreateDraftSessionKey,
+                _logger);
+            if (createState.ShouldShowModal)
             {
                 ShowCreateEmployeeModal = true;
-                var pendingCreateDraft = PopDraft<CreateEmployeeDto>(PendingCreateDraftSessionKey);
-                if (pendingCreateDraft != null)
+                if (createState.Draft != null)
                 {
-                    NewEmployee = pendingCreateDraft;
+                    NewEmployee = createState.Draft;
                 }
             }
-            else
-            {
-                HttpContext.Session.Remove(PendingCreateDraftSessionKey);
-            }
 
-            if (PopFlag(PendingEditModalSessionKey))
+            var editState = _modalPostbackStateService.RestorePendingModalDraft<UpdateEmployeeDto>(
+                HttpContext.Session,
+                PendingEditModalSessionKey,
+                PendingEditDraftSessionKey,
+                _logger);
+            if (editState.ShouldShowModal)
             {
                 ShowEditEmployeeModal = true;
-                var pendingEditDraft = PopDraft<UpdateEmployeeDto>(PendingEditDraftSessionKey);
-                if (pendingEditDraft != null)
+                if (editState.Draft != null)
                 {
-                    EditEmployee = pendingEditDraft;
+                    EditEmployee = editState.Draft;
                 }
-            }
-            else
-            {
-                HttpContext.Session.Remove(PendingEditDraftSessionKey);
-            }
-        }
-
-        private bool PopFlag(string sessionKey)
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            return bool.TryParse(rawValue, out var parsedValue) && parsedValue;
-        }
-
-        private T? PopDraft<T>(string sessionKey) where T : class
-        {
-            var rawValue = HttpContext.Session.GetString(sessionKey);
-            HttpContext.Session.Remove(sessionKey);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
-            {
-                return null;
-            }
-
-            try
-            {
-                return JsonSerializer.Deserialize<T>(rawValue);
-            }
-            catch (JsonException exception)
-            {
-                _logger.LogWarning(exception, "No se pudo restaurar el borrador temporal de modal para key {SessionKey}", sessionKey);
-                return null;
             }
         }
 
         private void SetPendingEditEmployeeId(long employeeId)
         {
-            HttpContext.Session.SetString(EditEmployeeSessionKey, employeeId.ToString(CultureInfo.InvariantCulture));
+            _modalPostbackStateService.SetPendingEntityId(HttpContext.Session, EditEmployeeSessionKey, employeeId);
         }
 
         private long PopPendingEditEmployeeId()
         {
-            var rawEditEmployeeId = HttpContext.Session.GetString(EditEmployeeSessionKey);
-            HttpContext.Session.Remove(EditEmployeeSessionKey);
-
-            return long.TryParse(rawEditEmployeeId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var editEmployeeId)
-                ? editEmployeeId
-                : 0;
+            return _modalPostbackStateService.PopPendingEntityId(HttpContext.Session, EditEmployeeSessionKey);
         }
 
         private void ClearPendingEditEmployeeId()
         {
-            HttpContext.Session.Remove(EditEmployeeSessionKey);
+            _modalPostbackStateService.ClearPendingEntityId(HttpContext.Session, EditEmployeeSessionKey);
         }
     }
 }
-

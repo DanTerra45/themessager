@@ -9,7 +9,7 @@ namespace Mercadito.Pages.Sales
         public int MonthlyReports { get; private set; }
         public int ExportsToday { get; private set; }
 
-        public List<ReportRow> ReportRows { get; private set; } = [];
+        public IReadOnlyList<ReportRow> ReportRows { get; private set; } = [];
 
         public void OnGet()
         {

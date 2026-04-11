@@ -1,15 +1,17 @@
 using Mercadito.src.employees.application.models;
 using Mercadito.src.employees.application.ports.input;
 using Mercadito.Pages.Infrastructure;
-using Microsoft.AspNetCore.Http;
+using Mercadito.src.shared.domain.validation;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
-using System.Globalization;
-using System.Text.Json;
 
 namespace Mercadito.Pages.Employees
 {
-    public partial class EmployeesModel : AppPageModel
+    public partial class EmployeesModel(
+        ILogger<EmployeesModel> logger,
+        IListingPageStateService listingPageStateService,
+        IModalPostbackStateService modalPostbackStateService,
+        IEmployeeManagementUseCase employeeManagementUseCase,
+        IConfiguration configuration) : AppPageModel
     {
         private const string CurrentPageSessionKey = "Employees.CurrentPage";
         private const string CurrentAnchorEmployeeIdSessionKey = "Employees.CurrentAnchorEmployeeId";
@@ -27,14 +29,29 @@ namespace Mercadito.Pages.Employees
         private const string SearchTermSessionKey = "Employees.SearchTerm";
         private const string DefaultSortBy = "apellidos";
         private const string DefaultSortDirection = "asc";
-        private const string NavigationModeNext = "next";
-        private const string NavigationModePrevious = "prev";
+        private static readonly KeysetListingSessionKeys ListingSessionKeys = new(
+            CurrentPageSessionKey,
+            CurrentAnchorEmployeeIdSessionKey,
+            PendingNavigationModeSessionKey,
+            PendingNavigationCursorEmployeeIdSessionKey,
+            SortBySessionKey,
+            SortDirectionSessionKey,
+            SearchTermSessionKey);
+        private static readonly ListingPageStateOptions ListingStateOptions = new(
+            ListingSessionKeys,
+            DefaultSortBy,
+            DefaultSortDirection,
+            NormalizeSortBy,
+            NormalizeSortDirection,
+            ValidationText.NormalizeTrimmed);
 
-        private readonly ILogger<EmployeesModel> _logger;
-        private readonly IEmployeeManagementUseCase _employeeManagementUseCase;
-        private readonly int _defaultPageSize;
+        private readonly ILogger<EmployeesModel> _logger = logger;
+        private readonly IListingPageStateService _listingPageStateService = listingPageStateService;
+        private readonly IModalPostbackStateService _modalPostbackStateService = modalPostbackStateService;
+        private readonly IEmployeeManagementUseCase _employeeManagementUseCase = employeeManagementUseCase;
+        private readonly int _defaultPageSize = PaginationSettings.ResolveDefaultPageSize(configuration);
 
-        public List<EmployeeModel> Employees { get; set; } = [];
+        public IReadOnlyList<EmployeeModel> Employees { get; set; } = [];
         public int CurrentPage { get; set; } = 1;
         public bool HasPreviousPage { get; set; }
         public bool HasNextPage { get; set; }
@@ -48,17 +65,6 @@ namespace Mercadito.Pages.Employees
         public bool ShowCreateEmployeeModal { get; set; }
         public bool ShowEditEmployeeModal { get; set; }
 
-        public EmployeesModel(
-            ILogger<EmployeesModel> logger,
-            IEmployeeManagementUseCase employeeManagementUseCase,
-            IConfiguration configuration)
-        {
-            _logger = logger;
-            _employeeManagementUseCase = employeeManagementUseCase;
-            var configuredPageSize = configuration.GetValue<int>("Pagination:DefaultPageSize");
-            _defaultPageSize = configuredPageSize > 0 ? configuredPageSize : 10;
-        }
-
         public async Task OnGetAsync()
         {
             LoadStateFromSession();
@@ -67,7 +73,7 @@ namespace Mercadito.Pages.Employees
             var pendingNavigation = PopPendingNavigation();
             if (pendingNavigation.HasValue)
             {
-                await LoadEmployeesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorEmployeeId);
+                await LoadEmployeesByCursorAsync(pendingNavigation.Value.IsNextPage, pendingNavigation.Value.CursorId);
             }
             else
             {
@@ -101,7 +107,13 @@ namespace Mercadito.Pages.Employees
         public IActionResult OnPostFilter(string sortBy = "", string sortDirection = "", string searchTerm = "", bool clear = false)
         {
             LoadStateFromSession();
-            SetSearchAndSortState(clear ? string.Empty : searchTerm, sortBy, sortDirection);
+        var effectiveSearchTerm = searchTerm;
+        if (clear)
+        {
+            effectiveSearchTerm = string.Empty;
+        }
+
+        SetSearchAndSortState(effectiveSearchTerm, sortBy, sortDirection);
             CurrentPage = 1;
             CurrentAnchorEmployeeId = 0;
 
@@ -157,8 +169,3 @@ namespace Mercadito.Pages.Employees
 
     }
 }
-
-
-
-
-

@@ -7,55 +7,44 @@ using Mercadito.src.users.application.models;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
 using Mercadito.src.users.application.validation;
-using Shared.Domain;
+using Mercadito.src.users.application.emails;
+using Mercadito.src.shared.domain;
+using Mercadito.src.shared.domain.exceptions;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-    public sealed class RegisterUserUseCase : IRegisterUserUseCase
+    public sealed class RegisterUserUseCase(
+        IUserRepository userRepository,
+        IUserAccessWorkflowRepository userAccessWorkflowRepository,
+        IPasswordHasher passwordHasher,
+        ICreateUserValidator validator,
+        IEmailSender emailSender,
+        IAuditTrailService auditTrailService,
+        ILogger<RegisterUserUseCase> logger) : IRegisterUserUseCase
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IPasswordHasher _passwordHasher;
-        private readonly ICreateUserValidator _validator;
-        private readonly IEmailSender _emailSender;
-        private readonly IAuditTrailService _auditTrailService;
-        private readonly ILogger<RegisterUserUseCase> _logger;
-
-        public RegisterUserUseCase(
-            IUserRepository userRepository,
-            IPasswordHasher passwordHasher,
-            ICreateUserValidator validator,
-            IEmailSender emailSender,
-            IAuditTrailService auditTrailService,
-            ILogger<RegisterUserUseCase> logger)
-        {
-            _userRepository = userRepository;
-            _passwordHasher = passwordHasher;
-            _validator = validator;
-            _emailSender = emailSender;
-            _auditTrailService = auditTrailService;
-            _logger = logger;
-        }
-
         public async Task<Result<long>> ExecuteAsync(CreateUserDto user, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = _auditTrailService.ValidateActor(actor);
+            ArgumentNullException.ThrowIfNull(user);
+            ArgumentNullException.ThrowIfNull(actor);
+
+            var actorValidation = auditTrailService.ValidateActor(actor);
             if (actorValidation.IsFailure)
             {
-                return Result<long>.Failure(actorValidation.ErrorMessage);
+                return Result.Failure<long>(actorValidation.ErrorMessage);
             }
 
-            var validationResult = _validator.Validate(user);
+            var validationResult = validator.Validate(user);
             if (validationResult.IsFailure)
             {
-                return Result<long>.Failure(validationResult.Errors);
+                return Result.Failure<long>(validationResult.Errors);
             }
 
             try
             {
                 var normalized = validationResult.Value;
-                _emailSender.EnsureAvailable();
-                var generatedUsername = await _userRepository.GenerateUniqueUsernameAsync(normalized.Email, cancellationToken);
-                var generatedPasswordHash = _passwordHasher.Hash(PasswordResetTokenCodec.CreatePlainToken());
+                emailSender.EnsureAvailable();
+                var generatedUsername = await userRepository.GenerateUniqueUsernameAsync(normalized.Email, cancellationToken);
+                var generatedPasswordHash = passwordHasher.Hash(PasswordResetTokenCodec.CreatePlainToken());
                 var plainToken = PasswordResetTokenCodec.CreatePlainToken();
                 var tokenHash = PasswordResetTokenCodec.HashToken(plainToken);
                 var expiresAtUtc = DateTime.UtcNow.AddMinutes(30);
@@ -72,7 +61,7 @@ namespace Mercadito.src.users.application.use_cases
                 var setupLink = BuildSetupLink(userToCreate.SetupUrlBase, plainToken);
                 var onboardingEmail = BuildOnboardingEmail(userToCreate, setupLink);
 
-                var userId = await _userRepository.CreateWithOnboardingAsync(
+                var userId = await userAccessWorkflowRepository.CreateWithOnboardingAsync(
                     userToCreate,
                     generatedPasswordHash,
                     tokenHash,
@@ -80,7 +69,7 @@ namespace Mercadito.src.users.application.use_cases
                     onboardingEmail,
                     cancellationToken);
 
-                await _auditTrailService.RecordAsync(
+                await auditTrailService.RecordAsync(
                     actor,
                     AuditAction.Create,
                     "usuarios",
@@ -94,18 +83,21 @@ namespace Mercadito.src.users.application.use_cases
                         userToCreate.Role
                     },
                     cancellationToken);
-                return Result<long>.Success(userId);
+                return Result.Success(userId);
             }
             catch (EmailDeliveryException deliveryException)
             {
-                _logger.LogWarning(deliveryException, "No se pudo completar el alta por correo para el usuario {Email}.", user.Email);
-                return Result<long>.Failure("El usuario se registró, pero no se pudo enviar el correo de activación. Revisa SMTP y usa el restablecimiento para reenviar acceso.");
+                logger.LogWarning(deliveryException, "No se pudo completar el alta por correo para el usuario {Email}.", user.Email);
+                return Result.Failure<long>("El usuario se registró, pero no se pudo enviar el correo de activación. Revisa SMTP y usa el restablecimiento para reenviar acceso.");
             }
             catch (BusinessValidationException validationException)
             {
-                return validationException.Errors.Count > 0
-                    ? Result<long>.Failure(validationException.Errors)
-                    : Result<long>.Failure(validationException.Message);
+                if (validationException.Errors.Count > 0)
+                {
+                    return Result.Failure<long>(validationException.Errors);
+                }
+
+                return Result.Failure<long>(validationException.Message);
             }
         }
 
@@ -122,12 +114,7 @@ namespace Mercadito.src.users.application.use_cases
                     "Abre el siguiente enlace para definir tu contraseña:\n" +
                     $"{setupLink}\n\n" +
                     "El enlace vence en 30 minutos.\n",
-                HtmlBody =
-                    $"<p>Hola <strong>{user.Username}</strong>,</p>" +
-                    "<p>Se creó tu acceso al sistema Mercadito.</p>" +
-                    $"<p><strong>Rol asignado:</strong> {user.Role}</p>" +
-                    $"<p><a href=\"{setupLink}\">Haz clic aquí para definir tu contraseña</a></p>" +
-                    "<p>El enlace vence en 30 minutos.</p>"
+                HtmlBody = UserAccessEmailTemplate.BuildOnboardingHtml(user.Username, user.Role.ToString(), setupLink)
             };
         }
 

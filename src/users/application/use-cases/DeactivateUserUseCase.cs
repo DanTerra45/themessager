@@ -1,61 +1,54 @@
-using System.Text.Json;
 using Mercadito.src.audit.application.services;
 using Mercadito.src.audit.domain.entities;
 using Mercadito.src.users.application.ports.input;
 using Mercadito.src.users.application.ports.output;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
-namespace Mercadito.src.users.application.use_cases
+namespace Mercadito.src.users.application.usecases
 {
-        public sealed class DeactivateUserUseCase : IDeactivateUserUseCase
-        {
-        private readonly IUserRepository _userRepository;
-        private readonly IAuditTrailService _auditTrailService;
-
-        public DeactivateUserUseCase(
-            IUserRepository userRepository,
-            IAuditTrailService auditTrailService)
-        {
-            _userRepository = userRepository;
-            _auditTrailService = auditTrailService;
-        }
+    public sealed class DeactivateUserUseCase(
+        IUserRepository userRepository,
+        IAuditTrailService auditTrailService) : IDeactivateUserUseCase
+    {
 
         public async Task<Result<bool>> ExecuteAsync(long userId, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = _auditTrailService.ValidateActor(actor);
+            ArgumentNullException.ThrowIfNull(actor);
+
+            var actorValidation = auditTrailService.ValidateActor(actor);
             if (actorValidation.IsFailure)
             {
-                return Result<bool>.Failure(actorValidation.ErrorMessage);
+                return Result.Failure<bool>(actorValidation.ErrorMessage);
             }
 
             if (userId <= 0)
             {
-                return Result<bool>.Failure("El usuario es inválido.");
+                return Result.Failure<bool>("El usuario es inválido.");
             }
 
             if (userId == actor.UserId)
             {
-                return Result<bool>.Failure("No puedes dar de baja tu propio usuario.");
+                return Result.Failure<bool>("No puedes dar de baja tu propio usuario.");
             }
 
-            var previousUser = await _userRepository.GetActiveByIdAsync(userId, cancellationToken);
+            var previousUser = await userRepository.GetActiveByIdAsync(userId, cancellationToken);
             if (previousUser == null)
             {
-                return Result<bool>.Failure("El usuario no existe o ya está inactivo.");
+                return Result.Failure<bool>("El usuario no existe o ya está inactivo.");
             }
 
             if (previousUser.Role == domain.entities.UserRole.Admin)
             {
-                return Result<bool>.Failure("No se puede dar de baja un usuario administrador.");
+                return Result.Failure<bool>("No se puede dar de baja un usuario administrador.");
             }
 
-            var wasDeactivated = await _userRepository.DeactivateAsync(userId, cancellationToken);
+            var wasDeactivated = await userRepository.DeactivateAsync(userId, cancellationToken);
             if (!wasDeactivated)
             {
-                return Result<bool>.Failure("El usuario no existe o ya está inactivo.");
+                return Result.Failure<bool>("El usuario no existe o ya está inactivo.");
             }
 
-            await _auditTrailService.RecordAsync(
+            await auditTrailService.RecordAsync(
                 actor,
                 AuditAction.Delete,
                 "usuarios",
@@ -71,7 +64,7 @@ namespace Mercadito.src.users.application.use_cases
                 new { Estado = "I" },
                 cancellationToken);
 
-            return Result<bool>.Success(true);
+            return Result.Success(true);
         }
     }
 }

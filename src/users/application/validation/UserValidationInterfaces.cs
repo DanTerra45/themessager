@@ -1,4 +1,4 @@
-using Mercadito.src.shared.domain.validator;
+using Mercadito.src.shared.domain.validation;
 using Mercadito.src.users.application.models;
 
 namespace Mercadito.src.users.application.validation
@@ -7,7 +7,15 @@ namespace Mercadito.src.users.application.validation
     {
     }
 
-    public interface IResetUserPasswordValidator : IValidator<ResetUserPasswordDto, ResetUserPasswordDto>
+    public interface IAssignTemporaryPasswordValidator : IValidator<AssignTemporaryPasswordDto, AssignTemporaryPasswordDto>
+    {
+    }
+
+    public interface ISendAdministrativePasswordResetLinkValidator : IValidator<SendAdministrativePasswordResetLinkDto, SendAdministrativePasswordResetLinkDto>
+    {
+    }
+
+    public interface IForcePasswordChangeValidator : IValidator<ForcePasswordChangeDto, ForcePasswordChangeDto>
     {
     }
 

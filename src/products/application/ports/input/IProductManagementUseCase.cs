@@ -1,7 +1,7 @@
 using Mercadito.src.products.application.models;
 using Mercadito.src.categories.application.models;
 using Mercadito.src.audit.domain.entities;
-using Shared.Domain;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.products.application.ports.input
 {

@@ -3,30 +3,28 @@ using Mercadito.src.users.application.ports.input;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mercadito.Pages.Infrastructure;
+using Mercadito.src.shared.domain.validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Account
 {
     [AllowAnonymous]
-    public class ResetPasswordModel : AppPageModel
+    public class ResetPasswordModel(
+        IValidatePasswordResetTokenUseCase validatePasswordResetTokenUseCase,
+        ICompletePasswordResetUseCase completePasswordResetUseCase) : AppPageModel
     {
-        private readonly IValidatePasswordResetTokenUseCase _validatePasswordResetTokenUseCase;
-        private readonly ICompletePasswordResetUseCase _completePasswordResetUseCase;
-
-        public ResetPasswordModel(
-            IValidatePasswordResetTokenUseCase validatePasswordResetTokenUseCase,
-            ICompletePasswordResetUseCase completePasswordResetUseCase)
-        {
-            _validatePasswordResetTokenUseCase = validatePasswordResetTokenUseCase;
-            _completePasswordResetUseCase = completePasswordResetUseCase;
-        }
-
         [BindProperty(SupportsGet = true)]
         public string Token { get; set; } = string.Empty;
 
         [BindProperty]
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
+        [StringLength(128, MinimumLength = 8, ErrorMessage = "La contraseña debe tener entre 8 y 128 caracteres.")]
+        [RegularExpression("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d).+$", ErrorMessage = "La contraseña debe incluir al menos una letra mayúscula, una minúscula y un número.")]
         public string Password { get; set; } = string.Empty;
 
         [BindProperty]
+        [Required(ErrorMessage = "La confirmación de contraseña es obligatoria.")]
+        [Compare(nameof(Password), ErrorMessage = "La confirmación no coincide con la contraseña.")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
         public string Username { get; private set; } = string.Empty;
@@ -36,7 +34,7 @@ namespace Mercadito.Pages.Account
         {
             if (!string.IsNullOrWhiteSpace(token))
             {
-                Token = token.Trim();
+                Token = ValidationText.NormalizeTrimmed(token);
             }
 
             await LoadTokenStateAsync();
@@ -45,7 +43,7 @@ namespace Mercadito.Pages.Account
 
         public async Task<IActionResult> OnPostAsync()
         {
-            var result = await _completePasswordResetUseCase.ExecuteAsync(new CompletePasswordResetDto
+            var result = await completePasswordResetUseCase.ExecuteAsync(new CompletePasswordResetDto
             {
                 Token = Token,
                 Password = Password,
@@ -71,7 +69,7 @@ namespace Mercadito.Pages.Account
 
         private async Task LoadTokenStateAsync()
         {
-            var result = await _validatePasswordResetTokenUseCase.ExecuteAsync(Token, HttpContext.RequestAborted);
+            var result = await validatePasswordResetTokenUseCase.ExecuteAsync(Token, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 IsTokenValid = false;

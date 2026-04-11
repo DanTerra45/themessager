@@ -44,14 +44,20 @@
 
         textarea.style.height = minHeight + 'px';
         var contentHeight = textarea.scrollHeight;
-        var targetHeight = contentHeight > maxHeight ? maxHeight : contentHeight;
+        var targetHeight = contentHeight;
+        if (contentHeight > maxHeight) {
+            targetHeight = maxHeight;
+        }
 
         if (targetHeight < minHeight) {
             targetHeight = minHeight;
         }
 
         textarea.style.height = targetHeight + 'px';
-        textarea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+        textarea.style.overflowY = 'hidden';
+        if (contentHeight > maxHeight) {
+            textarea.style.overflowY = 'auto';
+        }
     }
 
     function initDescriptionAutoresize() {

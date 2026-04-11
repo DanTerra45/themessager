@@ -1,117 +1,117 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.shared.domain.validation;
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.validation;
-using Mercadito.src.shared.domain.validator;
-using System.Globalization;
 
 namespace Mercadito.Pages.Suppliers
 {
-    public partial class SuppliersModel : PageModel
+    public partial class SuppliersModel : AppPageModel
     {
         private const string SearchTermSessionKey = "Suppliers.SearchTerm";
-        private readonly IValidator<CreateSupplierDto, SupplierDto> _createValidator;
+        private const string SortBySessionKey = "Suppliers.SortBy";
+        private const string SortDirectionSessionKey = "Suppliers.SortDirection";
+        private const string DefaultSortBy = "name";
+        private const string DefaultSortDirection = "asc";
         private readonly ILogger<SuppliersModel> _logger;
+        private readonly IListingPageStateService _listingPageStateService;
         private readonly IRegisterSupplierUseCase _register;
         private readonly IUpdateSupplierUseCase _update;
+        private readonly IDeleteSupplierUseCase _delete;
         private readonly IGetAllSuppliersUseCase _getAll;
         private readonly IGetSupplierByIdUseCase _getById;
         private readonly IGetNextSupplierCodeUseCase _getNextSupplierCode;
 
-        public bool ShowModalOnError { get; set; }
-        public string ActiveModal { get; set; } = "";
+        public bool ShowCreateSupplierModal { get; set; }
+        public bool ShowEditSupplierModal { get; set; }
 
-        [BindProperty]
-        public string RazonSocial { get; set; } = "";
+        public CreateSupplierDto NewSupplier { get; set; } = new CreateSupplierDto
+        {
+            Codigo = string.Empty,
+            Nombre = string.Empty,
+            Direccion = string.Empty,
+            Contacto = string.Empty,
+            Rubro = string.Empty,
+            Telefono = string.Empty
+        };
 
-        [BindProperty]
-        public string Codigo { get; set; } = "";
-
-        [BindProperty]
-        public string Direccion { get; set; } = "";
-
-        [BindProperty]
-        public string Contacto { get; set; } = "";
-
-        [BindProperty]
-        public string Rubro { get; set; } = "";
-
-        public List<string>? RazonSocialErrors { get; set; }
-        public List<string>? CodigoErrors { get; set; }
-        public List<string>? DireccionErrors { get; set; }
-        public List<string>? ContactoErrors { get; set; }
-        public List<string>? RubroErrors { get; set; }
-
-        [BindProperty]
-        public long EditId { get; set; }
-
-        [BindProperty]
-        public string EditCodigo { get; set; } = "";
-
-        [BindProperty]
-        public string EditRazonSocial { get; set; } = "";
-
-        [BindProperty]
-        public string EditDireccion { get; set; } = "";
-
-        [BindProperty]
-        public string EditContacto { get; set; } = "";
-
-        [BindProperty]
-        public string EditRubro { get; set; } = "";
-
-        [BindProperty]
-        public string EditTelefono { get; set; } = "";
-
-        public List<string>? EditRazonSocialErrors { get; set; }
-        public List<string>? EditCodigoErrors { get; set; }
-        public List<string>? EditDireccionErrors { get; set; }
-        public List<string>? EditContactoErrors { get; set; }
-        public List<string>? EditRubroErrors { get; set; }
+        public UpdateSupplierDto EditSupplier { get; set; } = new UpdateSupplierDto
+        {
+            Codigo = string.Empty,
+            Nombre = string.Empty,
+            Direccion = string.Empty,
+            Contacto = string.Empty,
+            Rubro = string.Empty,
+            Telefono = string.Empty
+        };
 
         public string SearchTerm { get; set; } = string.Empty;
-        public Dictionary<string, List<string>> FieldHints { get; private set; } = new();
+        public string SortBy { get; set; } = DefaultSortBy;
+        public string SortDirection { get; set; } = DefaultSortDirection;
+        public Dictionary<string, List<string>> FieldHints { get; private set; } = [];
 
-        public List<SupplierRow> ActiveSuppliers { get; private set; } = [];
+        public IReadOnlyList<SupplierRow> ActiveSuppliers { get; private set; } = [];
         public string NextSupplierCodePreview { get; private set; } = "PRV001";
+        public Dictionary<string, List<string>> CreateFieldHints { get; private set; } = [];
+        public Dictionary<string, List<string>> EditFieldHints { get; private set; } = [];
 
         public SuppliersModel(
-            IValidator<CreateSupplierDto, SupplierDto> createValidator,
+            ISupplierFormHintsProvider supplierFormHintsProvider,
+            IListingPageStateService listingPageStateService,
             ILogger<SuppliersModel> logger,
             IRegisterSupplierUseCase register,
             IUpdateSupplierUseCase update,
+            IDeleteSupplierUseCase delete,
             IGetAllSuppliersUseCase getAll,
             IGetSupplierByIdUseCase getById,
             IGetNextSupplierCodeUseCase getNextSupplierCode)
         {
-            _createValidator = createValidator;
+            _listingPageStateService = listingPageStateService;
             _logger = logger;
             _register = register;
             _update = update;
+            _delete = delete;
             _getAll = getAll;
             _getById = getById;
             _getNextSupplierCode = getNextSupplierCode;
-
-            if (_createValidator is SupplierValidator supplierValidator)
-            {
-                FieldHints = supplierValidator.hints;
-            }
+            FieldHints = ToMutableHintsDictionary(supplierFormHintsProvider.GetHints());
+            CreateFieldHints = BuildPrefixedHintsDictionary(nameof(NewSupplier), FieldHints);
+            EditFieldHints = BuildPrefixedHintsDictionary(nameof(EditSupplier), FieldHints);
         }
 
         public async Task OnGetAsync()
         {
-            ShowModalOnError = false;
-            ActiveModal = "";
+            ShowCreateSupplierModal = false;
+            ShowEditSupplierModal = false;
             LoadStateFromSession();
             await LoadSuppliersAsync();
             await LoadNextSupplierCodePreviewAsync();
-            Codigo = NextSupplierCodePreview;
+            NewSupplier.Codigo = NextSupplierCodePreview;
         }
 
-        public IActionResult OnPostFilter(string searchTerm = "", bool clear = false)
+        public IActionResult OnPostFilter(string searchTerm = "", string sortBy = "", string sortDirection = "", bool clear = false)
         {
-            SearchTerm = clear ? string.Empty : NormalizeSearchTerm(searchTerm);
+            SearchTerm = ValidationText.NormalizeTrimmed(searchTerm);
+            if (clear)
+            {
+                SearchTerm = string.Empty;
+            }
+
+            SortBy = NormalizeSortBy(sortBy);
+            SortDirection = NormalizeSortDirection(sortDirection);
+            SaveStateInSession();
+            return RedirectToPage();
+        }
+
+        public IActionResult OnPostSort(string sortBy = "", string currentSortBy = "", string currentSortDirection = "")
+        {
+            SortBy = NormalizeSortBy(currentSortBy);
+            SortDirection = NormalizeSortDirection(currentSortDirection);
+
+            var nextSort = _listingPageStateService.ToggleSort(SortBy, SortDirection, sortBy, BuildListingOptions());
+            SortBy = nextSort.SortBy;
+            SortDirection = nextSort.SortDirection;
             SaveStateInSession();
             return RedirectToPage();
         }
@@ -140,15 +140,13 @@ namespace Mercadito.Pages.Suppliers
             }
 
             var suppliers = result.Value.Select(MapToRow).ToList();
-            var normalizedSearchTerm = NormalizeSearchTerm(SearchTerm);
+            var normalizedSearchTerm = ValidationText.NormalizeTrimmed(SearchTerm);
             if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
             {
-                suppliers = suppliers
-                    .Where(supplier => MatchesSearch(supplier, normalizedSearchTerm))
-                    .ToList();
+                suppliers = [.. suppliers.Where(supplier => MatchesSearch(supplier, normalizedSearchTerm))];
             }
 
-            ActiveSuppliers = suppliers;
+            ActiveSuppliers = SortSuppliers(suppliers);
         }
 
         private async Task LoadNextSupplierCodePreviewAsync()
@@ -177,22 +175,22 @@ namespace Mercadito.Pages.Suppliers
         private void LoadStateFromSession()
         {
             var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
-            SearchTerm = NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
+            var sessionSearchTerm = string.Empty;
+            if (persistedSearchTerm is string persistedValue)
+            {
+                sessionSearchTerm = persistedValue;
+            }
+
+            SearchTerm = ValidationText.NormalizeTrimmed(sessionSearchTerm);
+            SortBy = NormalizeSortBy(HttpContext.Session.GetString(SortBySessionKey));
+            SortDirection = NormalizeSortDirection(HttpContext.Session.GetString(SortDirectionSessionKey));
         }
 
         private void SaveStateInSession()
         {
-            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
-        }
-
-        private static string NormalizeSearchTerm(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                return string.Empty;
-            }
-
-            return searchTerm.Trim();
+            HttpContext.Session.SetString(SearchTermSessionKey, ValidationText.NormalizeTrimmed(SearchTerm));
+            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
+            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
         }
 
         private static bool MatchesSearch(SupplierRow supplier, string searchTerm)
@@ -209,60 +207,104 @@ namespace Mercadito.Pages.Suppliers
             return value.Contains(searchTerm, StringComparison.OrdinalIgnoreCase);
         }
 
-        private void ApplyCreateErrors(IReadOnlyDictionary<string, List<string>> errors)
+        public string GetSortIcon(string columnName)
         {
-            if (errors.TryGetValue("Nombre", out var nombreErrors))
-            {
-                RazonSocialErrors = nombreErrors;
-            }
-
-            if (errors.TryGetValue("Codigo", out var codigoErrors))
-            {
-                CodigoErrors = codigoErrors;
-            }
-
-            if (errors.TryGetValue("Direccion", out var direccionErrors))
-            {
-                DireccionErrors = direccionErrors;
-            }
-
-            if (errors.TryGetValue("Contacto", out var contactoErrors))
-            {
-                ContactoErrors = contactoErrors;
-            }
-
-            if (errors.TryGetValue("Rubro", out var rubroErrors))
-            {
-                RubroErrors = rubroErrors;
-            }
+            return _listingPageStateService.GetSortIcon(SortBy, SortDirection, columnName, BuildListingOptions());
         }
 
-        private void ApplyEditErrors(IReadOnlyDictionary<string, List<string>> errors)
+        private List<SupplierRow> SortSuppliers(List<SupplierRow> suppliers)
         {
-            if (errors.TryGetValue("Nombre", out var nombreErrors))
+            var orderedSuppliers = SortBy switch
             {
-                EditRazonSocialErrors = nombreErrors;
+                "code" => OrderSuppliers(suppliers, supplier => supplier.Codigo, supplier => supplier.Id),
+                "contact" => OrderSuppliers(suppliers, supplier => supplier.Contacto, supplier => supplier.Id),
+                "phone" => OrderSuppliers(suppliers, supplier => supplier.Telefono, supplier => supplier.Id),
+                "rubro" => OrderSuppliers(suppliers, supplier => supplier.Rubro, supplier => supplier.Id),
+                _ => OrderSuppliers(suppliers, supplier => supplier.RazonSocial, supplier => supplier.Id)
+            };
+
+            return [.. orderedSuppliers];
+        }
+
+        private IOrderedEnumerable<SupplierRow> OrderSuppliers<TKey>(IEnumerable<SupplierRow> suppliers, Func<SupplierRow, TKey> primaryKeySelector, Func<SupplierRow, long> secondaryKeySelector)
+        {
+            if (string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+            {
+                return suppliers.OrderByDescending(primaryKeySelector).ThenByDescending(secondaryKeySelector);
             }
 
-            if (errors.TryGetValue("Codigo", out var codigoErrors))
+            return suppliers.OrderBy(primaryKeySelector).ThenBy(secondaryKeySelector);
+        }
+
+        private static string NormalizeSortBy(string? value)
+        {
+            var normalizedValue = ValidationText.NormalizeLowerTrimmed(value);
+            if (normalizedValue == "code"
+                || normalizedValue == "name"
+                || normalizedValue == "contact"
+                || normalizedValue == "phone"
+                || normalizedValue == "rubro")
             {
-                EditCodigoErrors = codigoErrors;
+                return normalizedValue;
             }
 
-            if (errors.TryGetValue("Direccion", out var direccionErrors))
+            return DefaultSortBy;
+        }
+
+        private static string NormalizeSortDirection(string? value)
+        {
+            var normalizedValue = ValidationText.NormalizeLowerTrimmed(value);
+            if (normalizedValue == "desc")
             {
-                EditDireccionErrors = direccionErrors;
+                return "desc";
             }
 
-            if (errors.TryGetValue("Contacto", out var contactoErrors))
+            return "asc";
+        }
+
+        private static ListingPageStateOptions BuildListingOptions()
+        {
+            return new ListingPageStateOptions(
+                new KeysetListingSessionKeys(
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    SortBySessionKey,
+                    SortDirectionSessionKey,
+                    SearchTermSessionKey),
+                DefaultSortBy,
+                DefaultSortDirection,
+                NormalizeSortBy,
+                NormalizeSortDirection,
+                ValidationText.NormalizeTrimmed);
+        }
+
+        public string BuildTooltipMessage(IEnumerable<string> messages)
+        {
+            return string.Join(" ", messages.Where(message => !string.IsNullOrWhiteSpace(message)).Select(message => $"• {ValidationText.NormalizeTrimmed(message)}"));
+        }
+
+        private static Dictionary<string, List<string>> ToMutableHintsDictionary(IReadOnlyDictionary<string, IReadOnlyList<string>> hints)
+        {
+            var copy = new Dictionary<string, List<string>>(hints.Count);
+            foreach (var hint in hints)
             {
-                EditContactoErrors = contactoErrors;
+                copy[hint.Key] = [.. hint.Value];
             }
 
-            if (errors.TryGetValue("Rubro", out var rubroErrors))
+            return copy;
+        }
+
+        private static Dictionary<string, List<string>> BuildPrefixedHintsDictionary(string prefix, IReadOnlyDictionary<string, List<string>> hints)
+        {
+            var copy = new Dictionary<string, List<string>>(hints.Count);
+            foreach (var hint in hints)
             {
-                EditRubroErrors = rubroErrors;
+                copy[string.Concat(prefix, ".", hint.Key)] = [.. hint.Value];
             }
+
+            return copy;
         }
     }
 

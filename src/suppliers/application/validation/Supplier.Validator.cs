@@ -1,12 +1,10 @@
-using Mercadito.src.shared.domain.validator;
+using Mercadito.src.shared.domain.validation;
 using Mercadito.src.suppliers.application.models;
-using Shared.Domain;
-using System.Text;
-using System.Text.RegularExpressions;
+using Mercadito.src.shared.domain;
 
 namespace Mercadito.src.suppliers.application.validation
 {
-    public abstract class SupplierValidator
+    public abstract class SupplierValidator : ISupplierFormHintsProvider
     {
         private const string SupplierCodePattern = "^PRV[0-9]{3}$";
         private const string BusinessNamePattern = "^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .,&'()/\\-]*$";
@@ -14,12 +12,14 @@ namespace Mercadito.src.suppliers.application.validation
         private const string AddressPattern = "^[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚáéíóúÑñ0-9 .,/#()\\-]*$";
         private const string RubroPattern = "^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [a-záéíóúñ]+)*$";
 
-        protected readonly Dictionary<string, List<string>> errors = new();
-        public readonly Dictionary<string, List<string>> hints = new();
+        private readonly StringRuleSet _stringRules = new();
+        private readonly ValidationErrorBag _errors = new();
+        private readonly Dictionary<string, List<string>> _hints = [];
 
         protected SupplierValidator()
         {
             ConfigureHints();
+            ConfigureStringRules();
         }
 
         private void ConfigureHints()
@@ -44,227 +44,171 @@ namespace Mercadito.src.suppliers.application.validation
             AddHint("Rubro", "Solo la primera letra va en mayúscula; el resto debe ir en minúscula.");
         }
 
+        private void ConfigureStringRules()
+        {
+            ConfigureCodeRules();
+            ConfigureBusinessNameRules();
+            ConfigureAddressRules();
+            ConfigureContactRules();
+            ConfigureRubroRules();
+        }
+
+        private void ConfigureCodeRules()
+        {
+            AddStringRule("Codigo", StringValidationRules.Required("El código es obligatorio."));
+            AddStringRule("Codigo", StringValidationRules.ExactLength(6, "El código debe tener exactamente 6 caracteres."));
+            AddStringRule("Codigo", StringValidationRules.RegexMatch(SupplierCodePattern, "El código debe tener formato PRV001."));
+        }
+
+        private void ConfigureBusinessNameRules()
+        {
+            AddStringRule("Nombre", StringValidationRules.Required("La razón social es obligatoria."));
+            AddStringRule("Nombre", StringValidationRules.LengthBetween(3, 120, "La razón social debe tener entre 3 y 120 caracteres."));
+            AddStringRule("Nombre", StringValidationRules.ControlCharacters("La razón social contiene caracteres no permitidos."));
+            AddStringRule("Nombre", StringValidationRules.RegexMatch(BusinessNamePattern, "La razón social solo admite letras, números y separadores comerciales válidos."));
+        }
+
+        private void ConfigureAddressRules()
+        {
+            AddStringRule("Direccion", StringValidationRules.Required("La dirección es obligatoria."));
+            AddStringRule("Direccion", StringValidationRules.LengthBetween(5, 150, "La dirección debe tener entre 5 y 150 caracteres."));
+            AddStringRule("Direccion", StringValidationRules.ControlCharacters("La dirección contiene caracteres no permitidos."));
+            AddStringRule("Direccion", StringValidationRules.RegexMatch(AddressPattern, "La dirección solo admite letras, números y los signos permitidos."));
+        }
+
+        private void ConfigureContactRules()
+        {
+            AddStringRule("Contacto", StringValidationRules.Required("El contacto es obligatorio."));
+            AddStringRule("Contacto", StringValidationRules.LengthBetween(3, 60, "El contacto debe tener entre 3 y 60 caracteres."));
+            AddStringRule("Contacto", StringValidationRules.ControlCharacters("El contacto contiene caracteres no permitidos."));
+            AddStringRule("Contacto", StringValidationRules.RegexMatch(ContactNamePattern, "El contacto debe ser un nombre válido y no admite números ni símbolos extraños."));
+        }
+
+        private void ConfigureRubroRules()
+        {
+            AddStringRule("Rubro", StringValidationRules.Required("El rubro es obligatorio."));
+            AddStringRule("Rubro", StringValidationRules.LengthBetween(4, 50, "El rubro debe tener entre 4 y 50 caracteres."));
+            AddStringRule("Rubro", StringValidationRules.ControlCharacters("El rubro contiene caracteres no permitidos."));
+            AddStringRule("Rubro", StringValidationRules.RegexMatch(RubroPattern, "El rubro debe empezar con mayúscula y continuar en minúscula."));
+        }
+
         protected CreateSupplierDto Normalize(CreateSupplierDto input)
         {
+            ArgumentNullException.ThrowIfNull(input);
+
             return new CreateSupplierDto
             {
-                Codigo = NormalizeWhitespace(input.Codigo).ToUpperInvariant(),
-                Nombre = NormalizeWhitespace(input.Nombre),
-                Direccion = NormalizeWhitespace(input.Direccion),
-                Contacto = NormalizeWhitespace(input.Contacto),
-                Rubro = NormalizeWhitespace(input.Rubro),
-                Telefono = NormalizeOptional(input.Telefono)
+                Codigo = ValidationText.NormalizeUpperTrimmed(input.Codigo),
+                Nombre = ValidationText.NormalizeCollapsed(input.Nombre),
+                Direccion = ValidationText.NormalizeCollapsed(input.Direccion),
+                Contacto = ValidationText.NormalizeCollapsed(input.Contacto),
+                Rubro = ValidationText.NormalizeCollapsed(input.Rubro),
+                Telefono = ValidationText.NormalizeTrimmed(input.Telefono)
             };
         }
 
         protected UpdateSupplierDto Normalize(UpdateSupplierDto input)
         {
+            ArgumentNullException.ThrowIfNull(input);
+
             return new UpdateSupplierDto
             {
                 Id = input.Id,
-                Codigo = NormalizeWhitespace(input.Codigo).ToUpperInvariant(),
-                Nombre = NormalizeWhitespace(input.Nombre),
-                Direccion = NormalizeWhitespace(input.Direccion),
-                Contacto = NormalizeWhitespace(input.Contacto),
-                Rubro = NormalizeWhitespace(input.Rubro),
-                Telefono = NormalizeOptional(input.Telefono)
+                Codigo = ValidationText.NormalizeUpperTrimmed(input.Codigo),
+                Nombre = ValidationText.NormalizeCollapsed(input.Nombre),
+                Direccion = ValidationText.NormalizeCollapsed(input.Direccion),
+                Contacto = ValidationText.NormalizeCollapsed(input.Contacto),
+                Rubro = ValidationText.NormalizeCollapsed(input.Rubro),
+                Telefono = ValidationText.NormalizeTrimmed(input.Telefono)
             };
         }
 
         protected void ValidateCreateFields(CreateSupplierDto dto)
         {
-            ValidateBusinessName(dto.Nombre);
-            ValidateAddress(dto.Direccion);
-            ValidateContact(dto.Contacto);
-            ValidateRubro(dto.Rubro);
+            ArgumentNullException.ThrowIfNull(dto);
+
+            ValidateField("Nombre", dto.Nombre);
+            ValidateField("Direccion", dto.Direccion);
+            ValidateField("Contacto", dto.Contacto);
+            ValidateField("Rubro", dto.Rubro);
         }
 
         protected void ValidateUpdateFields(UpdateSupplierDto dto)
         {
+            ArgumentNullException.ThrowIfNull(dto);
+
             if (dto.Id <= 0)
             {
                 AddError("Id", "El proveedor es inválido.");
             }
 
-            ValidateCode(dto.Codigo);
-            ValidateBusinessName(dto.Nombre);
-            ValidateAddress(dto.Direccion);
-            ValidateContact(dto.Contacto);
-            ValidateRubro(dto.Rubro);
+            ValidateField("Codigo", dto.Codigo);
+            ValidateField("Nombre", dto.Nombre);
+            ValidateField("Direccion", dto.Direccion);
+            ValidateField("Contacto", dto.Contacto);
+            ValidateField("Rubro", dto.Rubro);
         }
 
         protected void ClearErrors()
         {
-            errors.Clear();
+            _errors.Clear();
         }
 
         protected bool HasErrors()
         {
-            return errors.Count > 0;
+            return _errors.HasErrors;
         }
 
         protected Dictionary<string, List<string>> GetErrors()
         {
-            return errors;
+            return _errors.ToDictionary();
         }
 
         protected void AddError(string field, string message)
         {
-            if (!errors.ContainsKey(field))
-            {
-                errors[field] = [];
-            }
-
-            errors[field].Add(message);
+            _errors.Add(field, message);
         }
 
-        private void AddHint(string field, string hint)
+        protected void ValidateField(string field, string value)
         {
-            if (!hints.ContainsKey(field))
-            {
-                hints[field] = [];
-            }
-
-            hints[field].Add(hint);
+            _stringRules.Validate(field, value, _errors);
         }
 
-        private void ValidateCode(string code)
+        protected void AddStringRule(string field, Func<string, string> rule)
         {
-            ValidateRequired("Codigo", code, "El código es obligatorio.");
-            ValidateExactLength("Codigo", code, 6, "El código debe tener exactamente 6 caracteres.");
-            ValidatePattern("Codigo", code, SupplierCodePattern, "El código debe tener formato PRV001.");
+            _stringRules.Add(field, rule);
         }
 
-        private void ValidateBusinessName(string name)
+        protected static string ResolveTelefono(string? telefono)
         {
-            ValidateRequired("Nombre", name, "La razón social es obligatoria.");
-            ValidateLengthBetween("Nombre", name, 3, 120, "La razón social debe tener entre 3 y 120 caracteres.");
-            ValidateControlCharacters("Nombre", name, "La razón social contiene caracteres no permitidos.");
-            ValidatePattern("Nombre", name, BusinessNamePattern, "La razón social solo admite letras, números y separadores comerciales válidos.");
-        }
-
-        private void ValidateAddress(string address)
-        {
-            ValidateRequired("Direccion", address, "La dirección es obligatoria.");
-            ValidateLengthBetween("Direccion", address, 5, 150, "La dirección debe tener entre 5 y 150 caracteres.");
-            ValidateControlCharacters("Direccion", address, "La dirección contiene caracteres no permitidos.");
-            ValidatePattern("Direccion", address, AddressPattern, "La dirección solo admite letras, números y los signos permitidos.");
-        }
-
-        private void ValidateContact(string contact)
-        {
-            ValidateRequired("Contacto", contact, "El contacto es obligatorio.");
-            ValidateLengthBetween("Contacto", contact, 3, 60, "El contacto debe tener entre 3 y 60 caracteres.");
-            ValidateControlCharacters("Contacto", contact, "El contacto contiene caracteres no permitidos.");
-            ValidatePattern("Contacto", contact, ContactNamePattern, "El contacto debe ser un nombre válido y no admite números ni símbolos extraños.");
-        }
-
-        private void ValidateRubro(string rubro)
-        {
-            ValidateRequired("Rubro", rubro, "El rubro es obligatorio.");
-            ValidateLengthBetween("Rubro", rubro, 4, 50, "El rubro debe tener entre 4 y 50 caracteres.");
-            ValidateControlCharacters("Rubro", rubro, "El rubro contiene caracteres no permitidos.");
-            ValidatePattern("Rubro", rubro, RubroPattern, "El rubro debe empezar con mayúscula y continuar en minúscula.");
-        }
-
-        private void ValidateRequired(string field, string value, string message)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                AddError(field, message);
-            }
-        }
-
-        private void ValidateLengthBetween(string field, string value, int minimum, int maximum, string message)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return;
-            }
-
-            if (value.Length < minimum || value.Length > maximum)
-            {
-                AddError(field, message);
-            }
-        }
-
-        private void ValidateExactLength(string field, string value, int length, string message)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return;
-            }
-
-            if (value.Length != length)
-            {
-                AddError(field, message);
-            }
-        }
-
-        private void ValidatePattern(string field, string value, string pattern, string message)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return;
-            }
-
-            if (!Regex.IsMatch(value, pattern, RegexOptions.CultureInvariant))
-            {
-                AddError(field, message);
-            }
-        }
-
-        private void ValidateControlCharacters(string field, string value, string message)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return;
-            }
-
-            foreach (var character in value)
-            {
-                if (char.IsControl(character))
-                {
-                    AddError(field, message);
-                    return;
-                }
-            }
-        }
-
-        private static string NormalizeWhitespace(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
+            if (string.IsNullOrWhiteSpace(telefono))
             {
                 return string.Empty;
             }
 
-            var builder = new StringBuilder(value.Length);
-            var previousWasWhitespace = false;
-
-            foreach (var character in value.Trim())
-            {
-                if (char.IsWhiteSpace(character))
-                {
-                    if (previousWasWhitespace)
-                    {
-                        continue;
-                    }
-
-                    builder.Append(' ');
-                    previousWasWhitespace = true;
-                    continue;
-                }
-
-                builder.Append(character);
-                previousWasWhitespace = false;
-            }
-
-            return builder.ToString();
+            return telefono;
         }
 
-        private static string NormalizeOptional(string? value)
+        private void AddHint(string field, string hint)
         {
-            return string.IsNullOrWhiteSpace(value) ? string.Empty : NormalizeWhitespace(value);
+            if (!_hints.TryGetValue(field, out var fieldHints))
+            {
+                fieldHints = [];
+                _hints[field] = fieldHints;
+            }
+
+            fieldHints.Add(hint);
+        }
+
+        public IReadOnlyDictionary<string, IReadOnlyList<string>> GetHints()
+        {
+            var copy = new Dictionary<string, IReadOnlyList<string>>(_hints.Count);
+            foreach (var hint in _hints)
+            {
+                copy[hint.Key] = [.. hint.Value];
+            }
+
+            return copy;
         }
     }
 
@@ -274,7 +218,7 @@ namespace Mercadito.src.suppliers.application.validation
         {
             if (input == null)
             {
-                return Result<SupplierDto>.Failure("El proveedor es obligatorio.");
+                return Result.Failure<SupplierDto>("El proveedor es obligatorio.");
             }
 
             ClearErrors();
@@ -283,17 +227,17 @@ namespace Mercadito.src.suppliers.application.validation
 
             if (HasErrors())
             {
-                return Result<SupplierDto>.Failure(GetErrors());
+                return Result.Failure<SupplierDto>(GetErrors());
             }
 
-            return Result<SupplierDto>.Success(new SupplierDto
+            return Result.Success(new SupplierDto
             {
                 Codigo = normalized.Codigo,
                 Nombre = normalized.Nombre,
                 Direccion = normalized.Direccion,
                 Contacto = normalized.Contacto,
                 Rubro = normalized.Rubro,
-                Telefono = string.IsNullOrWhiteSpace(normalized.Telefono) ? string.Empty : normalized.Telefono
+                Telefono = ResolveTelefono(normalized.Telefono)
             });
         }
     }
@@ -304,7 +248,7 @@ namespace Mercadito.src.suppliers.application.validation
         {
             if (input == null)
             {
-                return Result<SupplierDto>.Failure("El proveedor es obligatorio.");
+                return Result.Failure<SupplierDto>("El proveedor es obligatorio.");
             }
 
             ClearErrors();
@@ -313,10 +257,10 @@ namespace Mercadito.src.suppliers.application.validation
 
             if (HasErrors())
             {
-                return Result<SupplierDto>.Failure(GetErrors());
+                return Result.Failure<SupplierDto>(GetErrors());
             }
 
-            return Result<SupplierDto>.Success(new SupplierDto
+            return Result.Success(new SupplierDto
             {
                 Id = normalized.Id,
                 Codigo = normalized.Codigo,
@@ -324,7 +268,7 @@ namespace Mercadito.src.suppliers.application.validation
                 Direccion = normalized.Direccion,
                 Contacto = normalized.Contacto,
                 Rubro = normalized.Rubro,
-                Telefono = string.IsNullOrWhiteSpace(normalized.Telefono) ? string.Empty : normalized.Telefono
+                Telefono = ResolveTelefono(normalized.Telefono)
             });
         }
     }

@@ -1,12 +1,29 @@
 using Mercadito.src.products.domain.entities;
-using Mercadito.src.products.application.models;
 
 namespace Mercadito.src.products.domain.factories
 {
+    public sealed record CreateProductValues(
+        string Name,
+        string Description,
+        int? Stock,
+        string Batch,
+        DateOnly ExpirationDate,
+        decimal? Price,
+        IReadOnlyCollection<long> CategoryIds);
+
+    public sealed record UpdateProductValues(
+        long Id,
+        string Name,
+        string Description,
+        int? Stock,
+        string Batch,
+        DateOnly ExpirationDate,
+        decimal? Price,
+        IReadOnlyCollection<long> CategoryIds);
+
     public interface IProductFactory
     {
-        Product CreateForInsert(CreateProductDto dto);
-        Product CreateForUpdate(UpdateProductDto dto);
+        Product CreateForInsert(CreateProductValues input);
+        Product CreateForUpdate(UpdateProductValues input);
     }
 }
-

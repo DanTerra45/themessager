@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.Pages.Categories
 {
@@ -7,112 +8,32 @@ namespace Mercadito.Pages.Categories
         private void SetSearchAndSortState(string searchTerm, string sortBy, string sortDirection)
         {
             SearchTerm = ResolveSearchTermFromRequest(searchTerm);
-
-            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
-            {
-                LoadSortStateFromSession();
-                return;
-            }
-
-            SortBy = NormalizeSortBy(sortBy);
-            SortDirection = NormalizeSortDirection(sortDirection);
+            (SortBy, SortDirection) = _listingPageStateService.ResolveSortState(HttpContext.Session, ListingStateOptions, sortBy, sortDirection);
         }
 
         public string GetSortIcon(string columnName)
         {
-            var normalizedColumn = NormalizeSortBy(columnName);
-            if (!string.Equals(SortBy, normalizedColumn, StringComparison.OrdinalIgnoreCase))
-            {
-                return "bi-arrow-down-up";
-            }
-
-            return string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "bi-sort-down"
-                : "bi-sort-up";
-        }
-
-        private void SetSortState(string sortBy, string sortDirection)
-        {
-            if (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortDirection))
-            {
-                LoadSortStateFromSession();
-                return;
-            }
-
-            SortBy = NormalizeSortBy(sortBy);
-            SortDirection = NormalizeSortDirection(sortDirection);
+            return _listingPageStateService.GetSortIcon(SortBy, SortDirection, columnName, ListingStateOptions);
         }
 
         private void LoadStateFromSession()
         {
-            var currentPageInSession = HttpContext.Session.GetInt32(CurrentPageSessionKey);
-            if (!currentPageInSession.HasValue || currentPageInSession.Value <= 0)
-            {
-                CurrentPage = 1;
-            }
-            else
-            {
-                CurrentPage = currentPageInSession.Value;
-            }
-
-            var rawAnchorCategoryId = HttpContext.Session.GetString(CurrentAnchorCategoryIdSessionKey);
-            if (!long.TryParse(rawAnchorCategoryId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedAnchorCategoryId) || parsedAnchorCategoryId < 0)
-            {
-                CurrentAnchorCategoryId = 0;
-            }
-            else
-            {
-                CurrentAnchorCategoryId = parsedAnchorCategoryId;
-            }
-
-            LoadSortStateFromSession();
-            var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
-            SearchTerm = NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
+            ListingState = _listingPageStateService.LoadState(HttpContext.Session, ListingStateOptions);
         }
 
         private void SaveStateInSession()
         {
-            HttpContext.Session.SetInt32(CurrentPageSessionKey, CurrentPage > 0 ? CurrentPage : 1);
-            HttpContext.Session.SetString(CurrentAnchorCategoryIdSessionKey, Math.Max(CurrentAnchorCategoryId, 0).ToString(CultureInfo.InvariantCulture));
-            HttpContext.Session.SetString(SortBySessionKey, NormalizeSortBy(SortBy));
-            HttpContext.Session.SetString(SortDirectionSessionKey, NormalizeSortDirection(SortDirection));
-            HttpContext.Session.SetString(SearchTermSessionKey, NormalizeSearchTerm(SearchTerm));
+            _listingPageStateService.SaveState(HttpContext.Session, ListingState, ListingStateOptions);
         }
 
         private void NormalizeCurrentState()
         {
-            CurrentPage = CurrentPage > 0 ? CurrentPage : 1;
-            CurrentAnchorCategoryId = CurrentAnchorCategoryId >= 0 ? CurrentAnchorCategoryId : 0;
-            if (CurrentAnchorCategoryId == 0)
-            {
-                CurrentPage = 1;
-            }
-
-            SortBy = NormalizeSortBy(SortBy);
-            SortDirection = NormalizeSortDirection(SortDirection);
-            SearchTerm = NormalizeSearchTerm(SearchTerm);
-        }
-
-        private void LoadSortStateFromSession()
-        {
-            var sortByInSession = HttpContext.Session.GetString(SortBySessionKey);
-            var sortDirectionInSession = HttpContext.Session.GetString(SortDirectionSessionKey);
-
-            SortBy = NormalizeSortBy(sortByInSession is string persistedSortBy ? persistedSortBy : string.Empty);
-            SortDirection = NormalizeSortDirection(sortDirectionInSession is string persistedSortDirection ? persistedSortDirection : string.Empty);
+            ListingState = _listingPageStateService.NormalizeState(ListingState, ListingStateOptions);
         }
 
         private void ToggleSort(string sortBy)
         {
-            var normalizedSortBy = NormalizeSortBy(sortBy);
-            if (string.Equals(SortBy, normalizedSortBy, StringComparison.OrdinalIgnoreCase))
-            {
-                SortDirection = string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-                return;
-            }
-
-            SortBy = normalizedSortBy;
-            SortDirection = DefaultSortDirection;
+            (SortBy, SortDirection) = _listingPageStateService.ToggleSort(SortBy, SortDirection, sortBy, ListingStateOptions);
         }
 
         private static string NormalizeSortBy(string sortBy)
@@ -122,7 +43,7 @@ namespace Mercadito.Pages.Categories
                 return DefaultSortBy;
             }
 
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            var normalizedSortBy = ValidationText.NormalizeLowerTrimmed(sortBy);
             return normalizedSortBy switch
             {
                 "id" => "id",
@@ -134,38 +55,33 @@ namespace Mercadito.Pages.Categories
 
         private static string NormalizeSortDirection(string sortDirection)
         {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
-                ? "desc"
-                : "asc";
+            if (string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+            {
+                return "desc";
+            }
+
+            return "asc";
         }
 
         private string ResolveSearchTermFromRequest(string searchTerm)
         {
-            var hasSearchTermInForm = Request.HasFormContentType && Request.Form.ContainsKey("searchTerm");
-            var hasSearchTermInQuery = Request.Query.ContainsKey("searchTerm");
-
-            if (hasSearchTermInForm || hasSearchTermInQuery)
-            {
-                return NormalizeSearchTerm(searchTerm);
-            }
-
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var persistedSearchTerm = HttpContext.Session.GetString(SearchTermSessionKey);
-                return NormalizeSearchTerm(persistedSearchTerm is string sessionSearchTerm ? sessionSearchTerm : string.Empty);
-            }
-
-            return NormalizeSearchTerm(searchTerm);
+            return _listingPageStateService.ResolveSearchTermFromRequest(Request, HttpContext.Session, ListingStateOptions, searchTerm);
         }
 
-        private static string NormalizeSearchTerm(string searchTerm)
+        private KeysetListingSessionState ListingState
         {
-            if (string.IsNullOrWhiteSpace(searchTerm))
+            get
             {
-                return string.Empty;
+                return new KeysetListingSessionState(CurrentPage, CurrentAnchorCategoryId, SortBy, SortDirection, SearchTerm);
             }
-
-            return searchTerm.Trim();
+            set
+            {
+                CurrentPage = value.CurrentPage;
+                CurrentAnchorCategoryId = value.CurrentAnchorId;
+                SortBy = value.SortBy;
+                SortDirection = value.SortDirection;
+                SearchTerm = value.SearchTerm;
+            }
         }
     }
 }

@@ -3,20 +3,15 @@ using Mercadito.src.users.application.ports.input;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mercadito.Pages.Infrastructure;
+using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Account
 {
     [AllowAnonymous]
-    public class ForgotPasswordModel : AppPageModel
+    public class ForgotPasswordModel(IRequestPasswordResetUseCase requestPasswordResetUseCase) : AppPageModel
     {
-        private readonly IRequestPasswordResetUseCase _requestPasswordResetUseCase;
-
-        public ForgotPasswordModel(IRequestPasswordResetUseCase requestPasswordResetUseCase)
-        {
-            _requestPasswordResetUseCase = requestPasswordResetUseCase;
-        }
-
         [BindProperty]
+        [Required(ErrorMessage = "El usuario o correo es obligatorio.")]
         public string Identifier { get; set; } = string.Empty;
 
         public async Task<IActionResult> OnPostAsync()
@@ -27,7 +22,7 @@ namespace Mercadito.Pages.Account
                 ResetUrlBase = BuildResetUrlBase()
             };
 
-            var result = await _requestPasswordResetUseCase.ExecuteAsync(resetRequest, HttpContext.RequestAborted);
+            var result = await requestPasswordResetUseCase.ExecuteAsync(resetRequest, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 ApplyResultErrors(result);
@@ -46,7 +41,7 @@ namespace Mercadito.Pages.Account
 
         private string BuildResetUrlBase()
         {
-            return BuildAbsolutePathUrl("/ResetPassword");
+            return BuildAbsolutePathUrl("/ResetPassword").ToString();
         }
     }
 }

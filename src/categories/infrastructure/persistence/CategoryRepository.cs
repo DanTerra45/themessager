@@ -1,15 +1,15 @@
 using Mercadito.src.categories.application.ports.output;
 using Mercadito.src.products.application.ports.output;
 using Dapper;
-using Mercadito.database.interfaces;
+using Mercadito.src.shared.infrastructure.persistence;
 using Mercadito.src.categories.domain.entities;
 using Mercadito.src.categories.application.models;
 using Mercadito.src.shared.domain.repository;
 using MySqlConnector;
-using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Text;
-using Shared.Domain;
+using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.shared.domain.validation;
 
 namespace Mercadito.src.categories.infrastructure.persistence
 {
@@ -21,6 +21,11 @@ namespace Mercadito.src.categories.infrastructure.persistence
         private const int MaximumCategoryCodeNumber = 99999;
 
         private readonly IDbConnectionFactory _dbConnection = dbConnection;
+
+        private static DataStoreUnavailableException CreateDataStoreUnavailableException(string operation, Exception exception)
+        {
+            return new DataStoreUnavailableException($"No se pudo {operation} porque la base de datos no está disponible.", exception);
+        }
 
         private static string FormatCategoryCode(int codeNumber)
         {
@@ -41,7 +46,12 @@ namespace Mercadito.src.categories.infrastructure.persistence
                 cancellationToken: cancellationToken);
 
             var nextCodeNumber = await connection.ExecuteScalarAsync<int>(command);
-            return nextCodeNumber < 1 ? 1 : nextCodeNumber;
+            if (nextCodeNumber < 1)
+            {
+                return 1;
+            }
+
+            return nextCodeNumber;
         }
 
         private static async Task<string> ReserveNextCategoryCodeAsync(
@@ -134,22 +144,12 @@ namespace Mercadito.src.categories.infrastructure.persistence
             return queryBuilder.ToString();
         }
 
-        private static string NormalizeSearchTerm(string searchTerm)
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                return string.Empty;
-            }
-
-            return searchTerm.Trim();
-        }
-
         private static DynamicParameters BuildCategoryQueryParameters(string searchTerm, int? pageSize = null, long? cursorCategoryId = null, long? anchorCategoryId = null)
         {
             var parameters = new DynamicParameters();
             parameters.Add("ActiveState", ActiveState);
 
-            var normalizedSearchTerm = NormalizeSearchTerm(searchTerm);
+            var normalizedSearchTerm = ValidationText.NormalizeTrimmed(searchTerm);
             if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
             {
                 parameters.Add("SearchPattern", "%" + normalizedSearchTerm + "%");
@@ -175,7 +175,12 @@ namespace Mercadito.src.categories.infrastructure.persistence
 
         private static string NormalizeSortDirection(string sortDirection)
         {
-            return string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
+            if (string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase))
+            {
+                return "DESC";
+            }
+
+            return "ASC";
         }
 
         private static string NormalizeSortBy(string sortBy)
@@ -185,7 +190,7 @@ namespace Mercadito.src.categories.infrastructure.persistence
                 return "name";
             }
 
-            var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+            var normalizedSortBy = ValidationText.NormalizeLowerTrimmed(sortBy);
             return normalizedSortBy switch
             {
                 "id" => "id",
@@ -209,10 +214,24 @@ namespace Mercadito.src.categories.infrastructure.persistence
         private static string BuildOrderByClause(string sortBy, string sortDirection, bool reverse = false)
         {
             var direction = NormalizeSortDirection(sortDirection);
-            var effectiveDirection = reverse
-                ? (string.Equals(direction, "ASC", StringComparison.Ordinal) ? "DESC" : "ASC")
-                : direction;
-            var idTieDirection = reverse ? "DESC" : "ASC";
+            var effectiveDirection = direction;
+            if (reverse)
+            {
+                if (string.Equals(direction, "ASC", StringComparison.Ordinal))
+                {
+                    effectiveDirection = "DESC";
+                }
+                else
+                {
+                    effectiveDirection = "ASC";
+                }
+            }
+
+            var idTieDirection = "ASC";
+            if (reverse)
+            {
+                idTieDirection = "DESC";
+            }
             var normalizedSortBy = NormalizeSortBy(sortBy);
 
             return normalizedSortBy switch
@@ -234,17 +253,44 @@ namespace Mercadito.src.categories.infrastructure.persistence
             {
                 if (isNextPage)
                 {
-                    return isAscending ? "currentCategory.Id > cursorCategory.Id" : "currentCategory.Id < cursorCategory.Id";
+                    if (isAscending)
+                    {
+                        return "currentCategory.Id > cursorCategory.Id";
+                    }
+
+                    return "currentCategory.Id < cursorCategory.Id";
                 }
 
-                return isAscending ? "currentCategory.Id < cursorCategory.Id" : "currentCategory.Id > cursorCategory.Id";
+                if (isAscending)
+                {
+                    return "currentCategory.Id < cursorCategory.Id";
+                }
+
+                return "currentCategory.Id > cursorCategory.Id";
             }
 
             var sortColumn = ResolveSortColumn(normalizedSortBy);
-            var mainComparator = isNextPage
-                ? (isAscending ? ">" : "<")
-                : (isAscending ? "<" : ">");
-            var idComparator = isNextPage ? ">" : "<";
+            var mainComparator = ">";
+            if (isNextPage)
+            {
+                if (!isAscending)
+                {
+                    mainComparator = "<";
+                }
+            }
+            else
+            {
+                if (isAscending)
+                {
+                    mainComparator = "<";
+                }
+            }
+
+            var idComparator = "<";
+            if (isNextPage)
+            {
+                idComparator = ">";
+            }
 
             return $@"(
                 currentCategory.{sortColumn} {mainComparator} cursorCategory.{sortColumn}
@@ -260,11 +306,20 @@ namespace Mercadito.src.categories.infrastructure.persistence
 
             if (string.Equals(normalizedSortBy, "id", StringComparison.Ordinal))
             {
-                return isAscending ? "currentCategory.Id >= anchorCategory.Id" : "currentCategory.Id <= anchorCategory.Id";
+                if (isAscending)
+                {
+                    return "currentCategory.Id >= anchorCategory.Id";
+                }
+
+                return "currentCategory.Id <= anchorCategory.Id";
             }
 
             var sortColumn = ResolveSortColumn(normalizedSortBy);
-            var mainComparator = isAscending ? ">" : "<";
+            var mainComparator = "<";
+            if (isAscending)
+            {
+                mainComparator = ">";
+            }
 
             return $@"(
                 currentCategory.{sortColumn} {mainComparator} anchorCategory.{sortColumn}
@@ -274,8 +329,10 @@ namespace Mercadito.src.categories.infrastructure.persistence
 
         public async Task<IReadOnlyList<CategoryModel>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                const string query = @"SELECT
                         id AS Id,
                         codigo AS Code,
                         nombre AS Name,
@@ -285,18 +342,26 @@ namespace Mercadito.src.categories.infrastructure.persistence
                         WHERE estado = @ActiveState
                         ORDER BY nombre ASC";
 
-            var command = new CommandDefinition(query, parameters: new { ActiveState }, cancellationToken: cancellationToken);
-            var categories = await connection.QueryAsync<CategoryModel>(command);
-            return categories.AsList();
+                var command = new CommandDefinition(query, parameters: new { ActiveState }, cancellationToken: cancellationToken);
+                var categories = await connection.QueryAsync<CategoryModel>(command);
+                return categories.AsList();
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar categorías", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar categorías", exception);
+            }
         }
 
         public async Task<string> GetNextCategoryCodeAsync(CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            int nextCodeNumber;
-
             try
             {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                int nextCodeNumber;
                 const string query = @"SELECT `nextValue`
                         FROM category_code_sequence
                         WHERE `id` = @SequenceId";
@@ -315,18 +380,32 @@ namespace Mercadito.src.categories.infrastructure.persistence
                 {
                     nextCodeNumber = await GetFallbackNextCategoryCodeNumberAsync(connection, transaction: null, cancellationToken);
                 }
+                if (nextCodeNumber > MaximumCategoryCodeNumber)
+                {
+                    throw new BusinessValidationException("Code", "No hay más códigos de categoría disponibles.");
+                }
+
+                return FormatCategoryCode(nextCodeNumber);
             }
             catch (MySqlException exception) when (exception.Number == 1146)
             {
-                nextCodeNumber = await GetFallbackNextCategoryCodeNumberAsync(connection, transaction: null, cancellationToken);
-            }
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var nextCodeNumber = await GetFallbackNextCategoryCodeNumberAsync(connection, transaction: null, cancellationToken);
+                if (nextCodeNumber > MaximumCategoryCodeNumber)
+                {
+                    throw new BusinessValidationException("Code", "No hay más códigos de categoría disponibles.");
+                }
 
-            if (nextCodeNumber > MaximumCategoryCodeNumber)
+                return FormatCategoryCode(nextCodeNumber);
+            }
+            catch (MySqlException exception)
             {
-                throw new BusinessValidationException("Code", "No hay más códigos de categoría disponibles.");
+                throw CreateDataStoreUnavailableException("obtener el siguiente código de categoría", exception);
             }
-
-            return FormatCategoryCode(nextCodeNumber);
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("obtener el siguiente código de categoría", exception);
+            }
         }
 
         public async Task<IReadOnlyList<CategoryModel>> GetCategoriesByCursorAsync(
@@ -343,33 +422,44 @@ namespace Mercadito.src.categories.infrastructure.persistence
                 return [];
             }
 
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
-            var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
-            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
+                var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+                var hasSearchTerm = !string.IsNullOrWhiteSpace(ValidationText.NormalizeTrimmed(searchTerm));
 
-            var queryBuilder = new StringBuilder();
-            queryBuilder.Append("SELECT currentCategory.Id, currentCategory.Code, currentCategory.Name, currentCategory.Description, currentCategory.ProductCount FROM (");
-            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") currentCategory INNER JOIN (");
-            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") cursorCategory ON cursorCategory.Id = @CursorCategoryId WHERE ");
-            queryBuilder.Append(keysetComparator);
-            queryBuilder.Append($@" ORDER BY {orderByClause}
-                LIMIT @PageSize");
+                var queryBuilder = new StringBuilder();
+                queryBuilder.Append("SELECT currentCategory.Id, currentCategory.Code, currentCategory.Name, currentCategory.Description, currentCategory.ProductCount FROM (");
+                queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") currentCategory INNER JOIN (");
+                queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") cursorCategory ON cursorCategory.Id = @CursorCategoryId WHERE ");
+                queryBuilder.Append(keysetComparator);
+                queryBuilder.Append(FormattableString.Invariant($@" ORDER BY {orderByClause}
+                LIMIT @PageSize"));
 
-            var command = new CommandDefinition(
+                var command = new CommandDefinition(
                 queryBuilder.ToString(),
                 parameters: BuildCategoryQueryParameters(searchTerm, pageSize, cursorCategoryId: cursorCategoryId),
                 cancellationToken: cancellationToken);
 
-            var categories = (await connection.QueryAsync<CategoryModel>(command)).AsList();
-            if (!isNextPage)
-            {
-                categories.Reverse();
-            }
+                var categories = (await connection.QueryAsync<CategoryModel>(command)).AsList();
+                if (!isNextPage)
+                {
+                    categories.Reverse();
+                }
 
-            return categories;
+                return categories;
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar categorías", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar categorías", exception);
+            }
         }
 
         public async Task<IReadOnlyList<CategoryModel>> GetCategoriesFromAnchorAsync(
@@ -380,34 +470,51 @@ namespace Mercadito.src.categories.infrastructure.persistence
             string searchTerm,
             CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var hasAnchor = anchorCategoryId > 0;
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection);
-            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
-
-            var queryBuilder = new StringBuilder();
-            queryBuilder.Append("SELECT currentCategory.Id, currentCategory.Code, currentCategory.Name, currentCategory.Description, currentCategory.ProductCount FROM (");
-            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") currentCategory");
-
-            if (hasAnchor)
+            try
             {
-                queryBuilder.Append(" INNER JOIN (");
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var hasAnchor = anchorCategoryId > 0;
+                var orderByClause = BuildOrderByClause(sortBy, sortDirection);
+                var hasSearchTerm = !string.IsNullOrWhiteSpace(ValidationText.NormalizeTrimmed(searchTerm));
+
+                var queryBuilder = new StringBuilder();
+                queryBuilder.Append("SELECT currentCategory.Id, currentCategory.Code, currentCategory.Name, currentCategory.Description, currentCategory.ProductCount FROM (");
                 queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
-                queryBuilder.Append(") anchorCategory ON anchorCategory.Id = @AnchorCategoryId WHERE ");
-                queryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
-            }
+                queryBuilder.Append(") currentCategory");
 
-            queryBuilder.Append($@" ORDER BY {orderByClause}
-                LIMIT @PageSize");
+                if (hasAnchor)
+                {
+                    queryBuilder.Append(" INNER JOIN (");
+                    queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
+                    queryBuilder.Append(") anchorCategory ON anchorCategory.Id = @AnchorCategoryId WHERE ");
+                    queryBuilder.Append(BuildAnchorInclusiveComparator(sortBy, sortDirection));
+                }
 
-            var command = new CommandDefinition(
+                queryBuilder.Append(FormattableString.Invariant($@" ORDER BY {orderByClause}
+                LIMIT @PageSize"));
+
+                long? effectiveAnchorCategoryId = null;
+                if (hasAnchor)
+                {
+                    effectiveAnchorCategoryId = anchorCategoryId;
+                }
+
+                var command = new CommandDefinition(
                 queryBuilder.ToString(),
-                parameters: BuildCategoryQueryParameters(searchTerm, pageSize, anchorCategoryId: hasAnchor ? anchorCategoryId : null),
+                parameters: BuildCategoryQueryParameters(searchTerm, pageSize, anchorCategoryId: effectiveAnchorCategoryId),
                 cancellationToken: cancellationToken);
 
-            var categories = await connection.QueryAsync<CategoryModel>(command);
-            return categories.AsList();
+                var categories = await connection.QueryAsync<CategoryModel>(command);
+                return categories.AsList();
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar categorías", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar categorías", exception);
+            }
         }
 
         public async Task<bool> HasCategoriesByCursorAsync(
@@ -423,34 +530,47 @@ namespace Mercadito.src.categories.infrastructure.persistence
                 return false;
             }
 
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
-            var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
-            var hasSearchTerm = !string.IsNullOrWhiteSpace(NormalizeSearchTerm(searchTerm));
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var orderByClause = BuildOrderByClause(sortBy, sortDirection, reverse: !isNextPage);
+                var keysetComparator = BuildKeysetComparator(sortBy, sortDirection, isNextPage);
+                var hasSearchTerm = !string.IsNullOrWhiteSpace(ValidationText.NormalizeTrimmed(searchTerm));
 
-            var queryBuilder = new StringBuilder();
-            queryBuilder.Append("SELECT currentCategory.Id FROM (");
-            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") currentCategory INNER JOIN (");
-            queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
-            queryBuilder.Append(") cursorCategory ON cursorCategory.Id = @CursorCategoryId WHERE ");
-            queryBuilder.Append(keysetComparator);
-            queryBuilder.Append($@" ORDER BY {orderByClause}
-                LIMIT 1");
+                var queryBuilder = new StringBuilder();
+                queryBuilder.Append("SELECT currentCategory.Id FROM (");
+                queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") currentCategory INNER JOIN (");
+                queryBuilder.Append(BuildCategoryRowsQuery(hasSearchTerm));
+                queryBuilder.Append(") cursorCategory ON cursorCategory.Id = @CursorCategoryId WHERE ");
+                queryBuilder.Append(keysetComparator);
+                queryBuilder.Append(FormattableString.Invariant($@" ORDER BY {orderByClause}
+                LIMIT 1"));
 
             var command = new CommandDefinition(
                 queryBuilder.ToString(),
                 parameters: BuildCategoryQueryParameters(searchTerm, cursorCategoryId: cursorCategoryId),
                 cancellationToken: cancellationToken);
 
-            var nextCategoryId = await connection.QueryFirstOrDefaultAsync<long?>(command);
-            return nextCategoryId.HasValue;
+                var nextCategoryId = await connection.QueryFirstOrDefaultAsync<long?>(command);
+                return nextCategoryId.HasValue;
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar la navegación de categorías", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar la navegación de categorías", exception);
+            }
         }
 
         public async Task<CategoryModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"SELECT
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                const string query = @"SELECT
                         c.id AS Id,
                         c.codigo AS Code,
                         c.nombre AS Name,
@@ -459,16 +579,27 @@ namespace Mercadito.src.categories.infrastructure.persistence
                         FROM categorias c
                         WHERE c.id = @Id AND c.estado = @ActiveState";
 
-            var command = new CommandDefinition(
+                var command = new CommandDefinition(
                 query,
                 parameters: new { Id = id, ActiveState },
                 cancellationToken: cancellationToken);
 
-            return await connection.QueryFirstOrDefaultAsync<CategoryModel>(command);
+                return await connection.QueryFirstOrDefaultAsync<CategoryModel>(command);
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("consultar la categoría", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("consultar la categoría", exception);
+            }
         }
 
         public async Task<long> CreateAsync(Category category, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(category);
+
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             IDbTransaction? transaction = null;
 
@@ -501,6 +632,16 @@ namespace Mercadito.src.categories.infrastructure.persistence
                 TryRollback(transaction);
                 throw new BusinessValidationException("Los datos de la categoría no cumplen el formato requerido.");
             }
+            catch (MySqlException exception)
+            {
+                TryRollback(transaction);
+                throw CreateDataStoreUnavailableException("guardar la categoría", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                TryRollback(transaction);
+                throw CreateDataStoreUnavailableException("guardar la categoría", exception);
+            }
             catch
             {
                 TryRollback(transaction);
@@ -514,6 +655,8 @@ namespace Mercadito.src.categories.infrastructure.persistence
 
         public async Task<int> UpdateAsync(Category category, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(category);
+
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             try
             {
@@ -536,23 +679,39 @@ namespace Mercadito.src.categories.infrastructure.persistence
             {
                 throw new BusinessValidationException("Los datos de la categoría no cumplen el formato requerido.");
             }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("actualizar la categoría", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("actualizar la categoría", exception);
+            }
         }
 
         public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
         {
-            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-            const string query = @"UPDATE categorias
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                const string query = @"UPDATE categorias
                     SET estado = @InactiveState
                     WHERE id = @Id AND estado = @ActiveState";
-            var command = new CommandDefinition(
+                var command = new CommandDefinition(
                 query,
                 parameters: new { Id = id, ActiveState, InactiveState },
                 cancellationToken: cancellationToken);
 
-            return await connection.ExecuteAsync(command);
+                return await connection.ExecuteAsync(command);
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("eliminar la categoría", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("eliminar la categoría", exception);
+            }
         }
     }
 }
-
-
-
