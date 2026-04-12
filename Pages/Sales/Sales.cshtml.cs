@@ -1,36 +1,76 @@
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.sales.application.models;
+using Mercadito.src.sales.application.ports.input;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Sales
 {
-    public class SalesModel : PageModel
+    public partial class SalesModel(
+        ISalesTransactionFacade salesTransactionFacade,
+        ILogger<SalesModel> logger) : AppPageModel
     {
-        public decimal VentasHoy { get; private set; }
-        public decimal TicketPromedio { get; private set; }
-        public int VentasRegistradasHoy { get; private set; }
+        private readonly ISalesTransactionFacade _salesTransactionFacade = salesTransactionFacade;
+        private readonly ILogger<SalesModel> _logger = logger;
 
-        public IReadOnlyList<VentaRow> VentasRecientes { get; private set; } = [];
+        [BindProperty]
+        public RegisterSaleDto SaleDraft { get; set; } = CreateDefaultDraft();
 
-        public void OnGet()
+        [BindProperty]
+        public List<SaleDraftLineViewModel> DraftLineDetails { get; set; } = [];
+
+        [BindProperty]
+        public string CustomerSearchTerm { get; set; } = string.Empty;
+
+        [BindProperty]
+        public string ProductSearchTerm { get; set; } = string.Empty;
+
+        [BindProperty]
+        public long ProductToAddId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public long DetailSaleId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public long AutoOpenReceiptSaleId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string SortBy { get; set; } = SalesTableSorting.DefaultSortBy;
+
+        [BindProperty(SupportsGet = true)]
+        public string SortDirection { get; set; } = SalesTableSorting.DefaultSortDirection;
+
+        public SalesRegistrationContext RegistrationContext { get; private set; } = new();
+        public IReadOnlyList<SaleSummaryItem> RecentSales { get; private set; } = [];
+        public IReadOnlyList<SaleDraftLineViewModel> DraftLines { get; private set; } = [];
+        public SaleDetailDto? SelectedSaleDetail { get; private set; }
+        public bool ShowCreateModal { get; private set; }
+        public bool ShowDetailModal { get; private set; }
+        public bool ShowNewCustomerPanel { get; private set; }
+        public decimal SalesTodayTotal { get; private set; }
+        public decimal AverageTicketToday { get; private set; }
+        public int SalesTodayCount { get; private set; }
+        public decimal DraftTotal { get; private set; }
+        public string SelectedCustomerLabel { get; private set; } = "Registrar cliente nuevo";
+        public string AutoOpenReceiptUrl { get; private set; } = string.Empty;
+
+        public async Task OnGetAsync()
         {
-            VentasHoy = 4380.75m;
-            TicketPromedio = 73.01m;
-            VentasRegistradasHoy = 60;
+            EnsureDraftDefaults();
+            await LoadPageDataAsync();
 
-            VentasRecientes =
-            [
-                new VentaRow("V-2026-00184", "2026-03-19 10:14", "Mostrador 1", "Efectivo", 245.50m),
-                new VentaRow("V-2026-00183", "2026-03-19 10:02", "Mostrador 2", "QR", 98.00m),
-                new VentaRow("V-2026-00182", "2026-03-19 09:48", "Mostrador 1", "Tarjeta", 156.25m),
-                new VentaRow("V-2026-00181", "2026-03-19 09:30", "Mostrador 3", "Efectivo", 72.00m),
-                new VentaRow("V-2026-00180", "2026-03-19 09:10", "Mostrador 2", "QR", 321.40m)
-            ];
+            if (DetailSaleId > 0)
+            {
+                await LoadSaleDetailAsync(DetailSaleId);
+            }
         }
     }
 
-    public sealed record VentaRow(
-        string Codigo,
-        string FechaHora,
-        string Canal,
-        string MetodoPago,
-        decimal Total);
+    public sealed class SaleDraftLineViewModel
+    {
+        public long ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string Batch { get; set; } = string.Empty;
+        public decimal UnitPrice { get; set; }
+        public int Stock { get; set; }
+    }
 }

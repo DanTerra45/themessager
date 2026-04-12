@@ -5,6 +5,7 @@ using Mercadito.src.products.application.models;
 using Mercadito.src.products.application.ports.input;
 using Mercadito.src.products.application.ports.output;
 using Mercadito.src.products.application.validation;
+using Mercadito.src.products.domain.entities;
 using Mercadito.src.shared.domain;
 using System.ComponentModel.DataAnnotations;
 using Mercadito.src.shared.domain.exceptions;
@@ -86,7 +87,7 @@ namespace Mercadito.src.products.application.usecases
                     AuditAction.Delete,
                     "products",
                     productId,
-                    previousProduct,
+                    BuildProductAuditSnapshot(previousProduct),
                     new { Estado = "I" },
                     cancellationToken);
             }
@@ -130,7 +131,7 @@ namespace Mercadito.src.products.application.usecases
                         "products",
                         productId,
                         null,
-                        validationResult.Value,
+                        BuildProductAuditSnapshot(validationResult.Value),
                         cancellationToken);
                 }
 
@@ -192,8 +193,8 @@ namespace Mercadito.src.products.application.usecases
                         AuditAction.Update,
                         "products",
                         validationResult.Value.Id,
-                        previousProduct,
-                        validationResult.Value,
+                        BuildProductAuditSnapshot(previousProduct),
+                        BuildProductAuditSnapshot(validationResult.Value),
                         cancellationToken);
                 }
 
@@ -217,6 +218,42 @@ namespace Mercadito.src.products.application.usecases
             {
                 return Result.Failure(validationException.Message);
             }
+        }
+
+        private static object? BuildProductAuditSnapshot(ProductForEditModel? product)
+        {
+            if (product == null)
+            {
+                return null;
+            }
+
+            return new
+            {
+                product.Name,
+                product.Stock,
+                product.Batch,
+                product.ExpirationDate,
+                product.Price,
+                CategoryCount = product.CategoryIds.Count
+            };
+        }
+
+        private static object? BuildProductAuditSnapshot(Product? product)
+        {
+            if (product == null)
+            {
+                return null;
+            }
+
+            return new
+            {
+                product.Name,
+                product.Stock,
+                product.Batch,
+                product.ExpirationDate,
+                product.Price,
+                CategoryCount = product.CategoryIds.Count
+            };
         }
     }
 }

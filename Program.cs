@@ -28,6 +28,10 @@ using Mercadito.src.products.application.validation;
 using Mercadito.src.products.domain.factories;
 using Mercadito.src.products.infrastructure.persistence;
 using Mercadito.src.shared.domain.validation;
+using Mercadito.src.sales.application.facades;
+using Mercadito.src.sales.application.ports.input;
+using Mercadito.src.sales.application.ports.output;
+using Mercadito.src.sales.infrastructure.persistence;
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.ports.output;
@@ -74,9 +78,11 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Sales/Sales", "/Sales/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Cancellation", "/Sales/Cancellation/{handler?}");
     options.Conventions.AddPageRoute("/Sales/Reports", "/Sales/Reports/{handler?}");
+    options.Conventions.AddPageRoute("/Sales/Receipt", "/Sales/Receipt/{saleId?}");
     options.Conventions.AuthorizePage("/Sales/Sales", "OperatorOrAdmin");
     options.Conventions.AuthorizePage("/Sales/Cancellation", "OperatorOrAdmin");
     options.Conventions.AuthorizePage("/Sales/Reports", "AuditorOrAdmin");
+    options.Conventions.AuthorizePage("/Sales/Receipt");
 });
 
 builder.Services.AddDistributedMemoryCache();
@@ -125,6 +131,10 @@ builder.Services.AddScoped<IEmployeeRepository>(serviceProvider => serviceProvid
 
 builder.Services.AddScoped<SupplierRepository>();
 builder.Services.AddScoped<ISupplierRepository>(serviceProvider => serviceProvider.GetRequiredService<SupplierRepository>());
+
+builder.Services.AddScoped<SalesRepository>();
+builder.Services.AddScoped<ISalesRepository>(serviceProvider => serviceProvider.GetRequiredService<SalesRepository>());
+builder.Services.AddScoped<ISalesTransactionFacade, SalesTransactionFacade>();
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<IUserRepository>(serviceProvider => serviceProvider.GetRequiredService<UserRepository>());

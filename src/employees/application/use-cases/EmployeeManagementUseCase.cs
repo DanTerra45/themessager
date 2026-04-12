@@ -1,4 +1,3 @@
-using Mercadito.src.audit.application.services;
 using Mercadito.src.audit.domain.entities;
 using Mercadito.src.employees.application.models;
 using Mercadito.src.employees.application.ports.input;
@@ -13,8 +12,7 @@ namespace Mercadito.src.employees.application.usecases
     public class EmployeeManagementUseCase(
         IEmployeeRepository employeeRepository,
         ICreateEmployeeValidator createEmployeeValidator,
-        IUpdateEmployeeValidator updateEmployeeValidator,
-        IAuditTrailService auditTrailService) : IEmployeeManagementUseCase
+        IUpdateEmployeeValidator updateEmployeeValidator) : IEmployeeManagementUseCase
     {
         public async Task<IReadOnlyList<EmployeeModel>> GetPageByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorEmployeeId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default)
         {
@@ -56,11 +54,7 @@ namespace Mercadito.src.employees.application.usecases
 
         public async Task<Result> CreateAsync(CreateEmployeeDto employee, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = auditTrailService.ValidateActor(actor);
-            if (actorValidation.IsFailure)
-            {
-                return actorValidation;
-            }
+            ArgumentNullException.ThrowIfNull(actor);
 
             var validationResult = createEmployeeValidator.Validate(employee);
             if (validationResult.IsFailure)
@@ -75,16 +69,7 @@ namespace Mercadito.src.employees.application.usecases
 
             try
             {
-                var employeeId = await employeeRepository.CreateAsync(validationResult.Value, cancellationToken);
-                await auditTrailService.RecordAsync(
-                    actor,
-                    AuditAction.Create,
-                    "empleados",
-                    employeeId,
-                    null,
-                    validationResult.Value,
-                    cancellationToken);
-
+                await employeeRepository.CreateAsync(validationResult.Value, cancellationToken);
                 return Result.Success();
             }
             catch (BusinessValidationException validationException)
@@ -104,11 +89,7 @@ namespace Mercadito.src.employees.application.usecases
 
         public async Task<Result> UpdateAsync(UpdateEmployeeDto employee, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = auditTrailService.ValidateActor(actor);
-            if (actorValidation.IsFailure)
-            {
-                return actorValidation;
-            }
+            ArgumentNullException.ThrowIfNull(actor);
 
             var validationResult = updateEmployeeValidator.Validate(employee);
             if (validationResult.IsFailure)
@@ -123,21 +104,11 @@ namespace Mercadito.src.employees.application.usecases
 
             try
             {
-                var previousEmployee = await employeeRepository.GetByIdAsync(validationResult.Value.Id, cancellationToken);
                 var affectedRows = await employeeRepository.UpdateAsync(validationResult.Value, cancellationToken);
                 if (affectedRows == 0)
                 {
                     return Result.Failure("Empleado no encontrado.");
                 }
-
-                await auditTrailService.RecordAsync(
-                    actor,
-                    AuditAction.Update,
-                    "empleados",
-                    validationResult.Value.Id,
-                    previousEmployee,
-                    validationResult.Value,
-                    cancellationToken);
 
                 return Result.Success();
             }
@@ -158,26 +129,8 @@ namespace Mercadito.src.employees.application.usecases
 
         public async Task<bool> DeleteAsync(long employeeId, AuditActor actor, CancellationToken cancellationToken = default)
         {
-            var actorValidation = auditTrailService.ValidateActor(actor);
-            if (actorValidation.IsFailure)
-            {
-                return false;
-            }
-
-            var previousEmployee = await employeeRepository.GetByIdAsync(employeeId, cancellationToken);
+            ArgumentNullException.ThrowIfNull(actor);
             var affectedRows = await employeeRepository.DeleteAsync(employeeId, cancellationToken);
-            if (affectedRows > 0 && previousEmployee != null)
-            {
-                await auditTrailService.RecordAsync(
-                    actor,
-                    AuditAction.Delete,
-                    "empleados",
-                    employeeId,
-                    previousEmployee,
-                    new { Estado = "I" },
-                    cancellationToken);
-            }
-
             return affectedRows > 0;
         }
 

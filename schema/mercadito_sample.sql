@@ -37,6 +37,10 @@ UPDATE `supplier_code_sequence`
 SET `nextValue` = GREATEST(`nextValue`, 9)
 WHERE `id` = 1;
 
+INSERT INTO `sale_code_sequence` (`id`, `nextValue`)
+VALUES (1, 1)
+ON DUPLICATE KEY UPDATE `nextValue` = GREATEST(`nextValue`, 1);
+
 -- CATEGORIAS
 INSERT INTO `categorias` (`codigo`, `nombre`, `descripcion`, `estado`)
 VALUES
@@ -263,6 +267,20 @@ WHERE NOT EXISTS (
     AND COALESCE(ex.`complemento`, '') = COALESCE(e.`complemento`, '')
     AND ex.`estado` = 'A'
 );
+
+INSERT INTO `clientes` (`ciNit`, `razonSocial`, `telefono`, `email`, `direccion`, `estado`)
+VALUES
+  ('0', 'S/N (Sin CI/NIT)', NULL, NULL, NULL, 'A'),
+  ('4545451226', 'Juan Perez Vargas', '71220011', 'juan.perez@mercadito.local', 'Av. Central No.45', 'A'),
+  ('88990011', 'Empresa Aurora SRL', '72115544', 'compras@aurora.local', 'Zona Industrial No.12', 'A'),
+  ('10203040', 'Maria Fernandez', '73440022', 'maria.fernandez@mercadito.local', 'Calle Comercio No.78', 'A')
+AS `incoming_cliente`
+ON DUPLICATE KEY UPDATE
+  `razonSocial` = `incoming_cliente`.`razonSocial`,
+  `telefono` = `incoming_cliente`.`telefono`,
+  `email` = `incoming_cliente`.`email`,
+  `direccion` = `incoming_cliente`.`direccion`,
+  `estado` = 'A';
 
 UPDATE `usuarios` u
 INNER JOIN `empleados` e
