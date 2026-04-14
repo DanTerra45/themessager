@@ -1,5 +1,5 @@
-using Mercadito.src.sales.application.models;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.application.sales.models;
+using Mercadito.src.domain.shared.validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Sales

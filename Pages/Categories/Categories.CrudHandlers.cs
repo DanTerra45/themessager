@@ -1,6 +1,6 @@
-using Mercadito.src.categories.application.models;
+using Mercadito.src.application.categories.models;
 using Microsoft.AspNetCore.Mvc;
-using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.domain.shared.exceptions;
 
 namespace Mercadito.Pages.Categories
 {

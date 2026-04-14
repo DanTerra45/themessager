@@ -1,5 +1,5 @@
-using Mercadito.src.users.application.models;
-using Mercadito.src.users.application.ports.input;
+using Mercadito.src.application.users.models;
+using Mercadito.src.application.users.ports.input;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mercadito.Pages.Infrastructure;

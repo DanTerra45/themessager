@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Security.Claims;
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.users.application;
-using Mercadito.src.users.application.models;
-using Mercadito.src.users.application.ports.input;
+using Mercadito.src.application.users;
+using Mercadito.src.application.users.models;
+using Mercadito.src.application.users.ports.input;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;

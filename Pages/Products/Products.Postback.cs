@@ -1,4 +1,4 @@
-using Mercadito.src.products.application.models;
+using Mercadito.src.application.products.models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Products

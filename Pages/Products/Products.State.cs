@@ -1,5 +1,5 @@
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.domain.shared.validation;
 
 namespace Mercadito.Pages.Products
 {

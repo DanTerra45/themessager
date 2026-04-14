@@ -1,6 +1,6 @@
-using Mercadito.src.employees.application.models;
+using Mercadito.src.application.employees.models;
 using Microsoft.AspNetCore.Mvc;
-using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.domain.shared.exceptions;
 
 namespace Mercadito.Pages.Employees
 {

@@ -1,4 +1,4 @@
-using Mercadito.src.categories.application.models;
+using Mercadito.src.application.categories.models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Categories
