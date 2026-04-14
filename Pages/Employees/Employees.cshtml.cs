@@ -1,7 +1,7 @@
-using Mercadito.src.employees.application.models;
-using Mercadito.src.employees.application.ports.input;
+using Mercadito.src.application.employees.models;
+using Mercadito.src.application.employees.ports.input;
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.domain.shared.validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Employees

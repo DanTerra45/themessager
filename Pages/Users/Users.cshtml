@@ -46,7 +46,7 @@
                 @foreach (var user in Model.ActiveUsers)
                 {
                     var isCurrentUser = string.Equals(currentUsername, user.Username, StringComparison.OrdinalIgnoreCase);
-                    var isAdminUser = user.Role == Mercadito.src.users.domain.entities.UserRole.Admin;
+                    var isAdminUser = user.Role == Mercadito.src.domain.users.entities.UserRole.Admin;
                     var canDeactivateUser = !isCurrentUser && !isAdminUser;
                     var canSendResetLink = !string.IsNullOrWhiteSpace(user.Email);
                     var deactivateBlockedReason = "No se puede dar de baja un usuario administrador.";

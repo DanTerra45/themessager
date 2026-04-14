@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.domain.shared.exceptions;
 using Mercadito.src.suppliers.application.models;
 
 namespace Mercadito.Pages.Suppliers

@@ -1,5 +1,5 @@
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.domain.shared.exceptions;
 
 namespace Mercadito.Pages.Employees
 {

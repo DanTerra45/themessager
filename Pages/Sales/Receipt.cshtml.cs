@@ -1,5 +1,5 @@
-using Mercadito.src.sales.application.models;
-using Mercadito.src.sales.application.ports.input;
+using Mercadito.src.application.sales.models;
+using Mercadito.src.application.sales.ports.input;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 

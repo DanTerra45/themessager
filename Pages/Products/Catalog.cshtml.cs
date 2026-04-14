@@ -1,10 +1,10 @@
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.categories.application.models;
-using Mercadito.src.products.application.models;
-using Mercadito.src.products.application.ports.input;
+using Mercadito.src.application.categories.models;
+using Mercadito.src.application.products.models;
+using Mercadito.src.application.products.ports.input;
 using Microsoft.AspNetCore.Mvc;
-using Mercadito.src.shared.domain.exceptions;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.domain.shared.exceptions;
+using Mercadito.src.domain.shared.validation;
 
 namespace Mercadito.Pages.Products
 {

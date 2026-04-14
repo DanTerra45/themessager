@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.domain.shared.validation;
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
 using Mercadito.src.suppliers.application.validation;

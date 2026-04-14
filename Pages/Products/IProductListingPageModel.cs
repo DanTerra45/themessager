@@ -1,5 +1,5 @@
-using Mercadito.src.categories.application.models;
-using Mercadito.src.products.application.models;
+using Mercadito.src.application.categories.models;
+using Mercadito.src.application.products.models;
 
 namespace Mercadito.Pages.Products
 {

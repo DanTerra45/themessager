@@ -1,7 +1,7 @@
-using Mercadito.src.categories.application.models;
-using Mercadito.src.categories.application.ports.input;
+using Mercadito.src.application.categories.models;
+using Mercadito.src.application.categories.ports.input;
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.domain.shared.validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Categories

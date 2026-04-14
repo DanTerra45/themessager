@@ -1,9 +1,9 @@
-using Mercadito.src.users.application.models;
-using Mercadito.src.users.application.ports.input;
+using Mercadito.src.application.users.models;
+using Mercadito.src.application.users.ports.input;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.shared.domain.validation;
+using Mercadito.src.domain.shared.validation;
 using System.ComponentModel.DataAnnotations;
 
 namespace Mercadito.Pages.Account
