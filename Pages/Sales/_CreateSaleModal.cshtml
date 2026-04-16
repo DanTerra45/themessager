@@ -1,12 +1,13 @@
 @model Mercadito.Pages.Sales.SalesModel
 
 <form id="createSaleForm" method="post" asp-page-handler="Refresh" novalidate autocomplete="off">
+    <input asp-for="EditSaleId" type="hidden" />
     <section class="modal fade" id="newSaleModal" tabindex="-1" aria-labelledby="newSaleModalLabel" aria-hidden="true">
         <section class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <article class="modal-content">
                 <header class="modal-header">
                     <h5 class="modal-title" id="newSaleModalLabel" style="font-family: var(--font-display); font-weight: 800;">
-                        <i class="bi bi-receipt-cutoff me-2"></i>Nueva Venta
+                        <i class="bi bi-receipt-cutoff me-2"></i>@Model.DraftModalTitle
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="closeConfirmSaleSaveModalButton"></button>
                 </header>
@@ -267,7 +268,7 @@
                 <footer class="modal-footer">
                     <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     <button type="button" class="b-btn" id="openConfirmSaleSaveButton">
-                        Guardar Venta
+                        @Model.DraftModalActionText
                     </button>
                 </footer>
             </article>
@@ -347,17 +348,17 @@
             <article class="modal-content">
                 <header class="modal-header">
                     <h5 class="modal-title" id="confirmSaleSaveModalLabel" style="font-family: var(--font-display); font-weight: 800;">
-                        <i class="bi bi-check2-square me-2"></i>Confirmar Venta
+                        <i class="bi bi-check2-square me-2"></i>@(Model.IsEditingSale ? "Confirmar Actualización" : "Confirmar Venta")
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
                 <section class="modal-body p-4">
-                    <p class="sale-confirm-copy mb-0">¿Confirmas el registro de esta venta?</p>
+                    <p class="sale-confirm-copy mb-0">@Model.ConfirmDraftCopy</p>
                 </section>
                 <footer class="modal-footer">
                     <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal" id="backToSaleFromConfirmButton">Seguir editando</button>
                     <button type="submit" asp-page-handler="Save" class="b-btn" id="confirmSaleSubmitButton" formnovalidate>
-                        Confirmar
+                        @Model.ConfirmDraftActionText
                     </button>
                 </footer>
             </article>

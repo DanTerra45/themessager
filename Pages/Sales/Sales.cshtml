@@ -18,9 +18,21 @@
            aria-label="Refrescar ventas">
             <i class="bi bi-arrow-clockwise"></i>
         </a>
-        <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#newSaleModal">
-            <i class="bi bi-receipt-cutoff"></i> Nueva Venta
-        </button>
+        @if (Model.IsEditingSale)
+        {
+            <a asp-page="/Sales/Sales"
+               asp-route-sortBy="@Model.SortBy"
+               asp-route-sortDirection="@Model.SortDirection"
+               class="b-btn text-decoration-none">
+                <i class="bi bi-receipt-cutoff"></i> Nueva Venta
+            </a>
+        }
+        else
+        {
+            <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#newSaleModal">
+                <i class="bi bi-receipt-cutoff"></i> Nueva Venta
+            </button>
+        }
     </div>
 </header>
 
@@ -163,6 +175,18 @@
                                        title="Ver comprobante">
                                         <i class="bi bi-file-earmark-text"></i>
                                     </a>
+                                    @if (!string.Equals(sale.Status, "Anulada", StringComparison.Ordinal))
+                                    {
+                                        <a asp-page="/Sales/Sales"
+                                           asp-route-editSaleId="@sale.Id"
+                                           asp-route-sortBy="@Model.SortBy"
+                                           asp-route-sortDirection="@Model.SortDirection"
+                                           class="b-btn b-btn-secondary"
+                                           style="padding: 0.25rem 0.5rem;"
+                                           title="Editar venta">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -178,6 +202,8 @@
          data-show-detail-modal="@(Model.ShowDetailModal.ToString().ToLowerInvariant())"
          data-show-new-customer-modal="@(Model.ShowNewCustomerPanel.ToString().ToLowerInvariant())"
          data-auto-open-receipt-url="@Model.AutoOpenReceiptUrl"
+         data-is-editing-sale="@(Model.IsEditingSale.ToString().ToLowerInvariant())"
+         data-original-line-credits="@Model.OriginalSaleLineCreditsJson"
          data-customer-search-url="@Url.Page("/Sales/Sales", "SearchCustomers")"
          data-product-search-url="@Url.Page("/Sales/Sales", "SearchProducts")">
 </section>

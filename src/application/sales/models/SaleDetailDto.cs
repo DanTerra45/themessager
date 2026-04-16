@@ -4,6 +4,7 @@ namespace Mercadito.src.application.sales.models
     {
         public long Id { get; init; }
         public string Code { get; init; } = string.Empty;
+        public long CustomerId { get; init; }
         public string CustomerDocumentNumber { get; init; } = string.Empty;
         public string CustomerName { get; init; } = string.Empty;
         public string PaymentMethod { get; init; } = string.Empty;

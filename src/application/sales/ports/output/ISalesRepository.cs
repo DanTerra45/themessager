@@ -9,6 +9,7 @@ namespace Mercadito.src.application.sales.ports.output
         Task<IReadOnlyList<CustomerLookupItem>> SearchCustomersAsync(string searchTerm, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<SaleProductOption>> SearchProductsAsync(string searchTerm, CancellationToken cancellationToken = default);
         Task<long> RegisterAsync(RegisterSaleDto request, AuditActor actor, CancellationToken cancellationToken = default);
+        Task<bool> UpdateAsync(UpdateSaleDto request, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<SaleSummaryItem>> GetRecentSalesAsync(int take, string sortBy, string sortDirection, CancellationToken cancellationToken = default);
         Task<SalesOverviewMetrics> GetOverviewMetricsAsync(CancellationToken cancellationToken = default);
         Task<SaleDetailDto?> GetSaleDetailAsync(long saleId, CancellationToken cancellationToken = default);

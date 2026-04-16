@@ -231,7 +231,7 @@
         totalElement.textContent = 'Total: ' + formatMoney(total) + ' Bs.';
     }
 
-    async function runProductSearch(searchUrl, term, productOptionsContainer, selectedProductInput, issueState) {
+    async function runProductSearch(searchUrl, term, productOptionsContainer, selectedProductInput, issueState, transformProduct) {
         if (!searchUrl) {
             return;
         }
@@ -250,6 +250,10 @@
         }
 
         var products = await response.json();
+        if (typeof transformProduct === 'function') {
+            products = products.map(transformProduct);
+        }
+
         renderProductOptions(productOptionsContainer, products, selectedProductInput, issueState);
     }
 
@@ -342,8 +346,33 @@
         var draftTableBody = options.draftTableBody;
         var draftTotalValue = options.draftTotalValue;
         var productSearchUrl = options.productSearchUrl || '';
+        var originalLineCredits = options.originalLineCredits || {};
         var onStateChanged = typeof options.onStateChanged === 'function' ? options.onStateChanged : function () { };
         var draftLines = readDraftLines(createSaleForm);
+
+        function getCreditQuantity(productId) {
+            var rawValue = originalLineCredits[String(productId)];
+            if (rawValue === undefined || rawValue === null) {
+                return 0;
+            }
+
+            return parseInteger(rawValue, 0);
+        }
+
+        function applyCreditToProduct(product) {
+            var creditQuantity = getCreditQuantity(product.id);
+            if (creditQuantity <= 0) {
+                return product;
+            }
+
+            return {
+                id: product.id,
+                name: product.name,
+                batch: product.batch,
+                price: product.price,
+                stock: product.stock + creditQuantity
+            };
+        }
 
         function notifyStateChanged() {
             onStateChanged(getIssueState());
@@ -355,10 +384,11 @@
 
         function renderState() {
             var issueState = getIssueState();
+            var visibleProducts = readVisibleProductOptions(productOptionsContainer).map(applyCreditToProduct);
 
             renderDraftHiddenFields(draftHiddenFields, draftLines);
             renderDraftTable(draftTableBody, draftLines, issueState);
-            renderProductOptions(productOptionsContainer, readVisibleProductOptions(productOptionsContainer), selectedProductInput, issueState);
+            renderProductOptions(productOptionsContainer, visibleProducts, selectedProductInput, issueState);
             updateDraftTotal(draftTotalValue, draftLines);
 
             if (issueState.hasBlockingErrors) {
@@ -383,12 +413,12 @@
             }
 
             if (existingLine) {
-                if (selectedProduct.stock > 0 && existingLine.quantity >= selectedProduct.stock) {
+                if (existingLine.stock > 0 && existingLine.quantity >= existingLine.stock) {
                     return;
                 }
 
                 existingLine.quantity += 1;
-                existingLine.stock = selectedProduct.stock;
+                existingLine.stock = Math.max(existingLine.stock, selectedProduct.stock);
                 renderState();
                 return;
             }
@@ -405,7 +435,7 @@
         });
 
         productSearchButton.addEventListener('click', function () {
-            runProductSearch(productSearchUrl, productSearchInput.value, productOptionsContainer, selectedProductInput, getIssueState());
+            runProductSearch(productSearchUrl, productSearchInput.value, productOptionsContainer, selectedProductInput, getIssueState(), applyCreditToProduct);
         });
 
         productSearchInput.addEventListener('keydown', function (event) {
@@ -414,11 +444,11 @@
             }
 
             event.preventDefault();
-            runProductSearch(productSearchUrl, productSearchInput.value, productOptionsContainer, selectedProductInput, getIssueState());
+            runProductSearch(productSearchUrl, productSearchInput.value, productOptionsContainer, selectedProductInput, getIssueState(), applyCreditToProduct);
         });
 
         bindResetToAllOnEmpty(productSearchInput, function () {
-            runProductSearch(productSearchUrl, '', productOptionsContainer, selectedProductInput, getIssueState());
+            runProductSearch(productSearchUrl, '', productOptionsContainer, selectedProductInput, getIssueState(), applyCreditToProduct);
         });
 
         draftTableBody.addEventListener('click', function (event) {

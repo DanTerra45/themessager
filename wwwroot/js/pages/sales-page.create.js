@@ -11,6 +11,15 @@
             return;
         }
 
+        var originalLineCredits = {};
+        if (configElement.dataset.originalLineCredits) {
+            try {
+                originalLineCredits = JSON.parse(configElement.dataset.originalLineCredits);
+            } catch (error) {
+                originalLineCredits = {};
+            }
+        }
+
         var customerSearchInput = document.getElementById('CustomerSearchTerm');
         var customerSearchButton = document.getElementById('searchCustomersButton');
         var customerOptionsContainer = document.getElementById('saleCustomerOptionList');
@@ -150,6 +159,7 @@
             draftTableBody: draftTableBody,
             draftTotalValue: draftTotalValue,
             productSearchUrl: configElement.dataset.productSearchUrl || '',
+            originalLineCredits: originalLineCredits,
             onStateChanged: updateSaveButtons
         });
 

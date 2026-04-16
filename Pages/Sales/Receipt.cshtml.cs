@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Mercadito.Pages.Sales
 {
     public class ReceiptModel(
-        ISalesTransactionFacade salesTransactionFacade,
+        ISalesQueryFacade salesQueryFacade,
         ILogger<ReceiptModel> logger) : PageModel
     {
         [BindProperty(SupportsGet = true)]
@@ -21,7 +21,7 @@ namespace Mercadito.Pages.Sales
                 return NotFound();
             }
 
-            var result = await salesTransactionFacade.GetSaleReceiptAsync(SaleId, HttpContext.RequestAborted);
+            var result = await salesQueryFacade.GetSaleReceiptAsync(SaleId, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 logger.LogWarning("No se pudo cargar el comprobante de venta {SaleId}: {Message}", SaleId, result.ErrorMessage);
