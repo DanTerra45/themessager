@@ -11,6 +11,9 @@
 # Sonarcube
 .sonarqube/
 
+# mailpit
+mailpit/
+
 # Config
 .config/
 

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mercadito.src.shared.domain.exceptions;
+using Mercadito.src.domain.shared.exceptions;
 
 namespace Mercadito.Pages;
 

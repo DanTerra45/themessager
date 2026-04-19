@@ -1,6 +1,6 @@
 using Mercadito.Pages.Infrastructure;
-using Mercadito.src.users.application.models;
-using Mercadito.src.users.application.ports.input;
+using Mercadito.src.application.users.models;
+using Mercadito.src.application.users.ports.input;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Users

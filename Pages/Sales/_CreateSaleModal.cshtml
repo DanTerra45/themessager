@@ -1,0 +1,366 @@
+@model Mercadito.Pages.Sales.SalesModel
+
+<form id="createSaleForm" method="post" asp-page-handler="Refresh" novalidate autocomplete="off">
+    <section class="modal fade" id="newSaleModal" tabindex="-1" aria-labelledby="newSaleModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="newSaleModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-receipt-cutoff me-2"></i>Nueva Venta
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="closeConfirmSaleSaveModalButton"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <section class="row g-4">
+                        <section class="col-lg-5">
+                            <section class="b-card p-3 h-100 sale-client-panel sale-create-panel">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <strong style="font-family: var(--font-display); text-transform: uppercase;">Cliente</strong>
+                                    <span class="text-muted" style="font-family: var(--font-mono);">@Model.RegistrationContext.NextSaleCode</span>
+                                </div>
+
+                                <input asp-for="SaleDraft.CustomerId" type="hidden" />
+
+                                <section class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
+                                        <label class="form-label fw-bold mb-0">
+                                            Cliente a usar
+                                            <span asp-validation-for="SaleDraft.CustomerId" class="validation-icon-inline"></span>
+                                        </label>
+                                        <button type="button"
+                                                class="b-btn b-btn-secondary sale-inline-icon-button"
+                                                id="openNewCustomerDraftButton"
+                                                title="Registrar cliente nuevo">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
+                                    </div>
+
+                                    <article id="saleSelectedCustomerCard" class="sale-selection-card">
+                                        <div class="sale-selection-card-header">
+                                            <strong id="saleSelectedCustomerTitle">Esperando cliente...</strong>
+                                            <span id="saleSelectedCustomerWarningIcon"
+                                                  class="info-tooltip sale-warning-tooltip d-none"
+                                                  data-bs-toggle="tooltip"
+                                                  data-bs-custom-class="sale-stock-tooltip"
+                                                  data-bs-title=""
+                                                  tabindex="0">
+                                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                            </span>
+                                        </div>
+                                        <small id="saleSelectedCustomerMeta" class="text-muted">Selecciona uno de la lista o usa el botón + para registrar uno nuevo.</small>
+                                    </article>
+                                </section>
+
+                                <section class="mb-3">
+                                    <label class="form-label fw-bold" for="CustomerSearchTerm">
+                                        Buscar cliente
+                                    </label>
+                                    <div class="input-group sale-search-group">
+                                        <input id="CustomerSearchTerm"
+                                               name="CustomerSearchTerm"
+                                               value="@Model.CustomerSearchTerm"
+                                               class="form-control sale-static-control"
+                                               placeholder="CI/NIT o razón social"
+                                               data-normalize="collapse" />
+                                        <button type="button" class="b-btn b-btn-secondary sale-search-button" id="searchCustomersButton">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <section class="sale-client-results-block">
+                                    <label class="form-label fw-bold">
+                                        Resultados de cliente
+                                    </label>
+                                    <section class="sale-customer-option-list" id="saleCustomerOptionList">
+                                        @if (Model.RegistrationContext.Customers.Count == 0)
+                                        {
+                                            <article class="sale-product-option-empty">
+                                                No hay clientes que coincidan con la búsqueda actual.
+                                            </article>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var customer in Model.RegistrationContext.Customers)
+                                            {
+                                                var optionClasses = "sale-customer-option";
+                                                if (customer.Id == Model.SaleDraft.CustomerId)
+                                                {
+                                                    optionClasses += " is-selected";
+                                                }
+
+                                                <button type="button"
+                                                        class="@optionClasses"
+                                                        data-sale-customer-option="true"
+                                                        data-customer-id="@customer.Id"
+                                                        data-customer-document="@customer.DocumentNumber"
+                                                        data-customer-name="@customer.BusinessName"
+                                                        aria-pressed="@((customer.Id == Model.SaleDraft.CustomerId).ToString().ToLowerInvariant())">
+                                                    <span class="sale-customer-option-name">@customer.BusinessName</span>
+                                                    <span class="sale-customer-option-meta">@customer.DocumentNumber</span>
+                                                </button>
+                                            }
+                                        }
+                                    </section>
+                                </section>
+                            </section>
+                        </section>
+
+                        <section class="col-lg-7">
+                            <section class="b-card p-3 h-100 sale-create-panel">
+                                <div class="row g-3 mb-3">
+                                    <section class="col-md-6">
+                                        <label asp-for="SaleDraft.Channel" class="form-label fw-bold">
+                                            Canal
+                                            <span asp-validation-for="SaleDraft.Channel" class="validation-icon-inline"></span>
+                                        </label>
+                                        <input asp-for="SaleDraft.Channel" class="form-control" data-normalize="collapse" />
+                                    </section>
+                                    <section class="col-md-6">
+                                        <label asp-for="SaleDraft.PaymentMethod" class="form-label fw-bold">
+                                            Método de pago
+                                            <span asp-validation-for="SaleDraft.PaymentMethod" class="validation-icon-inline"></span>
+                                        </label>
+                                        <input asp-for="SaleDraft.PaymentMethod" class="form-control" data-normalize="collapse" />
+                                    </section>
+                                </div>
+
+                                <section class="mb-3">
+                                    <label class="form-label fw-bold" for="ProductSearchTerm">Buscar producto</label>
+                                    <div class="input-group sale-search-group">
+                                        <input id="ProductSearchTerm"
+                                               name="ProductSearchTerm"
+                                               value="@Model.ProductSearchTerm"
+                                               class="form-control sale-static-control"
+                                               placeholder="Nombre o lote"
+                                               data-normalize="collapse" />
+                                        <button type="button" class="b-btn b-btn-secondary sale-search-button" id="searchProductsButton">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <section id="saleDraftLineHiddenFields">
+                                    @for (var index = 0; index < Model.SaleDraft.Lines.Count; index++)
+                                    {
+                                        <input asp-for="DraftLineDetails[index].ProductId" type="hidden" />
+                                        <input asp-for="DraftLineDetails[index].ProductName" type="hidden" />
+                                        <input asp-for="DraftLineDetails[index].Batch" type="hidden" />
+                                        <input asp-for="DraftLineDetails[index].UnitPrice" type="hidden" />
+                                        <input asp-for="DraftLineDetails[index].Stock" type="hidden" />
+                                    }
+                                </section>
+
+                                <input asp-for="ProductToAddId" type="hidden" />
+
+                                <section class="mb-3">
+                                    <label class="form-label fw-bold">
+                                        Producto a agregar
+                                        <span asp-validation-for="SaleDraft.Lines" class="validation-icon-inline"></span>
+                                    </label>
+                                    <small class="text-muted d-block mb-2">
+                                        Haz clic en un producto para agregarlo. Ajusta la cantidad directamente en la tabla.
+                                    </small>
+                                    <section class="sale-product-option-list" id="saleProductOptionList">
+                                        @if (Model.RegistrationContext.Products.Count == 0)
+                                        {
+                                            <article class="sale-product-option-empty">
+                                                No hay productos que coincidan con la búsqueda actual.
+                                            </article>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var product in Model.RegistrationContext.Products)
+                                            {
+                                                var optionClasses = "sale-product-option";
+                                                if (product.Id == Model.ProductToAddId)
+                                                {
+                                                    optionClasses += " is-selected";
+                                                }
+
+                                                <button type="button"
+                                                        class="@optionClasses"
+                                                        data-sale-product-option="true"
+                                                        data-product-id="@product.Id"
+                                                        data-product-name="@product.Name"
+                                                        data-product-batch="@product.Batch"
+                                                        data-product-price="@product.Price"
+                                                        data-product-stock="@product.Stock"
+                                                        aria-pressed="@((product.Id == Model.ProductToAddId).ToString().ToLowerInvariant())">
+                                                    <span class="sale-product-option-header">
+                                                        <span>@product.Name</span>
+                                                        <span>@product.Price.ToString("N2") Bs.</span>
+                                                    </span>
+                                                    <span class="sale-product-option-meta">
+                                                        <span>Lote @product.Batch</span>
+                                                        <span>Stock @product.Stock</span>
+                                                    </span>
+                                                </button>
+                                            }
+                                        }
+                                    </section>
+                                </section>
+                                <section class="sale-draft-table-shell mb-3">
+                                    <section class="sale-draft-table-scroll">
+                                        <table class="table table-hover align-middle mb-0 sale-draft-table">
+                                            <thead class="text-center">
+                                                <tr>
+                                                    <th>Producto</th>
+                                                    <th>Lote</th>
+                                                    <th class="text-center">Cantidad</th>
+                                                    <th class="text-end">Precio</th>
+                                                    <th class="text-end">Importe</th>
+                                                    <th class="text-center">Opción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="saleDraftLinesTableBody">
+                                                @if (Model.DraftLines.Count == 0)
+                                                {
+                                                    <tr>
+                                                        <td colspan="6" class="text-center text-muted py-4">Aún no agregaste productos a la venta.</td>
+                                                    </tr>
+                                                }
+                                                else
+                                                {
+                                                    @for (var index = 0; index < Model.DraftLines.Count; index++)
+                                                    {
+                                                        var detail = Model.DraftLines[index];
+                                                        var quantity = Model.SaleDraft.Lines[index].Quantity;
+                                                        var amount = decimal.Round(detail.UnitPrice * quantity, 2, MidpointRounding.AwayFromZero);
+
+                                                        <tr>
+                                                            <td class="sale-draft-product-cell">
+                                                                <input asp-for="SaleDraft.Lines[index].ProductId" type="hidden" />
+                                                                @detail.ProductName
+                                                            </td>
+                                                            <td class="sale-draft-batch-cell">@detail.Batch</td>
+                                                            <td class="sale-draft-quantity-cell">
+                                                                <input asp-for="SaleDraft.Lines[index].Quantity" class="form-control text-center sale-line-quantity-input" min="1" data-draft-quantity-index="@index" />
+                                                            </td>
+                                                            <td class="sale-draft-price-cell">@detail.UnitPrice.ToString("N2") Bs.</td>
+                                                            <td class="sale-draft-price-cell fw-bold">@amount.ToString("N2") Bs.</td>
+                                                            <td class="sale-draft-action-cell">
+                                                                <button type="button"
+                                                                        class="b-btn b-btn-danger sale-remove-line-button"
+                                                                        data-draft-remove-product-id="@detail.ProductId">
+                                                                    <i class="bi bi-dash-lg"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </section>
+                                </section>
+
+                                <section class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Las cantidades pueden editarse antes de guardar.</small>
+                                    <strong id="saleDraftTotalValue" style="font-family: var(--font-display);">Total: @Model.DraftTotal.ToString("N2") Bs.</strong>
+                                </section>
+                            </section>
+                        </section>
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="b-btn" id="openConfirmSaleSaveButton">
+                        Guardar Venta
+                    </button>
+                </footer>
+            </article>
+        </section>
+    </section>
+
+    <section class="modal fade" id="newCustomerDraftModal" tabindex="-1" aria-labelledby="newCustomerDraftModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="newCustomerDraftModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-person-plus me-2"></i>Registrar Cliente
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="closeNewCustomerDraftModalButton"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <p class="text-muted small mb-3">Este cliente quedará en borrador hasta confirmar la venta.</p>
+
+                    <section class="mb-3">
+                        <label asp-for="SaleDraft.NewCustomer.DocumentNumber" class="form-label fw-bold">
+                            CI/NIT nuevo cliente
+                            <span class="info-tooltip" tabindex="0" data-info-message="Obligatorio. Usa 0 para consumidor final o un CI/NIT con 5 a 20 caracteres válidos.">i</span>
+                            <span asp-validation-for="SaleDraft.NewCustomer.DocumentNumber" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SaleDraft.NewCustomer.DocumentNumber" class="form-control" data-normalize="trim-upper" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="SaleDraft.NewCustomer.BusinessName" class="form-label fw-bold">
+                            Razón social
+                            <span class="info-tooltip" tabindex="0" data-info-message="Obligatorio. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="SaleDraft.NewCustomer.BusinessName" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SaleDraft.NewCustomer.BusinessName" class="form-control" data-normalize="collapse" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="SaleDraft.NewCustomer.Phone" class="form-label fw-bold">
+                            Teléfono
+                            <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Máximo 20 caracteres.">i</span>
+                            <span asp-validation-for="SaleDraft.NewCustomer.Phone" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SaleDraft.NewCustomer.Phone" class="form-control" data-normalize="trim" />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="SaleDraft.NewCustomer.Email" class="form-label fw-bold">
+                            Correo
+                            <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Máximo 100 caracteres y formato de correo válido.">i</span>
+                            <span asp-validation-for="SaleDraft.NewCustomer.Email" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SaleDraft.NewCustomer.Email" class="form-control" data-normalize="trim-lower" />
+                    </section>
+
+                    <section class="mb-0">
+                        <label asp-for="SaleDraft.NewCustomer.Address" class="form-label fw-bold">
+                            Dirección
+                            <span class="info-tooltip" tabindex="0" data-info-message="Opcional. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="SaleDraft.NewCustomer.Address" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SaleDraft.NewCustomer.Address" class="form-control" data-normalize="collapse" />
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-danger sale-discard-draft-button" id="discardNewCustomerDraftButton">Descartar</button>
+                    <button type="button" class="b-btn b-btn-secondary" id="backNewCustomerDraftButton">Atrás</button>
+                    <button type="button" class="b-btn" id="applyNewCustomerDraftButton">
+                        Usar Cliente
+                    </button>
+                </footer>
+            </article>
+        </section>
+    </section>
+
+    <section class="modal fade" id="confirmSaleSaveModal" tabindex="-1" aria-labelledby="confirmSaleSaveModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered sale-confirm-modal-dialog">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="confirmSaleSaveModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-check2-square me-2"></i>Confirmar Venta
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <p class="sale-confirm-copy mb-0">¿Confirmas el registro de esta venta?</p>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal" id="backToSaleFromConfirmButton">Seguir editando</button>
+                    <button type="submit" asp-page-handler="Save" class="b-btn" id="confirmSaleSubmitButton" formnovalidate>
+                        Confirmar
+                    </button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</form>

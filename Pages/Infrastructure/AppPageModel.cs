@@ -1,7 +1,7 @@
 using System.Security.Claims;
-using Mercadito.src.audit.domain.entities;
+using Mercadito.src.domain.audit.entities;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Mercadito.src.shared.domain;
+using Mercadito.src.domain.shared;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Text.Json;
 using System.Globalization;

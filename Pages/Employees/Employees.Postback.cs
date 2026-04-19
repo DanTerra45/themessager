@@ -1,4 +1,4 @@
-using Mercadito.src.employees.application.models;
+using Mercadito.src.application.employees.models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Employees

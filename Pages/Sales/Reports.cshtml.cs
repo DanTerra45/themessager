@@ -1,36 +1,111 @@
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Mercadito.Pages.Infrastructure;
+using Mercadito.src.application.sales.models;
+using Mercadito.src.application.sales.ports.input;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Pages.Sales
 {
-    public class ReportsModel : PageModel
+    public class ReportsModel(
+        ISalesTransactionFacade salesTransactionFacade,
+        ILogger<ReportsModel> logger) : AppPageModel
     {
-        public int DailyReports { get; private set; }
-        public int WeeklyReports { get; private set; }
-        public int MonthlyReports { get; private set; }
-        public int ExportsToday { get; private set; }
+        [BindProperty(SupportsGet = true)]
+        public long DetailSaleId { get; set; }
 
-        public IReadOnlyList<ReportRow> ReportRows { get; private set; } = [];
+        [BindProperty(SupportsGet = true)]
+        public string SortBy { get; set; } = SalesTableSorting.DefaultSortBy;
 
-        public void OnGet()
+        [BindProperty(SupportsGet = true)]
+        public string SortDirection { get; set; } = SalesTableSorting.DefaultSortDirection;
+
+        public IReadOnlyList<SaleSummaryItem> RecentSales { get; private set; } = [];
+        public SaleDetailDto? SelectedSaleDetail { get; private set; }
+        public bool ShowDetailModal { get; private set; }
+        public int RegisteredSalesCount { get; private set; }
+        public int CancelledSalesCount { get; private set; }
+        public decimal RegisteredAmountTotal { get; private set; }
+
+        public async Task OnGetAsync()
         {
-            DailyReports = 4;
-            WeeklyReports = 2;
-            MonthlyReports = 1;
-            ExportsToday = 3;
+            await LoadPageDataAsync();
 
-            ReportRows =
-            [
-                new ReportRow("Ventas por producto", "Diario", "PDF", "2026-03-19 10:35"),
-                new ReportRow("Resumen por categoría", "Semanal", "Excel", "2026-03-18 18:20"),
-                new ReportRow("Rendimiento comercial", "Mensual", "PDF", "2026-03-01 09:10"),
-                new ReportRow("Detalle por caja", "Diario", "Excel", "2026-03-19 09:45")
-            ];
+            if (DetailSaleId > 0)
+            {
+                await LoadSaleDetailAsync(DetailSaleId);
+            }
         }
-    }
 
-    public sealed record ReportRow(
-        string ReportName,
-        string Period,
-        string Format,
-        string LastGeneratedAt);
+        private async Task LoadPageDataAsync()
+        {
+            SortBy = NormalizeSortBy(SortBy);
+            SortDirection = SalesTableSorting.NormalizeSortDirection(SortDirection);
+
+            var recentSalesResult = await salesTransactionFacade.GetRecentSalesAsync(
+                30,
+                SortBy,
+                SortDirection,
+                HttpContext.RequestAborted);
+            if (recentSalesResult.IsFailure)
+            {
+                logger.LogError("No se pudo cargar el historial de ventas para reportes: {Message}", recentSalesResult.ErrorMessage);
+                TempData["ErrorMessage"] = "No se pudo cargar el historial de ventas para reportes.";
+                RecentSales = [];
+                return;
+            }
+
+            RecentSales = recentSalesResult.Value;
+
+            var overviewMetricsResult = await salesTransactionFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
+            if (overviewMetricsResult.IsFailure)
+            {
+                logger.LogError("No se pudo cargar el resumen para reportes de ventas: {Message}", overviewMetricsResult.ErrorMessage);
+                TempData["ErrorMessage"] = "No se pudo cargar el resumen de ventas.";
+                RegisteredSalesCount = 0;
+                CancelledSalesCount = 0;
+                RegisteredAmountTotal = 0m;
+            }
+            else
+            {
+                RegisteredSalesCount = overviewMetricsResult.Value.RegisteredSalesCount;
+                CancelledSalesCount = overviewMetricsResult.Value.CancelledSalesCount;
+                RegisteredAmountTotal = overviewMetricsResult.Value.RegisteredAmountTotal;
+            }
+        }
+
+        private async Task LoadSaleDetailAsync(long saleId)
+        {
+            var result = await salesTransactionFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
+            if (result.IsFailure)
+            {
+                TempData["ErrorMessage"] = result.ErrorMessage;
+                return;
+            }
+
+            SelectedSaleDetail = result.Value;
+            ShowDetailModal = true;
+        }
+
+        public string GetSortIcon(string columnName)
+        {
+            return SalesTableSorting.GetSortIcon(SortBy, SortDirection, NormalizeSortBy(columnName));
+        }
+
+        public string GetNextSortDirection(string columnName)
+        {
+            return SalesTableSorting.GetNextSortDirection(SortBy, SortDirection, NormalizeSortBy(columnName));
+        }
+
+        private static string NormalizeSortBy(string? value)
+        {
+            return SalesTableSorting.NormalizeSortBy(
+                value,
+                "code",
+                "createdat",
+                "customer",
+                "paymentmethod",
+                "total",
+                "status");
+        }
+
+    }
 }

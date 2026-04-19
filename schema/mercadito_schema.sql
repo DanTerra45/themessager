@@ -184,6 +184,91 @@ CREATE TABLE `email_outbox` (
 );
 
 -- ============================================================
+-- TABLAS DEL PROCESO PRINCIPAL: CLIENTES Y VENTAS
+-- ============================================================
+CREATE TABLE `clientes` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `ciNit` VARCHAR(20) NOT NULL,
+  `razonSocial` VARCHAR(150) NOT NULL,
+  `telefono` VARCHAR(20),
+  `email` VARCHAR(100),
+  `direccion` VARCHAR(150),
+  `estado` ENUM ('A', 'I') NOT NULL DEFAULT 'A',
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_clientes_ci_nit` UNIQUE (`ciNit`),
+  CONSTRAINT `chk_clientes_ci_nit_no_vacio` CHECK (TRIM(`ciNit`) <> ''),
+  CONSTRAINT `chk_clientes_ci_nit_formato` CHECK (`ciNit` REGEXP '^([0-9A-Za-z-]{5,20}|0)$'),
+  CONSTRAINT `chk_clientes_razon_social_no_vacia` CHECK (TRIM(`razonSocial`) <> ''),
+  CONSTRAINT `chk_clientes_email_formato` CHECK (`email` IS NULL OR `email` REGEXP '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$')
+);
+
+CREATE INDEX `clientes_idx_estado_razon` ON `clientes` (`estado`, `razonSocial`);
+CREATE INDEX `clientes_idx_estado_ci_nit` ON `clientes` (`estado`, `ciNit`);
+
+CREATE TABLE `sale_code_sequence` (
+  `id` TINYINT UNSIGNED PRIMARY KEY,
+  `nextValue` INT NOT NULL,
+  CONSTRAINT `chk_sale_code_sequence_id` CHECK (`id` = 1),
+  CONSTRAINT `chk_sale_code_sequence_next_value` CHECK (`nextValue` BETWEEN 1 AND 99999)
+);
+
+CREATE TABLE `ventas` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `codigo` VARCHAR(12) NOT NULL,
+  `clienteId` BIGINT NOT NULL,
+  `usuarioId` BIGINT NOT NULL,
+  `usuarioUsername` VARCHAR(50) NOT NULL,
+  `canal` VARCHAR(30) NOT NULL,
+  `metodoPago` VARCHAR(30) NOT NULL,
+  `total` DECIMAL(10,2) NOT NULL,
+  `estado` ENUM ('Registrada', 'Anulada') NOT NULL DEFAULT 'Registrada',
+  `motivoAnulacion` VARCHAR(255),
+  `usuarioAnulacionId` BIGINT,
+  `usuarioAnulacionUsername` VARCHAR(50),
+  `fechaAnulacion` DATETIME,
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ultimaActualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_ventas_codigo` UNIQUE (`codigo`),
+  CONSTRAINT `chk_ventas_codigo_formato` CHECK (`codigo` REGEXP '^V-[0-9]{4}-[0-9]{5}$'),
+  CONSTRAINT `chk_ventas_usuario_username_no_vacio` CHECK (TRIM(`usuarioUsername`) <> ''),
+  CONSTRAINT `chk_ventas_canal_no_vacio` CHECK (TRIM(`canal`) <> ''),
+  CONSTRAINT `chk_ventas_metodo_pago_no_vacio` CHECK (TRIM(`metodoPago`) <> ''),
+  CONSTRAINT `chk_ventas_total_positivo` CHECK (`total` >= 0.01),
+  CONSTRAINT `chk_ventas_anulacion_consistente` CHECK (
+    (`estado` = 'Registrada' AND `motivoAnulacion` IS NULL AND `usuarioAnulacionId` IS NULL AND `usuarioAnulacionUsername` IS NULL AND `fechaAnulacion` IS NULL)
+    OR
+    (`estado` = 'Anulada' AND `motivoAnulacion` IS NOT NULL AND `usuarioAnulacionId` IS NOT NULL AND `usuarioAnulacionUsername` IS NOT NULL AND `fechaAnulacion` IS NOT NULL)
+  ),
+  CONSTRAINT `fk_ventas_cliente_id` FOREIGN KEY (`clienteId`) REFERENCES `clientes` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_ventas_usuario_id` FOREIGN KEY (`usuarioId`) REFERENCES `usuarios` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_ventas_usuario_anulacion_id` FOREIGN KEY (`usuarioAnulacionId`) REFERENCES `usuarios` (`id`) ON DELETE RESTRICT
+);
+
+CREATE INDEX `ventas_idx_estado_fecha` ON `ventas` (`estado`, `fechaRegistro`);
+CREATE INDEX `ventas_idx_cliente_fecha` ON `ventas` (`clienteId`, `fechaRegistro`);
+
+CREATE TABLE `detalleVenta` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `ventaId` BIGINT NOT NULL,
+  `productId` BIGINT NOT NULL,
+  `nombreProductoSnapshot` VARCHAR(150) NOT NULL,
+  `cantidad` INT NOT NULL,
+  `precioUnitario` DECIMAL(10,2) NOT NULL,
+  `importe` DECIMAL(10,2) NOT NULL,
+  `fechaRegistro` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `chk_detalle_venta_nombre_no_vacio` CHECK (TRIM(`nombreProductoSnapshot`) <> ''),
+  CONSTRAINT `chk_detalle_venta_cantidad_positiva` CHECK (`cantidad` > 0),
+  CONSTRAINT `chk_detalle_venta_precio_positivo` CHECK (`precioUnitario` >= 0.01),
+  CONSTRAINT `chk_detalle_venta_importe_positivo` CHECK (`importe` >= 0.01),
+  CONSTRAINT `fk_detalle_venta_venta_id` FOREIGN KEY (`ventaId`) REFERENCES `ventas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_detalle_venta_product_id` FOREIGN KEY (`productId`) REFERENCES `products` (`id`) ON DELETE RESTRICT
+);
+
+CREATE INDEX `detalle_venta_idx_venta` ON `detalleVenta` (`ventaId`);
+CREATE INDEX `detalle_venta_idx_producto` ON `detalleVenta` (`productId`);
+
+-- ============================================================
 -- TABLA DE AUDITORÍA (log de operaciones C/U/D)
 -- ============================================================
 CREATE TABLE `auditoria` (
