@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Mercadito.Pages.Sales
 {
     public class CancellationModel(
-        ISalesTransactionFacade salesTransactionFacade,
+        ISalesQueryFacade salesQueryFacade,
+        ICancelSaleFacade cancelSaleFacade,
         ILogger<CancellationModel> logger) : AppPageModel
     {
         [BindProperty]
@@ -43,7 +44,7 @@ namespace Mercadito.Pages.Sales
         public async Task<IActionResult> OnPostCancelAsync()
         {
             var actor = BuildAuditActor();
-            var result = await salesTransactionFacade.CancelAsync(CancelRequest, actor, HttpContext.RequestAborted);
+            var result = await cancelSaleFacade.CancelAsync(CancelRequest, actor, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 ApplyResultErrors(result, nameof(CancelRequest));
@@ -61,7 +62,7 @@ namespace Mercadito.Pages.Sales
             SortBy = NormalizeSortBy(SortBy);
             SortDirection = SalesTableSorting.NormalizeSortDirection(SortDirection);
 
-            var recentSalesResult = await salesTransactionFacade.GetRecentSalesAsync(
+            var recentSalesResult = await salesQueryFacade.GetRecentSalesAsync(
                 30,
                 SortBy,
                 SortDirection,
@@ -77,7 +78,7 @@ namespace Mercadito.Pages.Sales
 
             RecentSales = recentSalesResult.Value;
 
-            var overviewMetricsResult = await salesTransactionFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
+            var overviewMetricsResult = await salesQueryFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
             if (overviewMetricsResult.IsFailure)
             {
                 logger.LogError("No se pudo cargar el resumen para anulación de ventas: {Message}", overviewMetricsResult.ErrorMessage);
@@ -116,7 +117,7 @@ namespace Mercadito.Pages.Sales
 
         private async Task LoadSaleDetailAsync(long saleId)
         {
-            var result = await salesTransactionFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
+            var result = await salesQueryFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 TempData["ErrorMessage"] = result.ErrorMessage;

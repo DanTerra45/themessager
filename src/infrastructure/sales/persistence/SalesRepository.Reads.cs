@@ -289,6 +289,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
                     SELECT
                         v.id AS Id,
                         v.codigo AS Code,
+                        v.clienteId AS CustomerId,
                         c.ciNit AS CustomerDocumentNumber,
                         c.razonSocial AS CustomerName,
                         v.metodoPago AS PaymentMethod,
@@ -318,10 +319,13 @@ namespace Mercadito.src.infrastructure.sales.persistence
                     SELECT
                         d.productId AS ProductId,
                         d.nombreProductoSnapshot AS ProductName,
+                        COALESCE(p.lote, '') AS Batch,
+                        COALESCE(p.stock, 0) AS Stock,
                         d.cantidad AS Quantity,
                         d.precioUnitario AS UnitPrice,
                         d.importe AS Amount
                     FROM detalleVenta d
+                    LEFT JOIN products p ON p.id = d.productId
                     WHERE d.ventaId = @SaleId
                     ORDER BY d.id ASC;";
 
@@ -337,6 +341,8 @@ namespace Mercadito.src.infrastructure.sales.persistence
                     lines.Add(new SaleDetailLineDto(
                         lineRow.ProductId,
                         lineRow.ProductName,
+                        lineRow.Batch,
+                        lineRow.Stock,
                         lineRow.Quantity,
                         lineRow.UnitPrice,
                         lineRow.Amount));
@@ -352,6 +358,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
                 {
                     Id = header.Id,
                     Code = header.Code,
+                    CustomerId = header.CustomerId,
                     CustomerDocumentNumber = header.CustomerDocumentNumber,
                     CustomerName = header.CustomerName,
                     PaymentMethod = header.PaymentMethod,

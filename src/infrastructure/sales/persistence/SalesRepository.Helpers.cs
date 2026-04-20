@@ -337,7 +337,8 @@ namespace Mercadito.src.infrastructure.sales.persistence
 
         private static void EnsureAllProductsAreAvailable(
             IReadOnlyDictionary<long, ProductInventoryRow> productsById,
-            IReadOnlyList<RegisterSaleLineDto> lines)
+            IReadOnlyList<RegisterSaleLineDto> lines,
+            IReadOnlyDictionary<long, int>? stockCreditsByProductId = null)
         {
             foreach (var line in lines)
             {
@@ -346,7 +347,15 @@ namespace Mercadito.src.infrastructure.sales.persistence
                     throw new BusinessValidationException("Lines", "Uno de los productos seleccionados ya no está disponible.");
                 }
 
-                if (product.Stock < line.Quantity)
+                var availableStock = product.Stock;
+                if (stockCreditsByProductId != null
+                    && stockCreditsByProductId.TryGetValue(line.ProductId, out var creditedQuantity)
+                    && creditedQuantity > 0)
+                {
+                    availableStock += creditedQuantity;
+                }
+
+                if (availableStock < line.Quantity)
                 {
                     throw new BusinessValidationException("Lines", $"Stock insuficiente para {product.Name}.");
                 }
@@ -356,10 +365,12 @@ namespace Mercadito.src.infrastructure.sales.persistence
         private static async Task<long> ResolveCustomerIdAsync(
             IDbConnection connection,
             IDbTransaction transaction,
-            RegisterSaleDto request,
+            long customerId,
+            CreateCustomerDto newCustomer,
+            string customerFieldName,
             CancellationToken cancellationToken)
         {
-            if (request.CustomerId > 0)
+            if (customerId > 0)
             {
                 const string customerQuery = @"
                     SELECT c.id AS Id
@@ -372,19 +383,19 @@ namespace Mercadito.src.infrastructure.sales.persistence
                     customerQuery,
                     new
                     {
-                        request.CustomerId,
+                        CustomerId = customerId,
                         ActiveState
                     },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
 
-                var customerId = await connection.ExecuteScalarAsync<long?>(customerCommand);
-                if (!customerId.HasValue || customerId.Value <= 0)
+                var resolvedCustomerId = await connection.ExecuteScalarAsync<long?>(customerCommand);
+                if (!resolvedCustomerId.HasValue || resolvedCustomerId.Value <= 0)
                 {
-                    throw new BusinessValidationException(nameof(RegisterSaleDto.CustomerId), "El cliente seleccionado no está disponible.");
+                    throw new BusinessValidationException(customerFieldName, "El cliente seleccionado no está disponible.");
                 }
 
-                return customerId.Value;
+                return resolvedCustomerId.Value;
             }
 
             const string existingCustomerQuery = @"
@@ -401,7 +412,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
                 existingCustomerQuery,
                 new
                 {
-                    DocumentNumber = request.NewCustomer.DocumentNumber,
+                    DocumentNumber = newCustomer.DocumentNumber,
                     ActiveState
                 },
                 transaction: transaction,
@@ -436,17 +447,62 @@ namespace Mercadito.src.infrastructure.sales.persistence
                 insertCustomerQuery,
                 new
                 {
-                    request.NewCustomer.DocumentNumber,
-                    request.NewCustomer.BusinessName,
-                    Phone = ToDbNullable(request.NewCustomer.Phone),
-                    Email = ToDbNullable(request.NewCustomer.Email),
-                    Address = ToDbNullable(request.NewCustomer.Address),
+                    newCustomer.DocumentNumber,
+                    newCustomer.BusinessName,
+                    Phone = ToDbNullable(newCustomer.Phone),
+                    Email = ToDbNullable(newCustomer.Email),
+                    Address = ToDbNullable(newCustomer.Address),
                     ActiveState
                 },
                 transaction: transaction,
                 cancellationToken: cancellationToken);
 
             return await connection.ExecuteScalarAsync<long>(insertCustomerCommand);
+        }
+
+        private static async Task<SaleStatusRow?> LoadSaleStatusAsync(
+            IDbConnection connection,
+            IDbTransaction transaction,
+            long saleId,
+            CancellationToken cancellationToken)
+        {
+            const string saleQuery = @"
+                SELECT
+                    v.id AS Id,
+                    v.estado AS Status
+                FROM ventas v
+                WHERE v.id = @SaleId
+                FOR UPDATE;";
+
+            var saleCommand = new CommandDefinition(
+                saleQuery,
+                new { SaleId = saleId },
+                transaction: transaction,
+                cancellationToken: cancellationToken);
+
+            return await connection.QueryFirstOrDefaultAsync<SaleStatusRow>(saleCommand);
+        }
+
+        private static async Task<List<SaleQuantityRow>> LoadSaleLinesAsync(
+            IDbConnection connection,
+            IDbTransaction transaction,
+            long saleId,
+            CancellationToken cancellationToken)
+        {
+            const string detailQuery = @"
+                SELECT
+                    d.productId AS ProductId,
+                    d.cantidad AS Quantity
+                FROM detalleVenta d
+                WHERE d.ventaId = @SaleId;";
+
+            var detailCommand = new CommandDefinition(
+                detailQuery,
+                new { SaleId = saleId },
+                transaction: transaction,
+                cancellationToken: cancellationToken);
+
+            return (await connection.QueryAsync<SaleQuantityRow>(detailCommand)).ToList();
         }
 
         private static string? ToDbNullable(string? value)
@@ -590,6 +646,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
         {
             public long Id { get; init; }
             public string Code { get; init; } = string.Empty;
+            public long CustomerId { get; init; }
             public string CustomerDocumentNumber { get; init; } = string.Empty;
             public string CustomerName { get; init; } = string.Empty;
             public string PaymentMethod { get; init; } = string.Empty;
@@ -606,6 +663,8 @@ namespace Mercadito.src.infrastructure.sales.persistence
         {
             public long ProductId { get; init; }
             public string ProductName { get; init; } = string.Empty;
+            public string Batch { get; init; } = string.Empty;
+            public int Stock { get; init; }
             public int Quantity { get; init; }
             public decimal UnitPrice { get; init; }
             public decimal Amount { get; init; }

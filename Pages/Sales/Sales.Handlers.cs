@@ -1,4 +1,5 @@
 using Mercadito.src.application.sales.models;
+using Mercadito.src.domain.shared;
 using Mercadito.src.domain.shared.validation;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,9 +10,9 @@ namespace Mercadito.Pages.Sales
         public async Task<IActionResult> OnGetSearchCustomersAsync(string customerSearchTerm)
         {
             var normalizedTerm = ValidationText.NormalizeTrimmed(customerSearchTerm);
-            var contextResult = await _salesTransactionFacade.LoadRegistrationContextAsync(
-                customerSearchTerm: normalizedTerm,
-                cancellationToken: HttpContext.RequestAborted);
+            var contextResult = await _salesQueryFacade.SearchCustomersAsync(
+                normalizedTerm,
+                HttpContext.RequestAborted);
 
             if (contextResult.IsFailure)
             {
@@ -19,15 +20,15 @@ namespace Mercadito.Pages.Sales
                 return StatusCode(500, Array.Empty<CustomerLookupItem>());
             }
 
-            return new JsonResult(contextResult.Value.Customers);
+            return new JsonResult(contextResult.Value);
         }
 
         public async Task<IActionResult> OnGetSearchProductsAsync(string productSearchTerm)
         {
             var normalizedTerm = ValidationText.NormalizeTrimmed(productSearchTerm);
-            var contextResult = await _salesTransactionFacade.LoadRegistrationContextAsync(
-                productSearchTerm: normalizedTerm,
-                cancellationToken: HttpContext.RequestAborted);
+            var contextResult = await _salesQueryFacade.SearchProductsAsync(
+                normalizedTerm,
+                HttpContext.RequestAborted);
 
             if (contextResult.IsFailure)
             {
@@ -35,7 +36,7 @@ namespace Mercadito.Pages.Sales
                 return StatusCode(500, Array.Empty<SaleProductOption>());
             }
 
-            return new JsonResult(contextResult.Value.Products);
+            return new JsonResult(contextResult.Value);
         }
 
         public async Task<IActionResult> OnPostRefreshAsync()
@@ -52,7 +53,27 @@ namespace Mercadito.Pages.Sales
             await LoadPageDataAsync();
 
             var actor = BuildAuditActor();
-            var result = await _salesTransactionFacade.RegisterAsync(SaleDraft, actor, HttpContext.RequestAborted);
+            Result<SaleReceiptDto> result;
+            if (EditSaleId > 0)
+            {
+                result = await _updateSaleFacade.UpdateAsync(
+                    new UpdateSaleDto
+                    {
+                        SaleId = EditSaleId,
+                        CustomerId = SaleDraft.CustomerId,
+                        NewCustomer = SaleDraft.NewCustomer,
+                        Channel = SaleDraft.Channel,
+                        PaymentMethod = SaleDraft.PaymentMethod,
+                        Lines = SaleDraft.Lines
+                    },
+                    actor,
+                    HttpContext.RequestAborted);
+            }
+            else
+            {
+                result = await _registerSaleFacade.RegisterAsync(SaleDraft, actor, HttpContext.RequestAborted);
+            }
+
             if (result.IsFailure)
             {
                 ApplyResultErrors(result, nameof(SaleDraft));
@@ -61,8 +82,8 @@ namespace Mercadito.Pages.Sales
                 return Page();
             }
 
-            TempData["SuccessMessage"] = $"Venta {result.Value.Code} registrada correctamente.";
-            return RedirectToPage(new { AutoOpenReceiptSaleId = result.Value.Id });
+            TempData["SuccessMessage"] = $"Venta {result.Value.Code} {DraftSuccessActionText} correctamente.";
+            return RedirectToPage(new { AutoOpenReceiptSaleId = result.Value.Id, SortBy, SortDirection });
         }
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Mercadito.Pages.Sales
 {
     public class ReportsModel(
-        ISalesTransactionFacade salesTransactionFacade,
+        ISalesQueryFacade salesQueryFacade,
         ILogger<ReportsModel> logger) : AppPageModel
     {
         [BindProperty(SupportsGet = true)]
@@ -40,7 +40,7 @@ namespace Mercadito.Pages.Sales
             SortBy = NormalizeSortBy(SortBy);
             SortDirection = SalesTableSorting.NormalizeSortDirection(SortDirection);
 
-            var recentSalesResult = await salesTransactionFacade.GetRecentSalesAsync(
+            var recentSalesResult = await salesQueryFacade.GetRecentSalesAsync(
                 30,
                 SortBy,
                 SortDirection,
@@ -55,7 +55,7 @@ namespace Mercadito.Pages.Sales
 
             RecentSales = recentSalesResult.Value;
 
-            var overviewMetricsResult = await salesTransactionFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
+            var overviewMetricsResult = await salesQueryFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
             if (overviewMetricsResult.IsFailure)
             {
                 logger.LogError("No se pudo cargar el resumen para reportes de ventas: {Message}", overviewMetricsResult.ErrorMessage);
@@ -74,7 +74,7 @@ namespace Mercadito.Pages.Sales
 
         private async Task LoadSaleDetailAsync(long saleId)
         {
-            var result = await salesTransactionFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
+            var result = await salesQueryFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 TempData["ErrorMessage"] = result.ErrorMessage;

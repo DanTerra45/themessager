@@ -31,6 +31,7 @@ using Mercadito.src.domain.shared.validation;
 using Mercadito.src.application.sales.facades;
 using Mercadito.src.application.sales.ports.input;
 using Mercadito.src.application.sales.ports.output;
+using Mercadito.src.application.sales.validation;
 using Mercadito.src.infrastructure.sales.persistence;
 using Mercadito.src.suppliers.application.models;
 using Mercadito.src.suppliers.application.ports.input;
@@ -134,7 +135,10 @@ builder.Services.AddScoped<ISupplierRepository>(serviceProvider => serviceProvid
 
 builder.Services.AddScoped<SalesRepository>();
 builder.Services.AddScoped<ISalesRepository>(serviceProvider => serviceProvider.GetRequiredService<SalesRepository>());
-builder.Services.AddScoped<ISalesTransactionFacade, SalesTransactionFacade>();
+builder.Services.AddScoped<ISalesQueryFacade, SalesQueryFacade>();
+builder.Services.AddScoped<IRegisterSaleFacade, RegisterSaleFacade>();
+builder.Services.AddScoped<IUpdateSaleFacade, UpdateSaleFacade>();
+builder.Services.AddScoped<ICancelSaleFacade, CancelSaleFacade>();
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<IUserRepository>(serviceProvider => serviceProvider.GetRequiredService<UserRepository>());
@@ -153,23 +157,26 @@ builder.Services.AddSingleton<SodiumPasswordService>();
 builder.Services.AddSingleton<IPasswordHasher>(serviceProvider => serviceProvider.GetRequiredService<SodiumPasswordService>());
 builder.Services.AddSingleton<IPasswordVerifier>(serviceProvider => serviceProvider.GetRequiredService<SodiumPasswordService>());
 
-builder.Services.AddSingleton<IValidator<CreateSupplierDto, SupplierDto>, CreateSupplierValidator>();
-builder.Services.AddSingleton<IValidator<UpdateSupplierDto, SupplierDto>, UpdateSupplierValidator>();
-builder.Services.AddSingleton<ISupplierFormHintsProvider>(serviceProvider =>
+builder.Services.AddTransient<IValidator<CreateSupplierDto, SupplierDto>, CreateSupplierValidator>();
+builder.Services.AddTransient<IValidator<UpdateSupplierDto, SupplierDto>, UpdateSupplierValidator>();
+builder.Services.AddTransient<ISupplierFormHintsProvider>(serviceProvider =>
     (ISupplierFormHintsProvider)serviceProvider.GetRequiredService<IValidator<CreateSupplierDto, SupplierDto>>());
-builder.Services.AddSingleton<ICreateProductValidator, CreateProductValidator>();
-builder.Services.AddSingleton<IUpdateProductValidator, UpdateProductValidator>();
-builder.Services.AddSingleton<ICreateCategoryValidator, CreateCategoryValidator>();
-builder.Services.AddSingleton<IUpdateCategoryValidator, UpdateCategoryValidator>();
-builder.Services.AddSingleton<ICreateEmployeeValidator, CreateEmployeeValidator>();
-builder.Services.AddSingleton<IUpdateEmployeeValidator, UpdateEmployeeValidator>();
-builder.Services.AddSingleton<ICreateUserValidator, CreateUserValidator>();
-builder.Services.AddSingleton<IAssignTemporaryPasswordValidator, AssignTemporaryPasswordValidator>();
-builder.Services.AddSingleton<ISendAdministrativePasswordResetLinkValidator, SendAdministrativePasswordResetLinkValidator>();
-builder.Services.AddSingleton<IForcePasswordChangeValidator, ForcePasswordChangeValidator>();
-builder.Services.AddSingleton<ILoginUserValidator, LoginUserValidator>();
-builder.Services.AddSingleton<IRequestPasswordResetValidator, RequestPasswordResetValidator>();
-builder.Services.AddSingleton<ICompletePasswordResetValidator, CompletePasswordResetValidator>();
+builder.Services.AddTransient<ICreateProductValidator, CreateProductValidator>();
+builder.Services.AddTransient<IUpdateProductValidator, UpdateProductValidator>();
+builder.Services.AddTransient<ICreateCategoryValidator, CreateCategoryValidator>();
+builder.Services.AddTransient<IUpdateCategoryValidator, UpdateCategoryValidator>();
+builder.Services.AddTransient<ICreateEmployeeValidator, CreateEmployeeValidator>();
+builder.Services.AddTransient<IUpdateEmployeeValidator, UpdateEmployeeValidator>();
+builder.Services.AddTransient<ICreateUserValidator, CreateUserValidator>();
+builder.Services.AddTransient<IAssignTemporaryPasswordValidator, AssignTemporaryPasswordValidator>();
+builder.Services.AddTransient<ISendAdministrativePasswordResetLinkValidator, SendAdministrativePasswordResetLinkValidator>();
+builder.Services.AddTransient<IForcePasswordChangeValidator, ForcePasswordChangeValidator>();
+builder.Services.AddTransient<ILoginUserValidator, LoginUserValidator>();
+builder.Services.AddTransient<IRequestPasswordResetValidator, RequestPasswordResetValidator>();
+builder.Services.AddTransient<ICompletePasswordResetValidator, CompletePasswordResetValidator>();
+builder.Services.AddTransient<IRegisterSaleValidator, RegisterSaleValidator>();
+builder.Services.AddTransient<IUpdateSaleValidator, UpdateSaleValidator>();
+builder.Services.AddTransient<ICancelSaleValidator, CancelSaleValidator>();
 
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
 builder.Services.AddScoped<ICategoryManagementUseCase, CategoryManagementUseCase>();

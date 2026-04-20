@@ -1,5 +1,6 @@
 using Mercadito.src.application.sales.models;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace Mercadito.Pages.Sales
 {
@@ -37,6 +38,46 @@ namespace Mercadito.Pages.Sales
             DraftLineDetails = synchronizedDetails;
             DraftLines = synchronizedDetails;
             SelectedCustomerLabel = ResolveSelectedCustomerLabel();
+        }
+
+        private void ApplyDraftFromSaleDetail(SaleDetailDto saleDetail)
+        {
+            ArgumentNullException.ThrowIfNull(saleDetail);
+
+            EditSaleId = saleDetail.Id;
+            SaleDraft = new RegisterSaleDto
+            {
+                CustomerId = saleDetail.CustomerId,
+                NewCustomer = new CreateCustomerDto(),
+                Channel = saleDetail.Channel,
+                PaymentMethod = saleDetail.PaymentMethod,
+                Lines = []
+            };
+
+            DraftLineDetails = [];
+            var originalLineCredits = new Dictionary<long, int>();
+            foreach (var line in saleDetail.Lines)
+            {
+                SaleDraft.Lines.Add(new RegisterSaleLineDto
+                {
+                    ProductId = line.ProductId,
+                    Quantity = line.Quantity
+                });
+
+                DraftLineDetails.Add(new SaleDraftLineViewModel
+                {
+                    ProductId = line.ProductId,
+                    ProductName = line.ProductName,
+                    Batch = line.Batch,
+                    UnitPrice = line.UnitPrice,
+                    Stock = line.Stock + line.Quantity
+                });
+
+                originalLineCredits[line.ProductId] = line.Quantity;
+            }
+
+            OriginalSaleLineCreditsJson = JsonSerializer.Serialize(originalLineCredits);
+            ShowCreateModal = true;
         }
 
         private SaleDraftLineViewModel? FindDraftLineDetail(long productId)
@@ -144,6 +185,35 @@ namespace Mercadito.Pages.Sales
             {
                 DraftLineDetails = [];
             }
+
+            if (string.IsNullOrWhiteSpace(OriginalSaleLineCreditsJson))
+            {
+                OriginalSaleLineCreditsJson = "{}";
+            }
+        }
+
+        private void ApplyDefaultCustomerSelection()
+        {
+            if (SaleDraft.CustomerId > 0)
+            {
+                return;
+            }
+
+            if (HasNewCustomerDraftData())
+            {
+                return;
+            }
+
+            foreach (var customer in RegistrationContext.Customers)
+            {
+                if (!string.Equals(customer.DocumentNumber, "0", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                SaleDraft.CustomerId = customer.Id;
+                return;
+            }
         }
 
         private static RegisterSaleDto CreateDefaultDraft()
@@ -157,6 +227,15 @@ namespace Mercadito.Pages.Sales
             };
         }
 
+        private bool HasNewCustomerDraftData()
+        {
+            return !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.DocumentNumber)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.BusinessName)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Phone)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Email)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Address);
+        }
+
         private bool ShouldShowNewCustomerPanel()
         {
             if (SaleDraft.CustomerId > 0)
@@ -164,11 +243,7 @@ namespace Mercadito.Pages.Sales
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.DocumentNumber)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.BusinessName)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Phone)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Email)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Address))
+            if (HasNewCustomerDraftData())
             {
                 return true;
             }

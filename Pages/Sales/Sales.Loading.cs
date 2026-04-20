@@ -4,6 +4,28 @@ namespace Mercadito.Pages.Sales
 {
     public partial class SalesModel
     {
+        private async Task LoadEditDraftAsync(long saleId)
+        {
+            var result = await _salesQueryFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
+            if (result.IsFailure)
+            {
+                TempData["ErrorMessage"] = result.ErrorMessage;
+                EditSaleId = 0;
+                OriginalSaleLineCreditsJson = "{}";
+                return;
+            }
+
+            if (string.Equals(result.Value.Status, "Anulada", StringComparison.Ordinal))
+            {
+                TempData["ErrorMessage"] = "No se puede editar una venta anulada.";
+                EditSaleId = 0;
+                OriginalSaleLineCreditsJson = "{}";
+                return;
+            }
+
+            ApplyDraftFromSaleDetail(result.Value);
+        }
+
         private async Task LoadPageDataAsync()
         {
             SortBy = NormalizeSortBy(SortBy);
@@ -11,7 +33,7 @@ namespace Mercadito.Pages.Sales
             CustomerSearchTerm = ValidationText.NormalizeTrimmed(CustomerSearchTerm);
             ProductSearchTerm = ValidationText.NormalizeTrimmed(ProductSearchTerm);
 
-            var contextResult = await _salesTransactionFacade.LoadRegistrationContextAsync(
+            var contextResult = await _salesQueryFacade.LoadRegistrationContextAsync(
                 customerSearchTerm: CustomerSearchTerm,
                 productSearchTerm: ProductSearchTerm,
                 cancellationToken: HttpContext.RequestAborted);
@@ -27,7 +49,9 @@ namespace Mercadito.Pages.Sales
                 RegistrationContext = contextResult.Value;
             }
 
-            var recentSalesResult = await _salesTransactionFacade.GetRecentSalesAsync(
+            ApplyDefaultCustomerSelection();
+
+            var recentSalesResult = await _salesQueryFacade.GetRecentSalesAsync(
                 20,
                 SortBy,
                 SortDirection,
@@ -43,7 +67,7 @@ namespace Mercadito.Pages.Sales
                 RecentSales = recentSalesResult.Value;
             }
 
-            var overviewMetricsResult = await _salesTransactionFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
+            var overviewMetricsResult = await _salesQueryFacade.GetOverviewMetricsAsync(HttpContext.RequestAborted);
             if (overviewMetricsResult.IsFailure)
             {
                 _logger.LogError("No se pudo cargar el resumen general de ventas: {Message}", overviewMetricsResult.ErrorMessage);
@@ -66,7 +90,7 @@ namespace Mercadito.Pages.Sales
 
         private async Task LoadSaleDetailAsync(long saleId)
         {
-            var result = await _salesTransactionFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
+            var result = await _salesQueryFacade.GetSaleDetailAsync(saleId, HttpContext.RequestAborted);
             if (result.IsFailure)
             {
                 TempData["ErrorMessage"] = result.ErrorMessage;
