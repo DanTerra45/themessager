@@ -9,8 +9,8 @@
     }
 }
 
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="@dropdown.Id" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+<li class="nav-item dropdown app-nav-dropdown" data-app-nav-dropdown="true">
+    <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" id="@dropdown.Id" role="button" data-bs-toggle="dropdown" data-app-nav-dropdown-toggle="true" aria-expanded="false">
         @Model.Label
     </a>
     <ul class="dropdown-menu shadow-sm @dropdownAlignmentClass" aria-labelledby="@dropdown.Id" style="background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal); margin-top: 0; min-width: 280px; padding: 0;">

@@ -192,6 +192,30 @@ namespace Mercadito.Pages.Sales
             }
         }
 
+        private void ApplyDefaultCustomerSelection()
+        {
+            if (SaleDraft.CustomerId > 0)
+            {
+                return;
+            }
+
+            if (HasNewCustomerDraftData())
+            {
+                return;
+            }
+
+            foreach (var customer in RegistrationContext.Customers)
+            {
+                if (!string.Equals(customer.DocumentNumber, "0", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                SaleDraft.CustomerId = customer.Id;
+                return;
+            }
+        }
+
         private static RegisterSaleDto CreateDefaultDraft()
         {
             return new RegisterSaleDto
@@ -203,6 +227,15 @@ namespace Mercadito.Pages.Sales
             };
         }
 
+        private bool HasNewCustomerDraftData()
+        {
+            return !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.DocumentNumber)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.BusinessName)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Phone)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Email)
+                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Address);
+        }
+
         private bool ShouldShowNewCustomerPanel()
         {
             if (SaleDraft.CustomerId > 0)
@@ -210,11 +243,7 @@ namespace Mercadito.Pages.Sales
                 return false;
             }
 
-            if (!string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.DocumentNumber)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.BusinessName)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Phone)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Email)
-                || !string.IsNullOrWhiteSpace(SaleDraft.NewCustomer.Address))
+            if (HasNewCustomerDraftData())
             {
                 return true;
             }

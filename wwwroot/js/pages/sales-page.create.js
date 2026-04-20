@@ -24,12 +24,15 @@
         var customerSearchButton = document.getElementById('searchCustomersButton');
         var customerOptionsContainer = document.getElementById('saleCustomerOptionList');
         var selectedCustomerInput = document.getElementById('SaleDraft_CustomerId');
+        var customerDropdownToggle = document.getElementById('saleCustomerDropdownToggle');
+        var customerDropdownMenu = document.getElementById('saleCustomerDropdownMenu');
         var newSaleModalElement = document.getElementById('newSaleModal');
         var newCustomerDraftModalElement = document.getElementById('newCustomerDraftModal');
-        var selectedCustomerCard = document.getElementById('saleSelectedCustomerCard');
+        var selectedCustomerCard = document.getElementById('saleCustomerDropdownToggle');
         var selectedCustomerTitle = document.getElementById('saleSelectedCustomerTitle');
         var selectedCustomerMeta = document.getElementById('saleSelectedCustomerMeta');
         var selectedCustomerWarningIcon = document.getElementById('saleSelectedCustomerWarningIcon');
+        var selectedCustomerTriggerIcon = document.getElementById('saleCustomerTriggerIcon');
         var openNewCustomerDraftButton = document.getElementById('openNewCustomerDraftButton');
         var closeNewCustomerDraftModalButton = document.getElementById('closeNewCustomerDraftModalButton');
         var applyNewCustomerDraftButton = document.getElementById('applyNewCustomerDraftButton');
@@ -57,12 +60,15 @@
             || !customerSearchButton
             || !customerOptionsContainer
             || !selectedCustomerInput
+            || !customerDropdownToggle
+            || !customerDropdownMenu
             || !newSaleModalElement
             || !newCustomerDraftModalElement
             || !selectedCustomerCard
             || !selectedCustomerTitle
             || !selectedCustomerMeta
             || !selectedCustomerWarningIcon
+            || !selectedCustomerTriggerIcon
             || !openNewCustomerDraftButton
             || !closeNewCustomerDraftModalButton
             || !applyNewCustomerDraftButton
@@ -129,12 +135,15 @@
             customerSearchButton: customerSearchButton,
             customerOptionsContainer: customerOptionsContainer,
             selectedCustomerInput: selectedCustomerInput,
+            customerDropdownToggle: customerDropdownToggle,
+            customerDropdownMenu: customerDropdownMenu,
             newSaleModalElement: newSaleModalElement,
             newCustomerDraftModalElement: newCustomerDraftModalElement,
             selectedCustomerCard: selectedCustomerCard,
             selectedCustomerTitle: selectedCustomerTitle,
             selectedCustomerMeta: selectedCustomerMeta,
             selectedCustomerWarningIcon: selectedCustomerWarningIcon,
+            selectedCustomerTriggerIcon: selectedCustomerTriggerIcon,
             openNewCustomerDraftButton: openNewCustomerDraftButton,
             closeNewCustomerDraftModalButton: closeNewCustomerDraftModalButton,
             applyNewCustomerDraftButton: applyNewCustomerDraftButton,

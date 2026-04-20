@@ -28,14 +28,16 @@
             currentOption.classList.remove('is-selected');
             currentOption.setAttribute('aria-pressed', 'false');
 
-            if (currentOption.getAttribute(attributeName) === String(selectedValue)) {
-                currentOption.classList.add('is-selected');
-                currentOption.setAttribute('aria-pressed', 'true');
+            if (currentOption.getAttribute(attributeName) !== String(selectedValue)) {
+                return;
             }
+
+            currentOption.classList.add('is-selected');
+            currentOption.setAttribute('aria-pressed', 'true');
         });
     }
 
-    function bindCustomerSelection(container, selectedCustomerInput, onCustomerSelected) {
+    function bindCustomerSelection(container, onCustomerSelected) {
         container.addEventListener('click', function (event) {
             var option = event.target.closest('[data-sale-customer-option="true"]');
             if (!option) {
@@ -47,9 +49,11 @@
                 return;
             }
 
-            selectedCustomerInput.value = selectedCustomerId;
-            markSelectedOption(container, '[data-sale-customer-option="true"]', 'data-customer-id', selectedCustomerId);
-            onCustomerSelected();
+            onCustomerSelected({
+                customerId: parseInteger(selectedCustomerId, 0),
+                documentNumber: option.getAttribute('data-customer-document') || '',
+                businessName: option.getAttribute('data-customer-name') || ''
+            });
         });
     }
 
@@ -78,11 +82,10 @@
 
     function renderCustomerOptions(container, customers, selectedCustomerInput) {
         if (customers.length === 0) {
-            container.innerHTML = '<article class="sale-product-option-empty">No hay clientes que coincidan con la búsqueda actual.</article>';
+            container.innerHTML = '<article class="sale-product-option-empty">No hay clientes que coincidan con la busqueda actual.</article>';
             return;
         }
 
-        var selectedCustomerStillExists = false;
         var markup = '';
         for (var index = 0; index < customers.length; index += 1) {
             var customer = customers[index];
@@ -92,7 +95,6 @@
             if (String(customer.id) === String(selectedCustomerInput.value)) {
                 optionClasses += ' is-selected';
                 ariaPressed = 'true';
-                selectedCustomerStillExists = true;
             }
 
             markup += '<button type="button" class="' + optionClasses + '" data-sale-customer-option="true" data-customer-id="' + escapeHtml(customer.id) + '" data-customer-document="' + escapeHtml(customer.documentNumber) + '" data-customer-name="' + escapeHtml(customer.businessName) + '" aria-pressed="' + ariaPressed + '">';
@@ -102,16 +104,6 @@
         }
 
         container.innerHTML = markup;
-
-        if (selectedCustomerStillExists) {
-            return;
-        }
-
-        if (selectedCustomerInput.value === '0' || selectedCustomerInput.value === '') {
-            return;
-        }
-
-        selectedCustomerInput.value = '0';
     }
 
     function getSelectedCustomerOption(container, selectedCustomerId) {
@@ -126,9 +118,11 @@
                 return;
             }
 
-            if (currentOption.getAttribute('data-customer-id') === String(selectedCustomerId)) {
-                option = currentOption;
+            if (currentOption.getAttribute('data-customer-id') !== String(selectedCustomerId)) {
+                return;
             }
+
+            option = currentOption;
         });
 
         if (!option) {
@@ -148,12 +142,16 @@
             return '';
         }
 
-        var message = (validationSpan.getAttribute('data-error-message') || validationSpan.textContent || '').trim();
-        if (message.length === 0) {
-            return 'Valor inválido.';
+        var message = validationSpan.getAttribute('data-error-message');
+        if (!message || message.trim().length === 0) {
+            message = validationSpan.textContent;
         }
 
-        return message;
+        if (!message || message.trim().length === 0) {
+            return 'Valor invalido.';
+        }
+
+        return message.trim();
     }
 
     function createCustomerDraftController(options) {
@@ -162,12 +160,15 @@
         var customerSearchButton = options.customerSearchButton;
         var customerOptionsContainer = options.customerOptionsContainer;
         var selectedCustomerInput = options.selectedCustomerInput;
+        var customerDropdownToggle = options.customerDropdownToggle;
+        var customerDropdownMenu = options.customerDropdownMenu;
         var newSaleModalElement = options.newSaleModalElement;
         var newCustomerDraftModalElement = options.newCustomerDraftModalElement;
         var selectedCustomerCard = options.selectedCustomerCard;
         var selectedCustomerTitle = options.selectedCustomerTitle;
         var selectedCustomerMeta = options.selectedCustomerMeta;
         var selectedCustomerWarningIcon = options.selectedCustomerWarningIcon;
+        var selectedCustomerTriggerIcon = options.selectedCustomerTriggerIcon;
         var openNewCustomerDraftButton = options.openNewCustomerDraftButton;
         var closeNewCustomerDraftModalButton = options.closeNewCustomerDraftModalButton;
         var applyNewCustomerDraftButton = options.applyNewCustomerDraftButton;
@@ -179,12 +180,25 @@
         var newCustomerEmailInput = options.newCustomerEmailInput;
         var newCustomerAddressInput = options.newCustomerAddressInput;
         var customerSearchUrl = options.customerSearchUrl || '';
-        var onStateChanged = typeof options.onStateChanged === 'function' ? options.onStateChanged : function () { };
+        var onStateChanged = options.onStateChanged;
+
+        if (typeof onStateChanged !== 'function') {
+            onStateChanged = function () { };
+        }
+
+        if (!customerDropdownMenu) {
+            return null;
+        }
 
         var newSaleModal = bootstrap.Modal.getOrCreateInstance(newSaleModalElement);
         var newCustomerDraftModal = bootstrap.Modal.getOrCreateInstance(newCustomerDraftModalElement);
+        var customerDropdown = bootstrap.Dropdown.getOrCreateInstance(customerDropdownToggle);
         var shouldReturnToSaleModal = false;
         var customerValidationVisible = false;
+        var selectedCustomerSnapshot = null;
+        var defaultCustomerSnapshot = null;
+        var customerContextBeforeDraftModal = null;
+        var draftModalCloseAction = 'restore';
 
         [newCustomerDocumentInput, newCustomerNameInput, newCustomerPhoneInput, newCustomerEmailInput, newCustomerAddressInput].forEach(function (field) {
             field.removeAttribute('required');
@@ -196,12 +210,271 @@
             onStateChanged();
         }
 
+        function clearSelectedCustomerValidation() {
+            clearFieldValidationState(createSaleForm, selectedCustomerInput);
+        }
+
         function clearNewCustomerDraftValidation() {
             clearFieldValidationState(createSaleForm, newCustomerDocumentInput);
             clearFieldValidationState(createSaleForm, newCustomerNameInput);
             clearFieldValidationState(createSaleForm, newCustomerPhoneInput);
             clearFieldValidationState(createSaleForm, newCustomerEmailInput);
             clearFieldValidationState(createSaleForm, newCustomerAddressInput);
+        }
+
+        function clearNewCustomerDraftValues() {
+            newCustomerDocumentInput.value = '';
+            newCustomerNameInput.value = '';
+            newCustomerPhoneInput.value = '';
+            newCustomerEmailInput.value = '';
+            newCustomerAddressInput.value = '';
+        }
+
+        function readDraftCustomerValues() {
+            return {
+                documentNumber: newCustomerDocumentInput.value || '',
+                businessName: newCustomerNameInput.value || '',
+                phone: newCustomerPhoneInput.value || '',
+                email: newCustomerEmailInput.value || '',
+                address: newCustomerAddressInput.value || ''
+            };
+        }
+
+        function restoreDraftCustomerValues(values) {
+            var normalizedValues = values;
+            if (!normalizedValues) {
+                normalizedValues = {};
+            }
+
+            newCustomerDocumentInput.value = normalizedValues.documentNumber || '';
+            newCustomerNameInput.value = normalizedValues.businessName || '';
+            newCustomerPhoneInput.value = normalizedValues.phone || '';
+            newCustomerEmailInput.value = normalizedValues.email || '';
+            newCustomerAddressInput.value = normalizedValues.address || '';
+        }
+
+        function hasDraftCustomerData() {
+            return getNormalizedFieldValueByMode(newCustomerDocumentInput).length > 0
+                || getNormalizedFieldValueByMode(newCustomerNameInput).length > 0
+                || getNormalizedFieldValueByMode(newCustomerPhoneInput).length > 0
+                || getNormalizedFieldValueByMode(newCustomerEmailInput).length > 0
+                || getNormalizedFieldValueByMode(newCustomerAddressInput).length > 0;
+        }
+
+        function hasSelectedCustomer() {
+            return parseInteger(selectedCustomerInput.value, 0) > 0;
+        }
+
+        function buildCustomerSnapshot(customer) {
+            if (!customer) {
+                return null;
+            }
+
+            var customerId = 0;
+            if (customer.customerId !== undefined && customer.customerId !== null) {
+                customerId = parseInteger(customer.customerId, 0);
+            }
+
+            if (customerId <= 0 && customer.id !== undefined && customer.id !== null) {
+                customerId = parseInteger(customer.id, 0);
+            }
+
+            if (customerId <= 0) {
+                return null;
+            }
+
+            var documentNumber = '';
+            if (customer.documentNumber) {
+                documentNumber = String(customer.documentNumber);
+            }
+
+            var businessName = '';
+            if (customer.businessName) {
+                businessName = String(customer.businessName);
+            }
+
+            return {
+                customerId: customerId,
+                documentNumber: documentNumber,
+                businessName: businessName
+            };
+        }
+
+        function cloneCustomerSnapshot(snapshot) {
+            if (!snapshot) {
+                return null;
+            }
+
+            return {
+                customerId: snapshot.customerId,
+                documentNumber: snapshot.documentNumber,
+                businessName: snapshot.businessName
+            };
+        }
+
+        function rememberSelectedCustomerSnapshot(customer) {
+            var snapshot = buildCustomerSnapshot(customer);
+            if (!snapshot) {
+                return;
+            }
+
+            selectedCustomerSnapshot = snapshot;
+        }
+
+        function clearSelectedCustomerSnapshot() {
+            selectedCustomerSnapshot = null;
+        }
+
+        function rememberDefaultCustomerSnapshot(customer) {
+            var snapshot = buildCustomerSnapshot(customer);
+            if (!snapshot) {
+                return;
+            }
+
+            if (snapshot.documentNumber !== '0') {
+                return;
+            }
+
+            defaultCustomerSnapshot = snapshot;
+        }
+
+        function getSelectedCustomerSnapshot() {
+            var selectedCustomerId = parseInteger(selectedCustomerInput.value, 0);
+            if (selectedCustomerId <= 0) {
+                return null;
+            }
+
+            var selectedCustomer = getSelectedCustomerOption(customerOptionsContainer, selectedCustomerId);
+            if (selectedCustomer) {
+                rememberSelectedCustomerSnapshot(selectedCustomer);
+                rememberDefaultCustomerSnapshot(selectedCustomer);
+                return cloneCustomerSnapshot(selectedCustomerSnapshot);
+            }
+
+            if (selectedCustomerSnapshot && selectedCustomerSnapshot.customerId === selectedCustomerId) {
+                return cloneCustomerSnapshot(selectedCustomerSnapshot);
+            }
+
+            return null;
+        }
+
+        function getDefaultCustomerOption() {
+            var customerOptions = customerOptionsContainer.querySelectorAll('[data-sale-customer-option="true"]');
+            for (var index = 0; index < customerOptions.length; index += 1) {
+                var currentOption = customerOptions[index];
+                if ((currentOption.getAttribute('data-customer-document') || '') !== '0') {
+                    continue;
+                }
+
+                var defaultCustomer = {
+                    customerId: parseInteger(currentOption.getAttribute('data-customer-id'), 0),
+                    documentNumber: currentOption.getAttribute('data-customer-document') || '',
+                    businessName: currentOption.getAttribute('data-customer-name') || ''
+                };
+
+                rememberDefaultCustomerSnapshot(defaultCustomer);
+                return defaultCustomer;
+            }
+
+            if (defaultCustomerSnapshot) {
+                return cloneCustomerSnapshot(defaultCustomerSnapshot);
+            }
+
+            return null;
+        }
+
+        function captureCustomerContext() {
+            var selectedCustomer = getSelectedCustomerSnapshot();
+            return {
+                selectedCustomerId: selectedCustomerInput.value || '0',
+                selectedCustomerSnapshot: cloneCustomerSnapshot(selectedCustomer),
+                draftValues: readDraftCustomerValues()
+            };
+        }
+
+        function restoreCustomerContext(context) {
+            var draftValues = null;
+            if (context) {
+                draftValues = context.draftValues;
+            }
+
+            restoreDraftCustomerValues(draftValues);
+
+            selectedCustomerInput.value = '0';
+            clearSelectedCustomerSnapshot();
+
+            if (context && context.selectedCustomerSnapshot) {
+                selectedCustomerSnapshot = cloneCustomerSnapshot(context.selectedCustomerSnapshot);
+            }
+
+            if (context && context.selectedCustomerId) {
+                selectedCustomerInput.value = String(context.selectedCustomerId);
+            }
+
+            markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', selectedCustomerInput.value);
+
+            if (!hasSelectedCustomer() && !hasDraftCustomerData()) {
+                applyDefaultCustomerSelection();
+            }
+
+            clearSelectedCustomerValidation();
+            clearNewCustomerDraftValidation();
+        }
+
+        function restoreSelectionAfterDraftDiscard() {
+            clearNewCustomerDraftValues();
+            clearNewCustomerDraftValidation();
+            clearSelectedCustomerValidation();
+
+            selectedCustomerInput.value = '0';
+            clearSelectedCustomerSnapshot();
+
+            if (customerContextBeforeDraftModal && customerContextBeforeDraftModal.selectedCustomerSnapshot) {
+                selectedCustomerSnapshot = cloneCustomerSnapshot(customerContextBeforeDraftModal.selectedCustomerSnapshot);
+            }
+
+            if (customerContextBeforeDraftModal && customerContextBeforeDraftModal.selectedCustomerId) {
+                selectedCustomerInput.value = String(customerContextBeforeDraftModal.selectedCustomerId);
+            }
+
+            markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', selectedCustomerInput.value);
+
+            if (!hasSelectedCustomer()) {
+                applyDefaultCustomerSelection();
+            }
+        }
+
+        function applyExistingCustomerSelection(customer) {
+            var customerSnapshot = buildCustomerSnapshot(customer);
+            if (!customerSnapshot) {
+                return false;
+            }
+
+            selectedCustomerInput.value = String(customerSnapshot.customerId);
+            rememberSelectedCustomerSnapshot(customerSnapshot);
+            rememberDefaultCustomerSnapshot(customerSnapshot);
+            clearSelectedCustomerValidation();
+            clearNewCustomerDraftValidation();
+            markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', customerSnapshot.customerId);
+            customerDropdown.hide();
+            return true;
+        }
+
+        function applyDefaultCustomerSelection() {
+            if (hasDraftCustomerData()) {
+                return false;
+            }
+
+            if (hasSelectedCustomer()) {
+                return false;
+            }
+
+            var defaultCustomer = getDefaultCustomerOption();
+            if (!defaultCustomer) {
+                return false;
+            }
+
+            return applyExistingCustomerSelection(defaultCustomer);
         }
 
         function validateNewCustomerDraft() {
@@ -222,20 +495,20 @@
                 setFieldValidationState(createSaleForm, newCustomerDocumentInput, 'El CI/NIT debe tener entre 1 y 20 caracteres.');
                 hasErrors = true;
             } else if (!/^([0-9A-Za-z-]{5,20}|0)$/.test(documentNumber)) {
-                setFieldValidationState(createSaleForm, newCustomerDocumentInput, 'El CI/NIT debe ser 0 o tener entre 5 y 20 caracteres válidos.');
+                setFieldValidationState(createSaleForm, newCustomerDocumentInput, 'El CI/NIT debe ser 0 o tener entre 5 y 20 caracteres validos.');
                 hasErrors = true;
             }
 
             if (businessName.length === 0) {
-                setFieldValidationState(createSaleForm, newCustomerNameInput, 'La razón social es obligatoria.');
+                setFieldValidationState(createSaleForm, newCustomerNameInput, 'La razon social es obligatoria.');
                 hasErrors = true;
             } else if (businessName.length > 150) {
-                setFieldValidationState(createSaleForm, newCustomerNameInput, 'La razón social no puede exceder 150 caracteres.');
+                setFieldValidationState(createSaleForm, newCustomerNameInput, 'La razon social no puede exceder 150 caracteres.');
                 hasErrors = true;
             }
 
             if (phone.length > 20) {
-                setFieldValidationState(createSaleForm, newCustomerPhoneInput, 'El teléfono no puede exceder 20 caracteres.');
+                setFieldValidationState(createSaleForm, newCustomerPhoneInput, 'El telefono no puede exceder 20 caracteres.');
                 hasErrors = true;
             }
 
@@ -243,12 +516,12 @@
                 setFieldValidationState(createSaleForm, newCustomerEmailInput, 'El correo no puede exceder 100 caracteres.');
                 hasErrors = true;
             } else if (email.length > 0 && !emailPattern.test(email)) {
-                setFieldValidationState(createSaleForm, newCustomerEmailInput, 'El correo no tiene un formato válido.');
+                setFieldValidationState(createSaleForm, newCustomerEmailInput, 'El correo no tiene un formato valido.');
                 hasErrors = true;
             }
 
             if (address.length > 150) {
-                setFieldValidationState(createSaleForm, newCustomerAddressInput, 'La dirección no puede exceder 150 caracteres.');
+                setFieldValidationState(createSaleForm, newCustomerAddressInput, 'La direccion no puede exceder 150 caracteres.');
                 hasErrors = true;
             }
 
@@ -256,8 +529,7 @@
         }
 
         function createCustomerDraftIssueState() {
-            var hasSelectedCustomer = parseInteger(selectedCustomerInput.value, 0) > 0;
-            if (hasSelectedCustomer) {
+            if (hasSelectedCustomer()) {
                 return {
                     hasBlockingErrors: false,
                     warningMessage: '',
@@ -291,13 +563,30 @@
                 || addressError.length > 0;
 
             if (hasServerErrors) {
-                var serverWarningMessage = customerIdError
-                    || documentError
-                    || businessNameError
-                    || phoneError
-                    || emailError
-                    || addressError
-                    || 'Se detectaron datos incorrectos en el cliente en borrador. Revísalos antes de guardar la venta.';
+                var serverWarningMessage = customerIdError;
+                if (serverWarningMessage.length === 0) {
+                    serverWarningMessage = documentError;
+                }
+
+                if (serverWarningMessage.length === 0) {
+                    serverWarningMessage = businessNameError;
+                }
+
+                if (serverWarningMessage.length === 0) {
+                    serverWarningMessage = phoneError;
+                }
+
+                if (serverWarningMessage.length === 0) {
+                    serverWarningMessage = emailError;
+                }
+
+                if (serverWarningMessage.length === 0) {
+                    serverWarningMessage = addressError;
+                }
+
+                if (serverWarningMessage.length === 0) {
+                    serverWarningMessage = 'Se detectaron datos incorrectos en el cliente en borrador. Revisalos antes de guardar la venta.';
+                }
 
                 return {
                     hasBlockingErrors: true,
@@ -328,7 +617,7 @@
                 || address.length > 150) {
                 return {
                     hasBlockingErrors: true,
-                    warningMessage: 'Se detectaron datos incorrectos en el cliente en borrador. Revísalos antes de guardar la venta.',
+                    warningMessage: 'Se detectaron datos incorrectos en el cliente en borrador. Revisalos antes de guardar la venta.',
                     shouldDisplayWarning: customerValidationVisible,
                     shouldDisableSave: customerValidationVisible
                 };
@@ -343,13 +632,14 @@
         }
 
         function updateSelectedCustomerWarning(customerIssueState) {
+            var tooltip = bootstrap.Tooltip.getInstance(selectedCustomerWarningIcon);
             if (!customerIssueState.shouldDisplayWarning) {
                 selectedCustomerCard.classList.remove('is-warning');
                 selectedCustomerWarningIcon.classList.add('d-none');
                 selectedCustomerWarningIcon.setAttribute('data-bs-title', '');
-                var hiddenTooltip = bootstrap.Tooltip.getInstance(selectedCustomerWarningIcon);
-                if (hiddenTooltip) {
-                    hiddenTooltip.hide();
+
+                if (tooltip) {
+                    tooltip.dispose();
                 }
 
                 return;
@@ -358,6 +648,11 @@
             selectedCustomerCard.classList.add('is-warning');
             selectedCustomerWarningIcon.classList.remove('d-none');
             selectedCustomerWarningIcon.setAttribute('data-bs-title', customerIssueState.warningMessage);
+
+            if (tooltip) {
+                tooltip.dispose();
+            }
+
             bootstrap.Tooltip.getOrCreateInstance(selectedCustomerWarningIcon, {
                 container: 'body',
                 trigger: 'hover focus'
@@ -379,47 +674,65 @@
         }
 
         function updateSelectedCustomerSummary(customerIssueState) {
-            var resolvedCustomerIssueState = customerIssueState || createCustomerDraftIssueState();
-            var selectedCustomer = getSelectedCustomerOption(customerOptionsContainer, selectedCustomerInput.value);
+            var resolvedCustomerIssueState = customerIssueState;
+            if (!resolvedCustomerIssueState) {
+                resolvedCustomerIssueState = createCustomerDraftIssueState();
+            }
+
+            var selectedCustomer = getSelectedCustomerSnapshot();
             if (selectedCustomer) {
                 selectedCustomerCard.classList.remove('is-draft');
                 selectedCustomerTitle.textContent = selectedCustomer.businessName;
                 selectedCustomerMeta.textContent = selectedCustomer.documentNumber;
+                selectedCustomerTriggerIcon.className = 'bi bi-pencil-square';
                 updateSelectedCustomerWarning(resolvedCustomerIssueState);
                 return;
             }
 
             var draftDocument = newCustomerDocumentInput.value.trim();
             var draftName = newCustomerNameInput.value.trim();
-            if (draftDocument || draftName) {
+            if (draftDocument.length > 0 || draftName.length > 0) {
                 selectedCustomerCard.classList.add('is-draft');
-                selectedCustomerTitle.textContent = draftName || 'Cliente nuevo en borrador';
 
-                if (draftDocument) {
-                    selectedCustomerMeta.textContent = draftDocument;
-                    updateSelectedCustomerWarning(resolvedCustomerIssueState);
-                    return;
+                if (draftName.length > 0) {
+                    selectedCustomerTitle.textContent = draftName;
+                } else {
+                    selectedCustomerTitle.textContent = 'Cliente nuevo en borrador';
                 }
 
-                selectedCustomerMeta.textContent = 'Se registrará junto con la venta.';
+                if (draftDocument.length > 0) {
+                    selectedCustomerMeta.textContent = draftDocument;
+                } else {
+                    selectedCustomerMeta.textContent = 'Se registrara junto con la venta.';
+                }
+
+                selectedCustomerTriggerIcon.className = 'bi bi-pencil-square';
                 updateSelectedCustomerWarning(resolvedCustomerIssueState);
                 return;
             }
 
             selectedCustomerCard.classList.remove('is-draft');
             selectedCustomerTitle.textContent = 'Esperando cliente...';
-            selectedCustomerMeta.textContent = 'Selecciona uno de la lista o usa el botón + para registrar uno nuevo.';
+            selectedCustomerMeta.textContent = 'Selecciona un cliente para la venta.';
+            selectedCustomerTriggerIcon.className = 'bi bi-person-plus';
             updateSelectedCustomerWarning(resolvedCustomerIssueState);
         }
 
         function syncCustomerDraftState() {
             clearEmptyOptionalCustomerErrors();
-            updateSelectedCustomerSummary(createCustomerDraftIssueState());
+            applyDefaultCustomerSelection();
+            markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', selectedCustomerInput.value);
+
+            var customerIssueState = createCustomerDraftIssueState();
+            updateSelectedCustomerSummary(customerIssueState);
             notifyStateChanged();
         }
 
         function openCustomerDraftModal() {
+            customerContextBeforeDraftModal = captureCustomerContext();
+            draftModalCloseAction = 'restore';
             shouldReturnToSaleModal = true;
+            customerDropdown.hide();
 
             newSaleModalElement.addEventListener('hidden.bs.modal', function handleSaleHidden() {
                 newSaleModalElement.removeEventListener('hidden.bs.modal', handleSaleHidden);
@@ -434,12 +747,21 @@
             newCustomerDraftModal.hide();
         }
 
-        bindCustomerSelection(customerOptionsContainer, selectedCustomerInput, function () {
+        async function executeCustomerSearch(term) {
+            try {
+                await runCustomerSearch(customerSearchUrl, term, customerOptionsContainer, selectedCustomerInput, syncCustomerDraftState);
+            } catch (error) {
+                return;
+            }
+        }
+
+        bindCustomerSelection(customerOptionsContainer, function (selectedCustomer) {
+            applyExistingCustomerSelection(selectedCustomer);
             syncCustomerDraftState();
         });
 
         customerSearchButton.addEventListener('click', function () {
-            runCustomerSearch(customerSearchUrl, customerSearchInput.value, customerOptionsContainer, selectedCustomerInput, syncCustomerDraftState);
+            executeCustomerSearch(customerSearchInput.value);
         });
 
         customerSearchInput.addEventListener('keydown', function (event) {
@@ -448,17 +770,21 @@
             }
 
             event.preventDefault();
-            runCustomerSearch(customerSearchUrl, customerSearchInput.value, customerOptionsContainer, selectedCustomerInput, syncCustomerDraftState);
+            executeCustomerSearch(customerSearchInput.value);
         });
 
         bindResetToAllOnEmpty(customerSearchInput, function () {
-            runCustomerSearch(customerSearchUrl, '', customerOptionsContainer, selectedCustomerInput, syncCustomerDraftState);
+            executeCustomerSearch('');
+        });
+
+        customerDropdownToggle.addEventListener('shown.bs.dropdown', function () {
+            window.setTimeout(function () {
+                customerSearchInput.focus();
+                customerSearchInput.select();
+            }, 0);
         });
 
         openNewCustomerDraftButton.addEventListener('click', function () {
-            selectedCustomerInput.value = '0';
-            markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', '');
-            syncCustomerDraftState();
             openCustomerDraftModal();
         });
 
@@ -467,62 +793,72 @@
                 return;
             }
 
+            draftModalCloseAction = 'apply';
             selectedCustomerInput.value = '0';
+            clearSelectedCustomerSnapshot();
+            clearSelectedCustomerValidation();
             markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', '');
             syncCustomerDraftState();
             closeCustomerDraftModal(true);
         });
 
         backNewCustomerDraftButton.addEventListener('click', function () {
-            closeCustomerDraftModal(true);
-        });
-
-        discardNewCustomerDraftButton.addEventListener('click', function () {
-            selectedCustomerInput.value = '0';
-            newCustomerDocumentInput.value = '';
-            newCustomerNameInput.value = '';
-            newCustomerPhoneInput.value = '';
-            newCustomerEmailInput.value = '';
-            newCustomerAddressInput.value = '';
-            clearNewCustomerDraftValidation();
-            markSelectedOption(customerOptionsContainer, '[data-sale-customer-option="true"]', 'data-customer-id', '');
-            syncCustomerDraftState();
+            draftModalCloseAction = 'restore';
             closeCustomerDraftModal(true);
         });
 
         closeNewCustomerDraftModalButton.addEventListener('click', function () {
-            clearNewCustomerDraftValidation();
-            closeCustomerDraftModal(false);
+            draftModalCloseAction = 'restore';
+            closeCustomerDraftModal(true);
+        });
+
+        discardNewCustomerDraftButton.addEventListener('click', function () {
+            draftModalCloseAction = 'discard';
+            restoreSelectionAfterDraftDiscard();
+            syncCustomerDraftState();
+            closeCustomerDraftModal(true);
         });
 
         newCustomerDocumentInput.addEventListener('input', function () {
             clearFieldValidationState(createSaleForm, newCustomerDocumentInput);
-            syncCustomerDraftState();
         });
+
         newCustomerNameInput.addEventListener('input', function () {
             clearFieldValidationState(createSaleForm, newCustomerNameInput);
-            syncCustomerDraftState();
         });
+
         newCustomerPhoneInput.addEventListener('input', function () {
             clearFieldValidationState(createSaleForm, newCustomerPhoneInput);
-            syncCustomerDraftState();
         });
+
         newCustomerEmailInput.addEventListener('input', function () {
             clearFieldValidationState(createSaleForm, newCustomerEmailInput);
-            syncCustomerDraftState();
         });
+
         newCustomerAddressInput.addEventListener('input', function () {
             clearFieldValidationState(createSaleForm, newCustomerAddressInput);
+        });
+
+        newCustomerDraftModalElement.addEventListener('hide.bs.modal', function () {
+            if (draftModalCloseAction !== 'restore') {
+                return;
+            }
+
+            clearNewCustomerDraftValidation();
+            restoreCustomerContext(customerContextBeforeDraftModal);
             syncCustomerDraftState();
         });
 
         newCustomerDraftModalElement.addEventListener('hidden.bs.modal', function () {
-            if (!shouldReturnToSaleModal) {
-                return;
+            if (shouldReturnToSaleModal) {
+                newSaleModal.show();
             }
 
-            newSaleModal.show();
+            customerContextBeforeDraftModal = null;
+            draftModalCloseAction = 'restore';
         });
+
+        syncCustomerDraftState();
 
         return {
             getIssueState: createCustomerDraftIssueState,

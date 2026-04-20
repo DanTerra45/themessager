@@ -9,122 +9,129 @@
                     <h5 class="modal-title" id="newSaleModalLabel" style="font-family: var(--font-display); font-weight: 800;">
                         <i class="bi bi-receipt-cutoff me-2"></i>@Model.DraftModalTitle
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="closeConfirmSaleSaveModalButton"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </header>
                 <section class="modal-body p-4">
                     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
                     <section class="row g-4">
-                        <section class="col-lg-5">
-                            <section class="b-card p-3 h-100 sale-client-panel sale-create-panel">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <strong style="font-family: var(--font-display); text-transform: uppercase;">Cliente</strong>
-                                    <span class="text-muted" style="font-family: var(--font-mono);">@Model.RegistrationContext.NextSaleCode</span>
-                                </div>
-
+                        <section class="col-12">
+                            <section class="b-card p-3 sale-create-panel">
                                 <input asp-for="SaleDraft.CustomerId" type="hidden" />
 
-                                <section class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
-                                        <label class="form-label fw-bold mb-0">
-                                            Cliente a usar
-                                            <span asp-validation-for="SaleDraft.CustomerId" class="validation-icon-inline"></span>
-                                        </label>
-                                        <button type="button"
-                                                class="b-btn b-btn-secondary sale-inline-icon-button"
-                                                id="openNewCustomerDraftButton"
-                                                title="Registrar cliente nuevo">
-                                            <i class="bi bi-plus-lg"></i>
-                                        </button>
-                                    </div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <strong style="font-family: var(--font-display); text-transform: uppercase;">Datos de venta</strong>
+                                    <span class="text-muted sale-client-code" style="font-family: var(--font-mono);">@Model.RegistrationContext.NextSaleCode</span>
+                                </div>
 
-                                    <article id="saleSelectedCustomerCard" class="sale-selection-card">
-                                        <div class="sale-selection-card-header">
-                                            <strong id="saleSelectedCustomerTitle">Esperando cliente...</strong>
-                                            <span id="saleSelectedCustomerWarningIcon"
-                                                  class="info-tooltip sale-warning-tooltip d-none"
-                                                  data-bs-toggle="tooltip"
-                                                  data-bs-custom-class="sale-stock-tooltip"
-                                                  data-bs-title=""
-                                                  tabindex="0">
-                                                <i class="bi bi-exclamation-triangle-fill"></i>
-                                            </span>
-                                        </div>
-                                        <small id="saleSelectedCustomerMeta" class="text-muted">Selecciona uno de la lista o usa el botón + para registrar uno nuevo.</small>
-                                    </article>
-                                </section>
-
-                                <section class="mb-3">
-                                    <label class="form-label fw-bold" for="CustomerSearchTerm">
-                                        Buscar cliente
-                                    </label>
-                                    <div class="input-group sale-search-group">
-                                        <input id="CustomerSearchTerm"
-                                               name="CustomerSearchTerm"
-                                               value="@Model.CustomerSearchTerm"
-                                               class="form-control sale-static-control"
-                                               placeholder="CI/NIT o razón social"
-                                               data-normalize="collapse" />
-                                        <button type="button" class="b-btn b-btn-secondary sale-search-button" id="searchCustomersButton">
-                                            <i class="bi bi-search"></i>
-                                        </button>
-                                    </div>
-                                </section>
-
-                                <section class="sale-client-results-block">
-                                    <label class="form-label fw-bold">
-                                        Resultados de cliente
-                                    </label>
-                                    <section class="sale-customer-option-list" id="saleCustomerOptionList">
-                                        @if (Model.RegistrationContext.Customers.Count == 0)
-                                        {
-                                            <article class="sale-product-option-empty">
-                                                No hay clientes que coincidan con la búsqueda actual.
-                                            </article>
-                                        }
-                                        else
-                                        {
-                                            @foreach (var customer in Model.RegistrationContext.Customers)
-                                            {
-                                                var optionClasses = "sale-customer-option";
-                                                if (customer.Id == Model.SaleDraft.CustomerId)
-                                                {
-                                                    optionClasses += " is-selected";
-                                                }
-
-                                                <button type="button"
-                                                        class="@optionClasses"
-                                                        data-sale-customer-option="true"
-                                                        data-customer-id="@customer.Id"
-                                                        data-customer-document="@customer.DocumentNumber"
-                                                        data-customer-name="@customer.BusinessName"
-                                                        aria-pressed="@((customer.Id == Model.SaleDraft.CustomerId).ToString().ToLowerInvariant())">
-                                                    <span class="sale-customer-option-name">@customer.BusinessName</span>
-                                                    <span class="sale-customer-option-meta">@customer.DocumentNumber</span>
-                                                </button>
-                                            }
-                                        }
-                                    </section>
-                                </section>
-                            </section>
-                        </section>
-
-                        <section class="col-lg-7">
-                            <section class="b-card p-3 h-100 sale-create-panel">
-                                <div class="row g-3 mb-3">
-                                    <section class="col-md-6">
+                                <div class="row g-3 mb-3 align-items-start">
+                                    <section class="col-lg-4">
                                         <label asp-for="SaleDraft.Channel" class="form-label fw-bold">
                                             Canal
                                             <span asp-validation-for="SaleDraft.Channel" class="validation-icon-inline"></span>
                                         </label>
                                         <input asp-for="SaleDraft.Channel" class="form-control" data-normalize="collapse" />
                                     </section>
-                                    <section class="col-md-6">
+                                    <section class="col-lg-4">
                                         <label asp-for="SaleDraft.PaymentMethod" class="form-label fw-bold">
                                             Método de pago
                                             <span asp-validation-for="SaleDraft.PaymentMethod" class="validation-icon-inline"></span>
                                         </label>
                                         <input asp-for="SaleDraft.PaymentMethod" class="form-control" data-normalize="collapse" />
+                                    </section>
+                                    <section class="col-lg-4 sale-customer-field">
+                                        <div class="sale-customer-field-header">
+                                            <label class="form-label fw-bold sale-customer-field-label mb-0" for="saleCustomerDropdownToggle">
+                                                Cliente
+                                                <span asp-validation-for="SaleDraft.CustomerId" class="validation-icon-inline"></span>
+                                            </label>
+                                            <button type="button"
+                                                    class="b-btn b-btn-secondary sale-inline-icon-button sale-customer-create-button"
+                                                    id="openNewCustomerDraftButton"
+                                                    title="Registrar cliente nuevo"
+                                                    aria-label="Registrar cliente nuevo">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </div>
+
+                                        <div class="dropdown sale-customer-dropdown">
+                                            <button type="button"
+                                                    id="saleCustomerDropdownToggle"
+                                                    class="sale-selection-card sale-customer-trigger dropdown-toggle w-100"
+                                                    data-bs-toggle="dropdown"
+                                                    data-bs-auto-close="outside"
+                                                    aria-expanded="false">
+                                                <span class="sale-selection-card-header">
+                                                    <span class="sale-customer-trigger-copy">
+                                                        <strong id="saleSelectedCustomerTitle">Esperando cliente...</strong>
+                                                        <small id="saleSelectedCustomerMeta" class="text-muted">Selecciona un cliente para la venta.</small>
+                                                    </span>
+                                                    <span class="d-inline-flex align-items-center gap-2">
+                                                        <span id="saleSelectedCustomerWarningIcon"
+                                                              class="info-tooltip sale-warning-tooltip d-none"
+                                                              data-bs-toggle="tooltip"
+                                                              data-bs-custom-class="sale-stock-tooltip"
+                                                              data-bs-title=""
+                                                              tabindex="0">
+                                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                                        </span>
+                                                        <i id="saleCustomerTriggerIcon" class="bi bi-pencil-square"></i>
+                                                    </span>
+                                                </span>
+                                            </button>
+
+                                            <section class="dropdown-menu dropdown-menu-end w-100 p-0 shadow-sm sale-customer-dropdown-menu"
+                                                     id="saleCustomerDropdownMenu"
+                                                     aria-labelledby="saleCustomerDropdownToggle">
+                                                <section class="sale-customer-dropdown-search">
+                                                    <label class="form-label fw-bold visually-hidden" for="CustomerSearchTerm">
+                                                        Buscar cliente
+                                                    </label>
+                                                    <div class="input-group sale-search-group">
+                                                        <input id="CustomerSearchTerm"
+                                                               name="CustomerSearchTerm"
+                                                               value="@Model.CustomerSearchTerm"
+                                                               class="form-control sale-static-control"
+                                                               placeholder="CI/NIT o razón social"
+                                                               data-normalize="collapse" />
+                                                        <button type="button" class="b-btn b-btn-secondary sale-search-button" id="searchCustomersButton">
+                                                            <i class="bi bi-search"></i>
+                                                        </button>
+                                                    </div>
+                                                </section>
+
+                                                <section class="sale-customer-option-list sale-customer-dropdown-list" id="saleCustomerOptionList">
+                                                    @if (Model.RegistrationContext.Customers.Count == 0)
+                                                    {
+                                                        <article class="sale-product-option-empty">
+                                                            No hay clientes que coincidan con la búsqueda actual.
+                                                        </article>
+                                                    }
+                                                    else
+                                                    {
+                                                        @foreach (var customer in Model.RegistrationContext.Customers)
+                                                        {
+                                                            var optionClasses = "sale-customer-option";
+                                                            if (customer.Id == Model.SaleDraft.CustomerId)
+                                                            {
+                                                                optionClasses += " is-selected";
+                                                            }
+
+                                                            <button type="button"
+                                                                    class="@optionClasses"
+                                                                    data-sale-customer-option="true"
+                                                                    data-customer-id="@customer.Id"
+                                                                    data-customer-document="@customer.DocumentNumber"
+                                                                    data-customer-name="@customer.BusinessName"
+                                                                    aria-pressed="@((customer.Id == Model.SaleDraft.CustomerId).ToString().ToLowerInvariant())">
+                                                                <span class="sale-customer-option-name">@customer.BusinessName</span>
+                                                                <span class="sale-customer-option-meta">@customer.DocumentNumber</span>
+                                                            </button>
+                                                        }
+                                                    }
+                                                </section>
+                                            </section>
+                                        </div>
                                     </section>
                                 </div>
 
@@ -282,7 +289,7 @@
                     <h5 class="modal-title" id="newCustomerDraftModalLabel" style="font-family: var(--font-display); font-weight: 800;">
                         <i class="bi bi-person-plus me-2"></i>Registrar Cliente
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="closeNewCustomerDraftModalButton"></button>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" id="closeNewCustomerDraftModalButton"></button>
                 </header>
                 <section class="modal-body p-4">
                     <p class="text-muted small mb-3">Este cliente quedará en borrador hasta confirmar la venta.</p>
@@ -350,7 +357,7 @@
                     <h5 class="modal-title" id="confirmSaleSaveModalLabel" style="font-family: var(--font-display); font-weight: 800;">
                         <i class="bi bi-check2-square me-2"></i>@(Model.IsEditingSale ? "Confirmar Actualización" : "Confirmar Venta")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="closeConfirmSaleSaveModalButton"></button>
                 </header>
                 <section class="modal-body p-4">
                     <p class="sale-confirm-copy mb-0">@Model.ConfirmDraftCopy</p>

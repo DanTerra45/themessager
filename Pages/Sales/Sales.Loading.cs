@@ -49,6 +49,8 @@ namespace Mercadito.Pages.Sales
                 RegistrationContext = contextResult.Value;
             }
 
+            ApplyDefaultCustomerSelection();
+
             var recentSalesResult = await _salesQueryFacade.GetRecentSalesAsync(
                 20,
                 SortBy,
