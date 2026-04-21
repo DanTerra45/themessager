@@ -87,8 +87,8 @@ namespace Mercadito.src.application.products.usecases
                     AuditAction.Delete,
                     "products",
                     productId,
-                    BuildProductAuditSnapshot(previousProduct),
-                    new { Estado = "I" },
+                    ProductAuditSnapshotFactory.BuildDeletedSnapshot(previousProduct),
+                    null,
                     cancellationToken);
             }
 
@@ -131,7 +131,7 @@ namespace Mercadito.src.application.products.usecases
                         "products",
                         productId,
                         null,
-                        BuildProductAuditSnapshot(validationResult.Value),
+                        ProductAuditSnapshotFactory.BuildCreatedSnapshot(validationResult.Value),
                         cancellationToken);
                 }
 
@@ -188,14 +188,18 @@ namespace Mercadito.src.application.products.usecases
                 var affectedRows = await productRepository.UpdateAsync(writeModel, cancellationToken);
                 if (affectedRows > 0)
                 {
-                    await auditTrailService.RecordAsync(
-                        actor,
-                        AuditAction.Update,
-                        "products",
-                        validationResult.Value.Id,
-                        BuildProductAuditSnapshot(previousProduct),
-                        BuildProductAuditSnapshot(validationResult.Value),
-                        cancellationToken);
+                    var auditSnapshot = ProductAuditSnapshotFactory.BuildImportantUpdateSnapshot(previousProduct, validationResult.Value);
+                    if (auditSnapshot.HasValue)
+                    {
+                        await auditTrailService.RecordAsync(
+                            actor,
+                            AuditAction.Update,
+                            "products",
+                            validationResult.Value.Id,
+                            auditSnapshot.Value.PreviousData,
+                            auditSnapshot.Value.NewData,
+                            cancellationToken);
+                    }
                 }
 
                 if (affectedRows > 0)
@@ -220,40 +224,5 @@ namespace Mercadito.src.application.products.usecases
             }
         }
 
-        private static object? BuildProductAuditSnapshot(ProductForEditModel? product)
-        {
-            if (product == null)
-            {
-                return null;
-            }
-
-            return new
-            {
-                product.Name,
-                product.Stock,
-                product.Batch,
-                product.ExpirationDate,
-                product.Price,
-                CategoryCount = product.CategoryIds.Count
-            };
-        }
-
-        private static object? BuildProductAuditSnapshot(Product? product)
-        {
-            if (product == null)
-            {
-                return null;
-            }
-
-            return new
-            {
-                product.Name,
-                product.Stock,
-                product.Batch,
-                product.ExpirationDate,
-                product.Price,
-                CategoryCount = product.CategoryIds.Count
-            };
-        }
     }
 }

@@ -53,28 +53,15 @@ namespace Mercadito.src.application.sales.facades
                 }
 
                 var updatedSale = await salesRepository.GetSaleDetailAsync(normalizedRequest.SaleId, cancellationToken);
-                object updatedAuditSnapshot;
-                if (updatedSale == null)
-                {
-                    updatedAuditSnapshot = new
-                    {
-                        previousSale.Id,
-                        Estado = "Anulada",
-                        MotivoAnulacion = normalizedRequest.Reason
-                    };
-                }
-                else
-                {
-                    updatedAuditSnapshot = updatedSale;
-                }
+                var auditSnapshot = SaleAuditSnapshotFactory.BuildCancelledSnapshot(previousSale, updatedSale, normalizedRequest.Reason);
 
                 await auditTrailService.RecordAsync(
                     actor,
                     AuditAction.Update,
                     "ventas",
                     normalizedRequest.SaleId,
-                    previousSale,
-                    updatedAuditSnapshot,
+                    auditSnapshot.PreviousData,
+                    auditSnapshot.NewData,
                     cancellationToken);
 
                 return Result.Success(true);

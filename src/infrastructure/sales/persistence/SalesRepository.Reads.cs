@@ -297,6 +297,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
                         v.estado AS Status,
                         v.usuarioUsername AS CreatedByUsername,
                         v.motivoAnulacion AS CancellationReason,
+                        COALESCE(v.usuarioAnulacionUsername, '') AS CancelledByUsername,
                         v.fechaRegistro AS CreatedAt,
                         v.fechaAnulacion AS CancelledAt,
                         v.total AS Total
@@ -366,6 +367,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
                     Status = header.Status,
                     CreatedByUsername = header.CreatedByUsername,
                     CancellationReason = cancellationReason,
+                    CancelledByUsername = header.CancelledByUsername,
                     CreatedAt = header.CreatedAt,
                     CancelledAt = header.CancelledAt,
                     Total = header.Total,

@@ -12,6 +12,7 @@ namespace Mercadito.src.application.sales.models
         public string Status { get; init; } = string.Empty;
         public string CreatedByUsername { get; init; } = string.Empty;
         public string CancellationReason { get; init; } = string.Empty;
+        public string CancelledByUsername { get; init; } = string.Empty;
         public DateTime CreatedAt { get; init; }
         public DateTime? CancelledAt { get; init; }
         public decimal Total { get; init; }

@@ -175,7 +175,7 @@
                                        title="Ver comprobante">
                                         <i class="bi bi-file-earmark-text"></i>
                                     </a>
-                                    @if (!string.Equals(sale.Status, "Anulada", StringComparison.Ordinal))
+                                    @* @if (!string.Equals(sale.Status, "Anulada", StringComparison.Ordinal))
                                     {
                                         <a asp-page="/Sales/Sales"
                                            asp-route-editSaleId="@sale.Id"
@@ -186,7 +186,7 @@
                                            title="Editar venta">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                    }
+                                    } *@
                                 </div>
                             </td>
                         </tr>

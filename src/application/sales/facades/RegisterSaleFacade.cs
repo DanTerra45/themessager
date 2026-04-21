@@ -53,14 +53,7 @@ namespace Mercadito.src.application.sales.facades
                     "ventas",
                     saleId,
                     null,
-                    new
-                    {
-                        normalizedRequest.CustomerId,
-                        normalizedRequest.PaymentMethod,
-                        normalizedRequest.Channel,
-                        LineCount = normalizedRequest.Lines.Count,
-                        receipt.Total
-                    },
+                    SaleAuditSnapshotFactory.BuildCreatedSnapshot(receipt, normalizedRequest),
                     cancellationToken);
 
                 return Result.Success(receipt);

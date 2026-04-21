@@ -13,6 +13,7 @@ START TRANSACTION;
 INSERT INTO `usuarios` (`username`, `passwordHash`, `email`, `rol`, `estado`, `ultimoLogin`)
 VALUES
   ('admin', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'admin@mercadito.local', 'Admin', 'A', NOW()),
+  ('operador', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'operador@mercadito.com', 'Operador', 'A', NOW()),
   ('operador.caja', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'operador.caja@mercadito.local', 'Operador', 'A', NOW()),
   ('operador.inventario', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'operador.inventario@mercadito.local', 'Operador', 'A', NOW()),
   ('auditoria', '$argon2id$v=19$m=32768,t=4,p=1$3QZWbg3x4RUra6Q7g9bTAg$ssnF1bWetEdepyx4oa5WI9ZF/l9CLjscemQmdpe27GU', 'auditoria@mercadito.local', 'Auditor', 'A', NOW())
