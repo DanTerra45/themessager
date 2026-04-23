@@ -59,14 +59,18 @@ namespace Mercadito.src.application.sales.facades
                     return Result.Failure<SaleReceiptDto>("La venta se actualizó, pero no se pudo recargar su información.");
                 }
 
-                await auditTrailService.RecordAsync(
-                    actor,
-                    AuditAction.Update,
-                    "ventas",
-                    normalizedRequest.SaleId,
-                    previousSale,
-                    updatedSale,
-                    cancellationToken);
+                var auditSnapshot = SaleAuditSnapshotFactory.BuildUpdatedSnapshot(previousSale, updatedSale);
+                if (auditSnapshot.HasValue)
+                {
+                    await auditTrailService.RecordAsync(
+                        actor,
+                        AuditAction.Update,
+                        "ventas",
+                        normalizedRequest.SaleId,
+                        auditSnapshot.Value.PreviousData,
+                        auditSnapshot.Value.NewData,
+                        cancellationToken);
+                }
 
                 return Result.Success(receipt);
             }

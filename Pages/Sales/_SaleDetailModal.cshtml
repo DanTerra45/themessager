@@ -49,6 +49,15 @@
                     <section class="b-card p-3 mb-4" style="background-color: var(--mrc-surface-alt);">
                         <strong class="d-block mb-2" style="font-family: var(--font-mono);">Motivo de anulación</strong>
                         <p class="mb-0">@Model.CancellationReason</p>
+                        @if (!string.IsNullOrWhiteSpace(Model.CancelledByUsername))
+                        {
+                            <hr class="my-3" />
+                            <p class="mb-1"><strong>Anulada por:</strong> @Model.CancelledByUsername</p>
+                        }
+                        @if (Model.CancelledAt.HasValue)
+                        {
+                            <p class="mb-0"><strong>Fecha de anulación:</strong> @Model.CancelledAt.Value.ToString("dd/MM/yyyy HH:mm")</p>
+                        }
                     </section>
                 }
 
