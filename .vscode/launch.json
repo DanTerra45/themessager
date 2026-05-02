@@ -2,29 +2,64 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (web)",
+            "name": "Mercadito Frontend",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/net8.0/Mercadito.dll",
+            "program": "${workspaceFolder}/Mercadito.Frontend/bin/Debug/net8.0/Mercadito.Frontend.dll",
             "args": [],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/Mercadito.Frontend",
             "stopAtEntry": false,
             "serverReadyAction": {
                 "action": "openExternally",
-                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+                "pattern": "\\bNow listening on:\\s+(http://localhost:5038)"
             },
             "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            },
-            "sourceFileMap": {
-                "/Views": "${workspaceFolder}/Views"
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5038"
+            }
+        },
+        {
+            "name": "Mercadito Sales API",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/Mercadito.Sales.Api/bin/Debug/net8.0/Mercadito.Sales.Api.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Mercadito.Sales.Api",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5101"
+            }
+        },
+        {
+            "name": "Mercadito Users API",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/Mercadito.Users.Api/bin/Debug/net8.0/Mercadito.Users.Api.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Mercadito.Users.Api",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5102"
             }
         },
         {
             "name": ".NET Core Attach",
             "type": "coreclr",
             "request": "attach"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Mercadito Split App",
+            "configurations": [
+                "Mercadito Sales API",
+                "Mercadito Users API",
+                "Mercadito Frontend"
+            ],
+            "preLaunchTask": "build solution",
+            "stopAll": true
         }
     ]
 }

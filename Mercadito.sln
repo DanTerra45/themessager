@@ -2,7 +2,11 @@
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mercadito", "Mercadito.csproj", "{FE42E196-5A4C-4582-874A-448C9EF4510C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mercadito.Frontend", "Mercadito.Frontend\Mercadito.Frontend.csproj", "{FFC204A4-CDFC-4A84-AC94-73CC1625A28A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mercadito.Sales.Api", "Mercadito.Sales.Api\Mercadito.Sales.Api.csproj", "{80D5150F-37C7-490A-B078-F0C22FEC0A80}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mercadito.Users.Api", "Mercadito.Users.Api\Mercadito.Users.Api.csproj", "{D964F9F6-536B-4EA5-9E81-5B06E41FAD49}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,9 +17,17 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{FE42E196-5A4C-4582-874A-448C9EF4510C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FE42E196-5A4C-4582-874A-448C9EF4510C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FE42E196-5A4C-4582-874A-448C9EF4510C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FE42E196-5A4C-4582-874A-448C9EF4510C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFC204A4-CDFC-4A84-AC94-73CC1625A28A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFC204A4-CDFC-4A84-AC94-73CC1625A28A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFC204A4-CDFC-4A84-AC94-73CC1625A28A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFC204A4-CDFC-4A84-AC94-73CC1625A28A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{80D5150F-37C7-490A-B078-F0C22FEC0A80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{80D5150F-37C7-490A-B078-F0C22FEC0A80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{80D5150F-37C7-490A-B078-F0C22FEC0A80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{80D5150F-37C7-490A-B078-F0C22FEC0A80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D964F9F6-536B-4EA5-9E81-5B06E41FAD49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D964F9F6-536B-4EA5-9E81-5B06E41FAD49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D964F9F6-536B-4EA5-9E81-5B06E41FAD49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D964F9F6-536B-4EA5-9E81-5B06E41FAD49}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

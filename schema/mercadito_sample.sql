@@ -125,10 +125,10 @@ VALUES
   ('Toallitas Humedas Bebe 80u', 'Toallitas humedas para bebe x80', '2000000037', '2028-03-30', 18.50, 20, 'A'),
   ('Pure Manzana Bebe 113g', 'Pure de manzana para bebe 113 gramos', '2000000038', '2027-01-20', 9.20, 16, 'A'),
 
-  ('Manzana Roja 1Kg', 'Manzana roja seleccionada por kilo', '2000000039', '2026-04-28', 14.00, 21, 'A'),
-  ('Papa Blanca 2Kg', 'Papa blanca lavada bolsa de 2kg', '2000000040', '2026-05-18', 11.50, 26, 'A'),
-  ('Tomate 1Kg', 'Tomate fresco para ensalada por kilo', '2000000041', '2026-04-22', 13.20, 19, 'A'),
-  ('Zanahoria 1Kg', 'Zanahoria fresca por kilo', '2000000042', '2026-05-30', 9.80, 17, 'A'),
+  ('Manzana Roja 1Kg', 'Manzana roja seleccionada por kilo', '2000000039', '2026-06-28', 14.00, 21, 'A'),
+  ('Papa Blanca 2Kg', 'Papa blanca lavada bolsa de 2kg', '2000000040', '2026-06-18', 11.50, 26, 'A'),
+  ('Tomate 1Kg', 'Tomate fresco para ensalada por kilo', '2000000041', '2026-06-22', 13.20, 19, 'A'),
+  ('Zanahoria 1Kg', 'Zanahoria fresca por kilo', '2000000042', '2026-06-30', 9.80, 17, 'A'),
 
   ('Cuaderno Universitario 100h', 'Cuaderno universitario de 100 hojas', '2000000043', '2029-12-31', 16.00, 30, 'A'),
   ('Lapiz HB 12u', 'Caja de lapiz HB por 12 unidades', '2000000044', '2029-12-31', 12.00, 25, 'A'),
@@ -197,10 +197,10 @@ FROM (
   UNION ALL SELECT 'Toallitas Humedas Bebe 80u', '2000000037', '2028-03-30', 'C00009'
   UNION ALL SELECT 'Pure Manzana Bebe 113g', '2000000038', '2027-01-20', 'C00011'
 
-  UNION ALL SELECT 'Manzana Roja 1Kg', '2000000039', '2026-04-28', 'C00012'
-  UNION ALL SELECT 'Papa Blanca 2Kg', '2000000040', '2026-05-18', 'C00012'
-  UNION ALL SELECT 'Tomate 1Kg', '2000000041', '2026-04-22', 'C00012'
-  UNION ALL SELECT 'Zanahoria 1Kg', '2000000042', '2026-05-30', 'C00012'
+  UNION ALL SELECT 'Manzana Roja 1Kg', '2000000039', '2026-06-28', 'C00012'
+  UNION ALL SELECT 'Papa Blanca 2Kg', '2000000040', '2026-06-18', 'C00012'
+  UNION ALL SELECT 'Tomate 1Kg', '2000000041', '2026-06-22', 'C00012'
+  UNION ALL SELECT 'Zanahoria 1Kg', '2000000042', '2026-06-30', 'C00012'
 
   UNION ALL SELECT 'Cuaderno Universitario 100h', '2000000043', '2029-12-31', 'C00013'
   UNION ALL SELECT 'Lapiz HB 12u', '2000000044', '2029-12-31', 'C00013'

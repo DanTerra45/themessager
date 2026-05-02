@@ -1,0 +1,205 @@
+@page "/Suppliers"
+@model Mercadito.Frontend.Pages.Suppliers.SuppliersModel
+@{
+    ViewData["Title"] = "Proveedores";
+    ViewData["UseToasts"] = true;
+}
+
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Directorio para compras y abastecimiento</p>
+    </section>
+    <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#nuevoProveedorModal">
+        <i class="bi bi-truck"></i> Nuevo Proveedor
+    </button>
+</header>
+
+<section class="mb-4 listing-filter-wrap">
+    <form method="post" asp-page-handler="Filter" class="listing-filter-form">
+        <input type="hidden" name="sortBy" value="@Model.SortBy" />
+        <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+        <section class="listing-search-field">
+            <label for="suppliersSearchTerm" class="visually-hidden">Buscar proveedor</label>
+            <input type="search"
+                   id="suppliersSearchTerm"
+                   name="searchTerm"
+                   class="form-control listing-search-input"
+                   value="@Model.SearchTerm"
+                   placeholder="Buscar proveedor..."
+                   autocomplete="off" />
+        </section>
+        <section class="listing-filter-actions">
+            <button type="submit" class="b-btn b-btn-secondary listing-icon-btn" title="Buscar proveedores" aria-label="Buscar proveedores">
+                <i class="bi bi-search"></i>
+            </button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+            {
+                <button type="submit" name="clear" value="true" class="b-btn b-btn-secondary listing-icon-btn" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+            }
+        </section>
+    </form>
+</section>
+
+@if (Model.ActiveSuppliers.Count > 0)
+{
+    <section class="table-responsive table-shadow-safe-wrap">
+        <table class="table table-hover align-middle">
+            <thead class="text-center">
+                <tr>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por código">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="code" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                            <button type="submit" class="sort-button">
+                                Código <i class="bi @Model.GetSortIcon("code")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por razón social">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="name" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                            <button type="submit" class="sort-button">
+                                Razón social <i class="bi @Model.GetSortIcon("name")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por contacto">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="contact" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                            <button type="submit" class="sort-button">
+                                Contacto <i class="bi @Model.GetSortIcon("contact")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por teléfono">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="phone" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                            <button type="submit" class="sort-button">
+                                Teléfono <i class="bi @Model.GetSortIcon("phone")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="sortable-header text-center fw-bold" title="Ordenar por rubro">
+                        <form method="post" asp-page-handler="Sort" class="d-inline">
+                            <input type="hidden" name="sortBy" value="rubro" />
+                            <input type="hidden" name="currentSortBy" value="@Model.SortBy" />
+                            <input type="hidden" name="currentSortDirection" value="@Model.SortDirection" />
+                            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                            <button type="submit" class="sort-button">
+                                Rubro <i class="bi @Model.GetSortIcon("rubro")" style="font-size: 0.8em;"></i>
+                            </button>
+                        </form>
+                    </th>
+                    <th class="text-center fw-bold">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var supplier in Model.ActiveSuppliers)
+                {
+                    <tr>
+                        <td style="font-family: var(--font-mono);" class="fw-bold">@supplier.Codigo</td>
+                        <td class="fw-bold">@supplier.RazonSocial</td>
+                        <td>@supplier.Contacto</td>
+                        <td style="font-family: var(--font-mono);">@supplier.Telefono</td>
+                        <td>@supplier.Rubro</td>
+                        <td class="text-center">
+                            <button type="button" 
+                                    class="b-btn b-btn-secondary ms-1" 
+                                    style="padding: 0.25rem 0.5rem;" 
+                                    title="Editar registro"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#editarProveedorModal"
+                                    data-id="@supplier.Id"
+                                    data-details-url="@Url.Page("/Suppliers/Suppliers", "Details", new { id = supplier.Id })">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button"
+                                    class="b-btn b-btn-danger ms-1"
+                                    style="padding: 0.25rem 0.5rem;"
+                                    title="Eliminar proveedor"
+                                    aria-label="Eliminar proveedor"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteSupplierModal"
+                                    data-id="@supplier.Id"
+                                    data-name="@supplier.RazonSocial">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+else
+{
+    <aside class="text-center text-muted py-5" style="font-family: var(--font-mono); border: 2px dashed var(--mrc-ink); border-radius: var(--radius-md);">
+        @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+        {
+            <span>No se encontraron proveedores para la búsqueda actual.</span>
+        }
+        else
+        {
+            <span>No hay proveedores registrados en el sistema.</span>
+        }
+    </aside>
+}
+
+<section class="modal fade" id="deleteSupplierModal" tabindex="-1" aria-labelledby="deleteSupplierModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Delete" id="deleteSupplierForm">
+                <input type="hidden" name="id" id="DeleteSupplierId" />
+                <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+
+                <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; color: white;" id="deleteSupplierModalLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Confirmar eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+
+                <section class="modal-body p-4">
+                    <p class="mb-3" style="font-size: 1.1rem;">¿Está seguro de eliminar el proveedor seleccionado?</p>
+                    <p class="mb-0" style="font-family: var(--font-mono); padding: 1rem; background-color: var(--mrc-surface-alt); border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm);">
+                        Proveedor: <strong id="deleteSupplierName" style="font-size: 1.2rem;">-</strong>
+                    </p>
+                </section>
+
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn b-btn-danger">
+                        <i class="bi bi-trash me-1"></i> Eliminar
+                    </button>
+                </footer>
+            </form>
+        </article>
+    </section>
+</section>
+
+<partial name="_CreateSupplierModal" model="Model" />
+<partial name="_EditSupplierModal" model="Model" />
+<section id="suppliersPageConfig"
+         data-show-create-modal="@Model.ShowCreateSupplierModal.ToString().ToLowerInvariant()"
+         data-show-edit-modal="@Model.ShowEditSupplierModal.ToString().ToLowerInvariant()"
+         hidden></section>
+
+@section Scripts {
+    <script src="~/js/pages/suppliers-page.js" asp-append-version="true"></script>
+}

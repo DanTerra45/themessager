@@ -1,0 +1,43 @@
+@model Mercadito.Frontend.Pages.Users.IndexModel
+
+<form method="post" asp-page-handler="SendResetLink">
+    <section class="modal fade" id="sendResetLinkModal" tabindex="-1" aria-labelledby="sendResetLinkModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="sendResetLinkModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-envelope me-2"></i> Enviar Enlace de Restablecimiento
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <input asp-for="SendResetLink.UserId" type="hidden" />
+
+                    <section class="mb-3">
+                        <label asp-for="SendResetLink.Username" class="form-label fw-bold">
+                            Usuario
+                            <span asp-validation-for="SendResetLink.Username" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SendResetLink.Username" class="form-control readonly-display-input" readonly />
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="SendResetLink.Email" class="form-label fw-bold">
+                            Correo
+                            <span asp-validation-for="SendResetLink.Email" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="SendResetLink.Email" class="form-control readonly-display-input" readonly />
+                    </section>
+
+                    <p class="mb-0 text-muted">Se invalidará la contraseña actual y se enviará un enlace al correo para definir una nueva.</p>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn">Enviar enlace</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</form>

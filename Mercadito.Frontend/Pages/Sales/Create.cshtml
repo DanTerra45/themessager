@@ -1,0 +1,279 @@
+@page "/Sales/Create"
+@using System.Text.Json
+@model Mercadito.Frontend.Pages.Sales.CreateModel
+@{
+    ViewData["Title"] = "Nueva Venta";
+    var initialStateJson = JsonSerializer.Serialize(Model.InitialState, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+}
+
+@if (Model.Errors.Count > 0)
+{
+    <section class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" aria-live="polite" aria-atomic="true">
+        @foreach (var error in Model.Errors)
+        {
+            <section class="toast align-items-center border-0 app-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+                <section class="d-flex position-relative">
+                    <section class="toast-icon d-flex align-items-center justify-content-center app-toast-icon app-toast-icon-error">
+                        <i class="bi bi-exclamation-lg"></i>
+                    </section>
+                    <section class="toast-body d-flex align-items-center app-toast-body">
+                        <strong class="me-2">Error:</strong> @error
+                    </section>
+                    <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2 app-toast-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                </section>
+            </section>
+        }
+    </section>
+}
+
+<section id="salesCreateRoot"
+         class="sale-create-page sale-modal-page-shell"
+         data-customers-url="@Url.Page("/Sales/Create", "Customers")"
+         data-products-url="@Url.Page("/Sales/Create", "Products")"
+         data-register-url="@Url.Page("/Sales/Create", "Register")"
+         data-sales-index-url="@Url.Page("/Sales/Index")"
+         data-receipt-base-url="@Url.Content("~/Sales/Receipt")">
+    <form id="salesCreateForm" novalidate autocomplete="off">
+        @Html.AntiForgeryToken()
+
+        <article class="sale-modal-shell">
+            <header class="sale-modal-header">
+                <h1>
+                    <i class="bi bi-receipt-cutoff"></i>
+                    Nueva Venta
+                </h1>
+                <a asp-page="/Sales/Index" class="sale-modal-close-button" data-sale-modal-close title="Cerrar" aria-label="Cerrar">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </header>
+
+            <section class="sale-modal-body">
+                <section class="sale-create-panel sale-create-data-panel">
+                    <header class="sale-create-data-heading">
+                        <strong>Datos de venta</strong>
+                        <span id="saleNextCode" class="sale-client-code">Código: @Model.InitialState.NextSaleCode</span>
+                    </header>
+
+                    <input id="saleChannelInput" type="hidden" value="Mostrador" />
+
+                    <section class="sale-data-grid">
+                        <section>
+                            <label class="form-label fw-bold" for="salePaymentMethodDropdown">Método de pago</label>
+                            <input id="salePaymentMethodInput" type="hidden" value="Efectivo" />
+                            <section class="dropdown sale-payment-dropdown">
+                                <button class="form-select text-start category-select-trigger sale-payment-trigger"
+                                        type="button"
+                                        id="salePaymentMethodDropdown"
+                                        data-bs-toggle="dropdown"
+                                        data-bs-boundary="viewport"
+                                        aria-expanded="false">
+                                    <span id="salePaymentMethodLabel">Efectivo</span>
+                                </button>
+                                <ul class="dropdown-menu w-100 p-0 shadow-sm category-dropdown-menu sale-payment-dropdown-menu"
+                                    aria-labelledby="salePaymentMethodDropdown">
+                                    <li>
+                                        <button type="button" class="dropdown-item category-select-item sale-payment-option is-selected" data-payment-method="Efectivo">
+                                            Efectivo
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item category-select-item sale-payment-option" data-payment-method="Tarjeta">
+                                            Tarjeta
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item category-select-item sale-payment-option" data-payment-method="QR">
+                                            QR
+                                        </button>
+                                    </li>
+                                </ul>
+                            </section>
+                        </section>
+
+                        <section class="sale-data-client-field">
+                            <label class="form-label fw-bold">Cliente</label>
+                            <article id="selectedCustomerCard" class="sale-selection-card sale-selection-card-large sale-selection-card-inline">
+                                <span class="sale-selection-card-header">
+                                    <span class="sale-customer-trigger-copy">
+                                        <strong id="selectedCustomerTitle">Esperando cliente...</strong>
+                                        <small id="selectedCustomerMeta" class="text-muted">Selecciona uno de la lista o registra uno nuevo.</small>
+                                    </span>
+                                </span>
+                            </article>
+                        </section>
+
+                        <section class="sale-data-client-actions">
+                            <button type="button" id="toggleCustomerSearchButton" class="b-btn b-btn-secondary">Cambiar</button>
+                            <button type="button" id="openNewCustomerPanelButton" class="b-btn">
+                                <i class="bi bi-plus-lg"></i> Nuevo
+                            </button>
+                        </section>
+                    </section>
+
+                    <section id="customerToolsPanel" class="sale-customer-tools-panel d-none">
+                        <section class="sale-customer-tools-grid">
+                            <section>
+                                <label class="form-label fw-bold" for="saleCustomerSearchInput">Buscar cliente</label>
+                                <div class="input-group sale-search-group">
+                                    <input id="saleCustomerSearchInput"
+                                           class="form-control sale-static-control"
+                                           placeholder="CI/NIT o razón social" />
+                                    <button type="button" class="b-btn b-btn-secondary sale-search-button" id="searchCustomersButton" title="Buscar cliente">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section class="sale-client-results-block">
+                                <strong class="mb-2" style="font-family: var(--font-display);">Resultados de cliente</strong>
+                                <section id="customerResultsList" class="sale-customer-option-list"></section>
+                            </section>
+                        </section>
+                    </section>
+
+                    <section id="newCustomerPanel" class="sale-customer-draft-panel d-none">
+                        <p class="text-muted mb-3">Este cliente quedará en borrador hasta confirmar la venta.</p>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" for="newCustomerCiNit">
+                                CI/NIT nuevo cliente
+                                <span class="info-tooltip" data-info-message="Obligatorio. Usa 0 para Consumidor Final o un CI/NIT entre 5 y 20 caracteres." tabindex="0">i</span>
+                                <span class="validation-icon-inline d-none" data-field-error-for="newCustomerCiNit" data-valmsg-for="NewCustomer.CiNit"></span>
+                            </label>
+                            <input id="newCustomerCiNit" class="form-control sale-static-control" maxlength="20" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" for="newCustomerBusinessName">
+                                Razón social
+                                <span class="info-tooltip" data-info-message="Obligatorio. Nombre o razón social del cliente." tabindex="0">i</span>
+                                <span class="validation-icon-inline d-none" data-field-error-for="newCustomerBusinessName" data-valmsg-for="NewCustomer.BusinessName"></span>
+                            </label>
+                            <input id="newCustomerBusinessName" class="form-control sale-static-control" maxlength="150" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" for="newCustomerPhone">
+                                Teléfono
+                                <span class="info-tooltip" data-info-message="Opcional. Máximo 20 caracteres." tabindex="0">i</span>
+                                <span class="validation-icon-inline d-none" data-field-error-for="newCustomerPhone" data-valmsg-for="NewCustomer.Phone"></span>
+                            </label>
+                            <input id="newCustomerPhone" class="form-control sale-static-control" maxlength="20" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" for="newCustomerEmail">
+                                Correo
+                                <span class="info-tooltip" data-info-message="Opcional. Debe tener formato de correo si lo llenas." tabindex="0">i</span>
+                                <span class="validation-icon-inline d-none" data-field-error-for="newCustomerEmail" data-valmsg-for="NewCustomer.Email"></span>
+                            </label>
+                            <input id="newCustomerEmail" class="form-control sale-static-control" maxlength="100" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" for="newCustomerAddress">
+                                Dirección
+                                <span class="info-tooltip" data-info-message="Opcional. Máximo 150 caracteres." tabindex="0">i</span>
+                                <span class="validation-icon-inline d-none" data-field-error-for="newCustomerAddress" data-valmsg-for="NewCustomer.Address"></span>
+                            </label>
+                            <input id="newCustomerAddress" class="form-control sale-static-control" maxlength="150" />
+                        </div>
+                        <footer class="d-flex justify-content-between gap-2">
+                            <button type="button" id="discardNewCustomerButton" class="b-btn b-btn-danger">Descartar</button>
+                            <div class="d-flex gap-2">
+                                <button type="button" id="hideNewCustomerPanelButton" class="b-btn b-btn-secondary">Atrás</button>
+                                <button type="button" id="useNewCustomerButton" class="b-btn">Usar cliente</button>
+                            </div>
+                        </footer>
+                    </section>
+                </section>
+
+                <section class="sale-flow-grid">
+                    <section class="sale-products-panel">
+                        <header>
+                            <h2>Productos disponibles</h2>
+                        </header>
+
+                        <div class="input-group sale-search-group mb-3">
+                            <input id="saleProductSearchInput"
+                                   class="form-control sale-static-control"
+                                   placeholder="Nombre o lote" />
+                            <button type="button" class="b-btn b-btn-secondary sale-search-button" id="searchProductsButton" title="Buscar producto">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+
+                        <section class="sale-product-list-shell">
+                            <header class="sale-product-list-header">
+                                <span>Producto</span>
+                                <span>Lote</span>
+                                <span>Stock</span>
+                                <span>Precio</span>
+                            </header>
+                            <section id="productOptionsList" class="sale-product-option-list"></section>
+                        </section>
+
+                        <p class="sale-product-help mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Haz clic en un producto para agregarlo al detalle de venta.
+                        </p>
+                    </section>
+
+                    <section class="sale-detail-panel">
+                        <header>
+                            <h2>Detalle de venta</h2>
+                        </header>
+
+                        <section class="sale-draft-table-shell mb-0">
+                            <section class="sale-draft-table-scroll">
+                                <table class="table table-hover align-middle mb-0 sale-draft-table">
+                                    <thead class="text-center">
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Lote</th>
+                                            <th class="text-center">Cantidad</th>
+                                            <th class="text-end">Precio</th>
+                                            <th class="text-end">Importe</th>
+                                            <th class="text-center">Opción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="saleDraftLinesTableBody"></tbody>
+                                </table>
+                            </section>
+                            <footer class="sale-total-row sale-total-row-box">
+                                <span></span>
+                                <strong id="saleDraftTotal">Total: 0,00 Bs.</strong>
+                            </footer>
+                        </section>
+                    </section>
+                </section>
+            </section>
+
+            <footer class="sale-modal-footer">
+                <a asp-page="/Sales/Index" class="b-btn b-btn-secondary text-decoration-none" data-sale-modal-close>Cerrar</a>
+                <button type="button" id="openConfirmSaleButton" class="b-btn">Guardar venta</button>
+            </footer>
+        </article>
+    </form>
+
+    <section class="modal fade" id="confirmSaleModal" tabindex="-1" aria-labelledby="confirmSaleModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered sale-confirm-modal-dialog">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="confirmSaleModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-check2-square me-2"></i>Confirmar Venta
+                    </h5>
+                    <button type="button" id="closeConfirmSaleButton" class="btn-close btn-close-white" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body">
+                    <p class="sale-confirm-copy mb-0">¿Confirmas el registro de esta venta?</p>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" id="returnToSaleDraftButton" class="b-btn b-btn-secondary">Seguir editando</button>
+                    <button type="button" id="confirmRegisterSaleButton" class="b-btn">Confirmar</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</section>
+
+<script type="application/json" id="salesCreateInitialState">@Html.Raw(initialStateJson)</script>
+
+@section Scripts {
+    <script src="~/js/pages/frontend-sales-create.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,113 @@
+@model Mercadito.Frontend.Pages.Users.IndexModel
+@{
+    var selectedEmployeeLabel = "Sin empleado asociado";
+    if (Model.NewUser.EmployeeId.HasValue)
+    {
+        var selectedEmployee = Model.AvailableEmployees.FirstOrDefault(employee => employee.Id == Model.NewUser.EmployeeId.Value);
+        if (selectedEmployee != null)
+        {
+            selectedEmployeeLabel = $"{selectedEmployee.FullName} - {selectedEmployee.Cargo} - {selectedEmployee.CiDisplay}";
+        }
+    }
+
+    var selectedRoleLabel = "Seleccione un rol";
+    if (!string.IsNullOrWhiteSpace(Model.NewUser.Role))
+    {
+        selectedRoleLabel = Model.NewUser.Role;
+    }
+}
+
+<form method="post" asp-page-handler="Create">
+    <section class="modal fade" id="nuevoUsuarioModal" tabindex="-1" aria-labelledby="nuevoUsuarioModalLabel" aria-hidden="true">
+        <section class="modal-dialog modal-dialog-centered">
+            <article class="modal-content">
+                <header class="modal-header">
+                    <h5 class="modal-title" id="nuevoUsuarioModalLabel" style="font-family: var(--font-display); font-weight: 800;">
+                        <i class="bi bi-shield-lock me-2"></i> Registrar Usuario
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+                <section class="modal-body p-4 users-modal-body">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <section class="mb-3">
+                        <label asp-for="NewUser.Username" class="form-label fw-bold">
+                            Usuario generado
+                            <span asp-validation-for="NewUser.Username" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewUser.Username" class="form-control readonly-display-input" autocomplete="off" readonly />
+                        <small class="text-muted d-block mt-1">Se genera desde el correo. Si ya existe, el sistema agrega un sufijo numérico.</small>
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="NewUser.Email" class="form-label fw-bold">
+                            Correo
+                            <span asp-validation-for="NewUser.Email" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewUser.Email" class="form-control" autocomplete="off" placeholder="usuario@mercadito.local" data-normalize="trim" />
+                        <small class="text-muted d-block mt-1">Obligatorio. Se enviará un enlace para definir la contraseña.</small>
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="NewUser.EmployeeId" class="form-label fw-bold">
+                            Empleado asociado
+                            <span asp-validation-for="NewUser.EmployeeId" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewUser.EmployeeId" type="hidden" />
+                        <section class="dropdown">
+                            <button class="form-select text-start category-select-trigger" type="button" id="newUserEmployeeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="newUserEmployeeDropdownText" class="dropdown-fade-container">@selectedEmployeeLabel</span>
+                            </button>
+                            <ul class="dropdown-menu w-100 p-0 shadow-sm category-dropdown-menu users-dropdown-menu" aria-labelledby="newUserEmployeeDropdown">
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item users-select-item m-0 d-flex align-items-center justify-content-between"
+                                            data-users-dropdown="employee"
+                                            data-value=""
+                                            data-label="Sin empleado asociado">
+                                        <span>Sin empleado asociado</span>
+                                    </button>
+                                </li>
+                                @foreach (var employee in Model.AvailableEmployees)
+                                {
+                                    var employeeLabel = $"{employee.FullName} - {employee.Cargo} - {employee.CiDisplay}";
+                                    <li>
+                                        <button type="button"
+                                                class="dropdown-item users-select-item m-0 d-flex align-items-center justify-content-between"
+                                                data-users-dropdown="employee"
+                                                data-value="@employee.Id"
+                                                data-label="@employeeLabel">
+                                            <span>@employeeLabel</span>
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        </section>
+                    </section>
+
+                    <section class="mb-3">
+                        <label asp-for="NewUser.Role" class="form-label fw-bold">
+                            Rol del sistema
+                            <span asp-validation-for="NewUser.Role" class="validation-icon-inline"></span>
+                        </label>
+                        <input asp-for="NewUser.Role" type="hidden" />
+                        <section class="dropdown">
+                            <button class="form-select text-start category-select-trigger" type="button" id="newUserRoleDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="newUserRoleDropdownText" class="dropdown-fade-container">@selectedRoleLabel</span>
+                            </button>
+                            <ul class="dropdown-menu w-100 p-0 shadow-sm category-dropdown-menu users-dropdown-menu" aria-labelledby="newUserRoleDropdown">
+                                <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Admin" data-label="Admin">Admin</button></li>
+                                <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Operador" data-label="Operador">Operador</button></li>
+                                <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Auditor" data-label="Auditor">Auditor</button></li>
+                            </ul>
+                        </section>
+                    </section>
+                </section>
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn">Guardar</button>
+                </footer>
+            </article>
+        </section>
+    </section>
+</form>
