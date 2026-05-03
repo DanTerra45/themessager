@@ -1,0 +1,38 @@
+using Mercadito.src.application.audit.ports.output;
+using Mercadito.src.application.audit.ports.input;
+using Mercadito.src.domain.audit.entities;
+using Mercadito.src.domain.shared;
+
+namespace Mercadito.src.application.audit.usecases
+{
+    public sealed class RegisterAuditEntryUseCase(IAuditRepository auditRepository) : IRegisterAuditEntryUseCase
+    {
+        public async Task<Result> ExecuteAsync(AuditEntry entry, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(entry);
+
+            if (entry.UserId <= 0)
+            {
+                return Result.Failure("El usuario de auditoría es obligatorio.");
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.Username))
+            {
+                return Result.Failure("El nombre de usuario de auditoría es obligatorio.");
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.TableName))
+            {
+                return Result.Failure("La tabla auditada es obligatoria.");
+            }
+
+            if (entry.RecordId <= 0)
+            {
+                return Result.Failure("El identificador del registro auditado es obligatorio.");
+            }
+
+            await auditRepository.RegisterAsync(entry, cancellationToken);
+            return Result.Success();
+        }
+    }
+}
