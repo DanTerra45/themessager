@@ -1,4 +1,4 @@
-git checkout v5/update-- Mercadito (MySQL 8+)
+-- Mercadito (MySQL 8+)
 -- Sample data para pruebas
 -- Usage (CLI): mysql -u <user> -p < schema/mercadito_sample.sql
 

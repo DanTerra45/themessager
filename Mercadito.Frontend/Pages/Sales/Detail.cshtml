@@ -1,0 +1,102 @@
+@page "/Sales/Detail/{saleId:long?}"
+@model Mercadito.Frontend.Pages.Sales.DetailModel
+@{
+    ViewData["Title"] = "Detalle de venta";
+}
+
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>Detalle de venta</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Consulta de transacción desde el servicio de ventas</p>
+    </section>
+    <a asp-page="/Sales/Index" class="b-btn b-btn-secondary text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</header>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <section class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" aria-live="polite" aria-atomic="true">
+        <section class="toast align-items-center border-0 app-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="7000">
+            <section class="d-flex position-relative">
+                <section class="toast-icon d-flex align-items-center justify-content-center app-toast-icon app-toast-icon-error">
+                    <i class="bi bi-exclamation-lg"></i>
+                </section>
+                <section class="toast-body d-flex align-items-center app-toast-body">
+                    <strong>@Model.ErrorMessage</strong>
+                </section>
+                <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2 app-toast-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </section>
+        </section>
+    </section>
+}
+else if (Model.Sale != null)
+{
+    <section class="b-card p-4">
+        <section class="d-flex flex-wrap justify-content-between gap-3 mb-4">
+            <section>
+                <h2 style="font-family: var(--font-display); margin: 0;">@Model.Sale.Code</h2>
+                <span class="text-muted" style="font-family: var(--font-mono);">@Model.Sale.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+            </section>
+            <section class="text-end">
+                @if (string.Equals(Model.Sale.Status, "Anulada", StringComparison.Ordinal))
+                {
+                    <mark class="status-badge" data-status="danger">@Model.Sale.Status</mark>
+                }
+                else
+                {
+                    <mark class="status-badge" data-status="success">@Model.Sale.Status</mark>
+                }
+            </section>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <section class="col-md-3">
+                <strong class="d-block" style="font-family: var(--font-mono);">CI/NIT</strong>
+                <span>@Model.Sale.CustomerCiNit</span>
+            </section>
+            <section class="col-md-5">
+                <strong class="d-block" style="font-family: var(--font-mono);">Cliente</strong>
+                <span>@Model.Sale.CustomerBusinessName</span>
+            </section>
+            <section class="col-md-2">
+                <strong class="d-block" style="font-family: var(--font-mono);">Canal</strong>
+                <span>@Model.Sale.Channel</span>
+            </section>
+            <section class="col-md-2">
+                <strong class="d-block" style="font-family: var(--font-mono);">Método</strong>
+                <span>@Model.Sale.PaymentMethod</span>
+            </section>
+        </section>
+
+        <section class="table-responsive">
+            <table class="table align-middle mb-0 products-table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Lote</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Importe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.Sale.Lines)
+                    {
+                        <tr>
+                            <td>@line.ProductName</td>
+                            <td class="text-center" style="font-family: var(--font-mono);">@line.LotCode</td>
+                            <td class="text-center" style="font-family: var(--font-mono);">@line.Quantity</td>
+                            <td class="text-end" style="font-family: var(--font-mono);">@line.UnitPrice.ToString("N2") Bs.</td>
+                            <td class="text-end fw-bold" style="font-family: var(--font-mono);">@line.Subtotal.ToString("N2") Bs.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="d-flex justify-content-end mt-4">
+            <strong style="font-family: var(--font-display); font-size: 1.5rem;">Total: @Model.Sale.Total.ToString("N2") Bs.</strong>
+        </section>
+    </section>
+}

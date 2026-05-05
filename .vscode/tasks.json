@@ -2,38 +2,57 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build solution",
             "command": "dotnet",
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/Mercadito.csproj",
+                "${workspaceFolder}/Mercadito.sln",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
-            "problemMatcher": "$msCompile"
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
-            "label": "publish",
+            "label": "run frontend",
             "command": "dotnet",
             "type": "process",
             "args": [
-                "publish",
-                "${workspaceFolder}/Mercadito.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary;ForceNoAlign"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "watch",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/Mercadito.csproj"
+                "${workspaceFolder}/Mercadito.Frontend/Mercadito.Frontend.csproj",
+                "--urls",
+                "http://localhost:5038"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run sales api",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/Mercadito.Sales.Api/Mercadito.Sales.Api.csproj",
+                "--urls",
+                "http://localhost:5101"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run users api",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/Mercadito.Users.Api/Mercadito.Users.Api.csproj",
+                "--urls",
+                "http://localhost:5102"
             ],
             "problemMatcher": "$msCompile"
         }

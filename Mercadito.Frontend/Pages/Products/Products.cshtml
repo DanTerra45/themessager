@@ -1,0 +1,386 @@
+@page "/Products"
+@model Mercadito.Frontend.Pages.Products.ProductsModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    ViewData["Title"] = "Productos";
+    ViewData["UseToasts"] = true;
+    var showIdColumn = bool.TryParse(Configuration["Ui:ShowIDs"], out var showIDs) && showIDs;
+    var minAllowedExpirationDate = DateTime.Today.ToString("yyyy-MM-dd");
+    var hasCategories = Model.Categories.Count > 0;
+    var listingViewData = new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        ["ShowIdColumn"] = showIdColumn,
+        ["ShowActionsColumn"] = true,
+        ["ShowStockColumn"] = true,
+        ["ShowBatchColumn"] = true,
+        ["ShowExpirationColumn"] = true,
+        ["ShowPriceColumn"] = true
+    };
+}
+
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>@ViewData["Title"]</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Gestión del inventario de productos</p>
+    </section>
+    <button type="button" class="b-btn" data-bs-toggle="modal" data-bs-target="#addProductModal">
+        <i class="bi bi-plus-circle"></i> Nuevo Producto
+    </button>
+</header>
+
+<partial name="_ProductListing" model="(Mercadito.Frontend.Pages.Products.IProductListingPageModel)Model" view-data="listingViewData" />
+
+<section class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Delete" id="deleteProductForm">
+                <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+                <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                <input type="hidden" name="id" id="DeleteProductId" />
+
+                <header class="modal-header" style="background-color: var(--mrc-danger); color: white;">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; color: white;" id="deleteProductModalLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i> Confirmar eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+
+                <section class="modal-body p-4 product-modal-body">
+                    <p class="mb-3" style="font-size: 1.1rem;">¿Está seguro de eliminar el producto seleccionado?</p>
+                    <p class="mb-4" style="font-family: var(--font-mono); padding: 1rem; background-color: var(--mrc-surface-alt); border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm);">
+                        Producto: <strong id="deleteProductName" style="font-size: 1.2rem;">-</strong>
+                    </p>
+                    <aside id="deleteProductCategoryWarning" class="modal-inline-warning d-none mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        <span>Este producto tiene relación con una o más categorías. Primero se eliminará la relación con categorías y luego el producto.</span>
+                    </aside>
+                </section>
+
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn b-btn-danger">
+                        <i class="bi bi-trash me-1"></i> Eliminar
+                    </button>
+                </footer>
+            </form>
+        </article>
+    </section>
+</section>
+
+<section class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-lg modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Create" class="needs-validation" novalidate id="createProductForm">
+                <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+                <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+
+                <header class="modal-header">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="addProductModalLabel">
+                        <i class="bi bi-box-seam me-2"></i> Nuevo Producto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+
+                <section class="modal-body p-4 product-modal-body">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Información General</h6>
+                    <section class="row">
+                        <section class="col-md-6 mb-3">
+                            <label asp-for="NewProduct.Name" class="form-label fw-bold">
+                                Nombre
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                                <span asp-validation-for="NewProduct.Name" class="validation-icon-inline"></span>
+                            </label>
+                            <input asp-for="NewProduct.Name" class="form-control" data-normalize="collapse" />
+                        </section>
+
+                        <section class="col-md-6 mb-3">
+                            <label asp-for="NewProduct.CategoryIds" class="form-label fw-bold category-field-label">
+                                Categorías
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Seleccione al menos una categoría activa, sin repetir.">i</span>
+                                <span asp-validation-for="NewProduct.CategoryIds" class="validation-icon-inline"></span>
+                            </label>
+                            <section class="dropdown">
+                                @if (hasCategories)
+                                {
+                                    <button class="form-select text-start category-select-trigger" type="button" id="newCategoryDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 1rem;">
+                                        <span id="newCategoryDropdownText" class="dropdown-fade-container">Sin categorías seleccionadas</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="form-select text-start category-select-trigger" type="button" id="newCategoryDropdown" aria-expanded="false" disabled style="border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 1rem;">
+                                        <span id="newCategoryDropdownText" class="dropdown-fade-container">No hay categorías creadas.</span>
+                                    </button>
+                                }
+                                <ul class="dropdown-menu w-100 p-0 shadow-sm category-dropdown-menu" aria-labelledby="newCategoryDropdown" style="max-height: 200px; overflow-y: auto; background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal);">
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        <li>
+                                            <label class="dropdown-item category-select-item m-0 d-flex align-items-center justify-content-between" for="newCat_@category.Id" style="cursor: pointer; border-radius: 0; font-family: var(--font-mono); font-size: 0.9rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--mrc-ink);">
+                                                <input class="d-none new-category-checkbox" type="checkbox" name="NewProduct.CategoryIds" value="@category.Id" id="newCat_@category.Id" data-name="@category.Name">
+                                                <span class="text-truncate">@category.Name</span>
+                                                <i class="bi bi-check-lg check-icon d-none" style="font-size: 1.1rem; color: var(--mrc-ink);"></i>
+                                            </label>
+                                        </li>
+                                    }
+                                </ul>
+                            </section>
+                        </section>
+                    </section>
+
+                    <section class="mb-4 product-description-block">
+                        <label asp-for="NewProduct.Description" class="form-label fw-bold">
+                            Descripción
+                            <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="NewProduct.Description" class="validation-icon-inline"></span>
+                        </label>
+                        <textarea asp-for="NewProduct.Description" class="form-control product-description-textarea" data-normalize="trim"></textarea>
+                    </section>
+
+                    <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Inventario y Fechas</h6>
+                    <section class="row g-3 product-form-grid">
+                        <section class="col-md-4">
+                            <label asp-for="NewProduct.Stock" class="form-label fw-bold stepper-label">
+                                Stock
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números enteros, mínimo 0.">i</span>
+                                <span asp-validation-for="NewProduct.Stock" class="validation-icon-inline"></span>
+                            </label>
+                            <section class="input-group brutal-number-group brutal-stepper" data-stepper>
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir stock">
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                <input asp-for="NewProduct.Stock" type="number" class="form-control text-center px-0" />
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar stock">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </section>
+                        </section>
+                        <section class="col-md-4">
+                            <label asp-for="NewProduct.Batch" class="form-label fw-bold">
+                                Lote
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
+                                <span asp-validation-for="NewProduct.Batch" class="validation-icon-inline"></span>
+                            </label>
+                            <input asp-for="NewProduct.Batch" type="text" class="form-control" inputmode="numeric" data-normalize="trim" />
+                        </section>
+
+                        <section class="col-md-4">
+                            <label asp-for="NewProduct.ExpirationDate" class="form-label fw-bold">
+                                Vencimiento
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Debe ser una fecha válida desde hoy en adelante.">i</span>
+                                <span asp-validation-for="NewProduct.ExpirationDate" class="validation-icon-inline"></span>
+                            </label>
+                            <input asp-for="NewProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" data-min-date="@minAllowedExpirationDate" />
+                        </section>
+                    </section>
+
+                    <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Precio</h6>
+                    <section class="row g-3 product-form-grid">
+                        <section class="col-md-4">
+                            <label asp-for="NewProduct.Price" class="form-label fw-bold stepper-label">
+                                Precio
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Debe ser mayor a 0,00.">i</span>
+                                <span asp-validation-for="NewProduct.Price" class="validation-icon-inline"></span>
+                            </label>
+                            <section class="input-group brutal-number-group brutal-stepper" data-stepper>
+                                <strong class="input-group-text brutal-stepper-prefix border-end-0">Bs.</strong>
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir precio">
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                <input asp-for="NewProduct.Price" type="number" step="0.01" class="form-control text-center px-0" />
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar precio">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </section>
+                        </section>
+                    </section>
+                </section>
+
+                <footer class="modal-footer">
+                    <button type="button" class="b-btn b-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="b-btn">
+                        <i class="bi bi-check-lg me-1"></i> Guardar Producto
+                    </button>
+                </footer>
+            </form>
+        </article>
+    </section>
+</section>
+
+<section class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+    <section class="modal-dialog modal-lg modal-dialog-centered">
+        <article class="modal-content">
+            <form method="post" asp-page-handler="Edit" class="needs-validation" novalidate id="updateProductForm">
+                <input type="hidden" name="categoryFilter" value="@Model.CategoryFilter" />
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+                <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                <input type="hidden" asp-for="EditProduct.Id" />
+
+                <header class="modal-header">
+                    <h5 class="modal-title" style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;" id="editProductModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i> Editar Producto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </header>
+
+                <section class="modal-body p-4 product-modal-body">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Información General</h6>
+                    <section class="row">
+                        <section class="col-md-6 mb-3">
+                            <label asp-for="EditProduct.Name" class="form-label fw-bold">
+                                Nombre
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                                <span asp-validation-for="EditProduct.Name" class="validation-icon-inline"></span>
+                            </label>
+                            <input asp-for="EditProduct.Name" class="form-control" data-normalize="collapse" />
+                        </section>
+
+                        <section class="col-md-6 mb-3">
+                            <label asp-for="EditProduct.CategoryIds" class="form-label fw-bold category-field-label">
+                                Categorías
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Seleccione al menos una categoría activa, sin repetir.">i</span>
+                                <span asp-validation-for="EditProduct.CategoryIds" class="validation-icon-inline"></span>
+                            </label>
+                            <section class="dropdown">
+                                @if (hasCategories)
+                                {
+                                    <button class="form-select text-start category-select-trigger" type="button" id="editCategoryDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 1rem;">
+                                        <span id="editCategoryDropdownText" class="text-truncate">Sin categorías seleccionadas</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="form-select text-start category-select-trigger" type="button" id="editCategoryDropdown" aria-expanded="false" disabled style="border: 2px solid var(--mrc-ink); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 1rem;">
+                                        <span id="editCategoryDropdownText" class="text-truncate">No hay categorías creadas.</span>
+                                    </button>
+                                }
+                                <ul class="dropdown-menu w-100 p-0 shadow-sm category-dropdown-menu" aria-labelledby="editCategoryDropdown" style="max-height: 200px; overflow-y: auto; background-color: var(--mrc-surface); border: 2px solid var(--mrc-ink); border-radius: 0; box-shadow: var(--shadow-brutal);">
+                                    @foreach (var category in Model.Categories)
+                                    {
+                                        bool isChecked = Model.EditProduct.CategoryIds.Contains(category.Id);
+                                        <li>
+                                            <label class="dropdown-item category-select-item m-0 d-flex align-items-center justify-content-between" for="editCat_@category.Id" style="cursor: pointer; border-radius: 0; font-family: var(--font-mono); font-size: 0.9rem; padding: 0.5rem 1rem; border-bottom: 1px solid var(--mrc-ink);">
+                                                <input class="d-none edit-category-checkbox" type="checkbox" name="EditProduct.CategoryIds" value="@category.Id" id="editCat_@category.Id" checked="@isChecked" data-name="@category.Name">
+                                                <span class="text-truncate">@category.Name</span>
+                                                <i class="bi bi-check-lg check-icon d-none" style="font-size: 1.1rem; color: var(--mrc-ink);"></i>
+                                            </label>
+                                        </li>
+                                    }
+                                </ul>
+                            </section>
+                        </section>
+                    </section>
+
+                    <section class="mb-4 product-description-block">
+                        <label asp-for="EditProduct.Description" class="form-label fw-bold">
+                            Descripción
+                            <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Máximo 150 caracteres.">i</span>
+                            <span asp-validation-for="EditProduct.Description" class="validation-icon-inline"></span>
+                        </label>
+                        <textarea asp-for="EditProduct.Description" class="form-control product-description-textarea" data-normalize="trim"></textarea>
+                    </section>
+
+                    <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Inventario y Fechas</h6>
+                    <section class="row g-3 product-form-grid">
+                        <section class="col-md-4">
+                            <label asp-for="EditProduct.Stock" class="form-label fw-bold stepper-label">
+                                Stock
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números enteros, mínimo 0.">i</span>
+                                <span asp-validation-for="EditProduct.Stock" class="validation-icon-inline"></span>
+                            </label>
+                            <section class="input-group brutal-number-group brutal-stepper" data-stepper>
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir stock">
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                <input asp-for="EditProduct.Stock" type="number" class="form-control text-center px-0" />
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar stock">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </section>
+                        </section>
+
+                        <section class="col-md-4">
+                            <label asp-for="EditProduct.Batch" class="form-label fw-bold">
+                                Lote
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Solo números, entre 1 y 40 dígitos.">i</span>
+                                <span asp-validation-for="EditProduct.Batch" class="validation-icon-inline"></span>
+                            </label>
+                            <input asp-for="EditProduct.Batch" type="text" class="form-control" inputmode="numeric" data-normalize="trim" />
+                        </section>
+
+                        <section class="col-md-4">
+                            <label asp-for="EditProduct.ExpirationDate" class="form-label fw-bold">
+                                Vencimiento
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Debe ser una fecha válida desde hoy en adelante.">i</span>
+                                <span asp-validation-for="EditProduct.ExpirationDate" class="validation-icon-inline"></span>
+                            </label>
+                            <input asp-for="EditProduct.ExpirationDate" type="text" class="form-control date-picker-input" asp-format="{0:yyyy-MM-dd}" data-min-date="@minAllowedExpirationDate" />
+                        </section>
+                    </section>
+
+                    <hr style="border-top: 2px dashed var(--mrc-ink); opacity: 0.2;" class="my-4">
+
+                    <h6 class="mb-3" style="font-family: var(--font-mono); font-weight: bold; text-transform: uppercase;">Precio</h6>
+                    <section class="row g-3 product-form-grid">
+                        <section class="col-md-4">
+                            <label asp-for="EditProduct.Price" class="form-label fw-bold stepper-label">
+                                Precio
+                                <span class="info-tooltip" tabindex="0" data-info-message="Requerido. Debe ser mayor a 0,00.">i</span>
+                                <span asp-validation-for="EditProduct.Price" class="validation-icon-inline"></span>
+                            </label>
+                            <section class="input-group brutal-number-group brutal-stepper" data-stepper>
+                                <strong class="input-group-text brutal-stepper-prefix border-end-0">Bs.</strong>
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-end-0" type="button" tabindex="-1" data-step="-1" aria-label="Disminuir precio">
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                <input asp-for="EditProduct.Price" type="number" step="0.01" class="form-control text-center px-0" />
+                                <button class="btn btn-outline-dark brutal-stepper-btn border-start-0" type="button" tabindex="-1" data-step="1" aria-label="Aumentar precio">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </section>
+                        </section>
+                    </section>
+                </section>
+
+                <footer class="modal-footer">
+                    <a asp-page="./Products" class="b-btn b-btn-secondary text-decoration-none">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="b-btn">
+                        <i class="bi bi-check-lg me-1"></i> Actualizar Producto
+                    </button>
+                </footer>
+            </form>
+        </article>
+    </section>
+</section>
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/air-datepicker/air-datepicker.css" />
+    <link rel="stylesheet" href="~/css/air-datepicker-overrides.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/lib/air-datepicker/air-datepicker.js"></script>
+    <script>
+        window.productsPageConfig = {
+            showCreateModal: @(Model.ShowModal.ToString().ToLowerInvariant()),
+            showEditModal: @(Model.ShowEditModal.ToString().ToLowerInvariant())
+        };
+    </script>
+    <script src="~/js/pages/products-page.js" asp-append-version="true"></script>
+}
