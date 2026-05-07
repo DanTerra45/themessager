@@ -133,7 +133,7 @@ public sealed class NavigationMenuService : INavigationMenuService
             });
         }
 
-        if (isAdmin || isAuditor)
+        if (isAdmin || isOperator || isAuditor)
         {
             items.Add(new NavigationDropdownItem
             {

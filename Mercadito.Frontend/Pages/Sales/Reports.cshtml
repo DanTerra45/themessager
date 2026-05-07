@@ -9,6 +9,7 @@
     var paymentMethodLabel = string.IsNullOrWhiteSpace(Model.PaymentMethodFilter) ? "Todos" : Model.PaymentMethodFilter;
     var allStatusOptionClass = string.IsNullOrWhiteSpace(Model.StatusFilter) ? "reports-select-option is-selected" : "reports-select-option";
     var allPaymentMethodOptionClass = string.IsNullOrWhiteSpace(Model.PaymentMethodFilter) ? "reports-select-option is-selected" : "reports-select-option";
+    var canCloseDailyCash = User.IsInRole("Admin") || User.IsInRole("Operador");
 }
 
 @section Styles {
@@ -315,24 +316,27 @@
         <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Comprobantes y consulta operativa de ventas registradas</p>
     </section>
     <div class="d-flex gap-2 align-items-end reports-toolbar">
-        <form method="get"
-              class="d-flex gap-2 align-items-end reports-date-form"
-              data-reports-date-form
-              data-current-business-date="@businessDateValue">
-            <input type="hidden" name="sortBy" value="@Model.SortBy" />
-            <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
-            <input type="hidden" name="fromDate" value="@fromDateValue" />
-            <input type="hidden" name="toDate" value="@toDateValue" />
-            <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
-            <input type="hidden" name="paymentMethodFilter" value="@Model.PaymentMethodFilter" />
-            <section>
-                <label for="businessDate" class="form-label mb-1" style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Fecha cierre</label>
-                <input id="businessDate" name="businessDate" type="date" class="form-control" value="@businessDateValue" />
-            </section>
-            <button type="submit" class="b-btn b-btn-secondary text-decoration-none" aria-controls="dailyCashClosingPreviewModal">
-                <i class="bi bi-cash-coin"></i> Cerrar caja
-            </button>
-        </form>
+        @if (canCloseDailyCash)
+        {
+            <form method="get"
+                  class="d-flex gap-2 align-items-end reports-date-form"
+                  data-reports-date-form
+                  data-current-business-date="@businessDateValue">
+                <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                <input type="hidden" name="sortDirection" value="@Model.SortDirection" />
+                <input type="hidden" name="fromDate" value="@fromDateValue" />
+                <input type="hidden" name="toDate" value="@toDateValue" />
+                <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
+                <input type="hidden" name="paymentMethodFilter" value="@Model.PaymentMethodFilter" />
+                <section>
+                    <label for="businessDate" class="form-label mb-1" style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; text-transform: uppercase;">Fecha cierre</label>
+                    <input id="businessDate" name="businessDate" type="date" class="form-control" value="@businessDateValue" />
+                </section>
+                <button type="submit" class="b-btn b-btn-secondary text-decoration-none" aria-controls="dailyCashClosingPreviewModal">
+                    <i class="bi bi-cash-coin"></i> Cerrar caja
+                </button>
+            </form>
+        }
         <a asp-page="/Sales/Reports"
            asp-route-businessDate="@businessDateValue"
            asp-route-sortBy="@Model.SortBy"
@@ -644,7 +648,7 @@
     </section>
 </section>
 
-@if (Model.DailyCashClosing is not null)
+@if (canCloseDailyCash && Model.DailyCashClosing is not null)
 {
     <section class="modal fade reports-preview-modal" id="dailyCashClosingPreviewModal" tabindex="-1" aria-labelledby="dailyCashClosingPreviewModalLabel" aria-hidden="true">
         <section class="modal-dialog modal-dialog-centered modal-dialog-scrollable reports-preview-dialog">

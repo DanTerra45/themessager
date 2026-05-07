@@ -19,7 +19,7 @@ builder.Services
         options.Conventions.AuthorizePage("/Sales/Cancellation", "OperatorOrAdmin");
         options.Conventions.AuthorizePage("/Sales/Cancel", "OperatorOrAdmin");
         options.Conventions.AuthorizePage("/Sales/Detail", "SalesViewer");
-        options.Conventions.AuthorizePage("/Sales/Reports", "AuditorOrAdmin");
+        options.Conventions.AuthorizePage("/Sales/Reports", "SalesViewer");
         options.Conventions.AuthorizePage("/Sales/Receipt");
         options.Conventions.AuthorizePage("/Categories/Categories", "AdminOnly");
         options.Conventions.AuthorizePage("/Employees/Employees", "AdminOnly");

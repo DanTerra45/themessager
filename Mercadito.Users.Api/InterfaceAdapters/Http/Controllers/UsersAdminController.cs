@@ -65,9 +65,9 @@ public sealed class UsersAdminController(
             return BadRequest(ToFailure<RegisterUserResponse>(result));
         }
 
-        return CreatedAtAction(
-            actionName: nameof(GetAllAsync),
-            value: ApiResponse<RegisterUserResponse>.Ok(new RegisterUserResponse(result.Value)));
+        return Created(
+            $"/api/users/{result.Value}",
+            ApiResponse<RegisterUserResponse>.Ok(new RegisterUserResponse(result.Value)));
     }
 
     [HttpPost("{userId:long}/send-reset-link")]

@@ -50,7 +50,7 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
             return Page();
         }
 
-        TempData["SuccessMessage"] = "Usuario registrado y enlace de activación enviado.";
+        TempData["SuccessMessage"] = "Usuario registrado y correo de activación preparado para envío.";
         return RedirectToPage();
     }
 
