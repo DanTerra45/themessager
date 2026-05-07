@@ -1,0 +1,112 @@
+@page "/Sales/Cancel/{saleId:long?}"
+@model Mercadito.Frontend.Pages.Sales.CancelModel
+@{
+    ViewData["Title"] = "Anular venta";
+}
+
+<header class="dash-header d-flex justify-content-between align-items-end">
+    <section>
+        <h1>Anular venta</h1>
+        <p class="mb-0 text-muted" style="font-family: var(--font-mono);">Confirmación operativa con restauración de stock desde el servicio de ventas</p>
+    </section>
+    <a asp-page="/Sales/Index" class="b-btn b-btn-secondary text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</header>
+
+@if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+{
+    <section class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" aria-live="polite" aria-atomic="true">
+        <section class="toast align-items-center border-0 app-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="7000">
+            <section class="d-flex position-relative">
+                <section class="toast-icon d-flex align-items-center justify-content-center app-toast-icon app-toast-icon-error">
+                    <i class="bi bi-exclamation-lg"></i>
+                </section>
+                <section class="toast-body d-flex align-items-center app-toast-body">
+                    <strong>@Model.ErrorMessage</strong>
+                </section>
+                <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2 app-toast-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </section>
+        </section>
+    </section>
+}
+
+@if (Model.Sale != null)
+{
+    <section class="b-card p-4">
+        <section class="d-flex flex-wrap justify-content-between gap-3 mb-4">
+            <section>
+                <h2 style="font-family: var(--font-display); margin: 0;">@Model.Sale.Code</h2>
+                <span class="text-muted" style="font-family: var(--font-mono);">@Model.Sale.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+            </section>
+            <section class="text-end">
+                <strong class="d-block" style="font-family: var(--font-mono);">Total</strong>
+                <span style="font-family: var(--font-display); font-size: 1.5rem;">@Model.Sale.Total.ToString("N2") Bs.</span>
+            </section>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <section class="col-md-4">
+                <strong class="d-block" style="font-family: var(--font-mono);">Cliente</strong>
+                <span>@Model.Sale.CustomerBusinessName</span>
+            </section>
+            <section class="col-md-4">
+                <strong class="d-block" style="font-family: var(--font-mono);">CI/NIT</strong>
+                <span>@Model.Sale.CustomerCiNit</span>
+            </section>
+            <section class="col-md-4">
+                <strong class="d-block" style="font-family: var(--font-mono);">Estado</strong>
+                @if (string.Equals(Model.Sale.Status, "Anulada", StringComparison.Ordinal))
+                {
+                    <mark class="status-badge" data-status="danger">@Model.Sale.Status</mark>
+                }
+                else
+                {
+                    <mark class="status-badge" data-status="success">@Model.Sale.Status</mark>
+                }
+            </section>
+        </section>
+
+        @if (string.Equals(Model.Sale.Status, "Anulada", StringComparison.Ordinal))
+        {
+            <section class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" aria-live="polite" aria-atomic="true">
+                <section class="toast align-items-center border-0 app-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="6000">
+                    <section class="d-flex position-relative">
+                        <section class="toast-icon d-flex align-items-center justify-content-center app-toast-icon app-toast-icon-error">
+                            <i class="bi bi-exclamation-lg"></i>
+                        </section>
+                        <section class="toast-body d-flex align-items-center app-toast-body">
+                            <strong>Esta venta ya fue anulada.</strong>
+                        </section>
+                        <button type="button" class="btn-close me-2 m-auto position-absolute top-0 end-0 mt-2 app-toast-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                    </section>
+                </section>
+            </section>
+        }
+        else
+        {
+            <form method="post" class="mt-4">
+                <input type="hidden" asp-for="SaleId" />
+
+                <section class="mb-3">
+                    <label asp-for="Reason" class="form-label fw-bold">
+                        Motivo de anulación
+                        <span asp-validation-for="Reason" class="validation-icon-inline"></span>
+                    </label>
+                    <textarea asp-for="Reason" class="form-control" rows="4" style="resize: none;" placeholder="Ejemplo: Error en cantidades registradas"></textarea>
+                </section>
+
+                <section class="d-flex justify-content-end gap-2">
+                    <a asp-page="/Sales/Index" class="b-btn b-btn-secondary text-decoration-none">Seguir editando</a>
+                    <button type="submit" class="b-btn b-btn-danger">
+                        <i class="bi bi-x-circle"></i> Confirmar anulación
+                    </button>
+                </section>
+            </form>
+        }
+    </section>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

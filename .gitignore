@@ -3,19 +3,10 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# Agents? whats this?
+# AI Agents & Skills
 .agents/
 .gemini/
 .claude/
-
-# Sonarcube
-.sonarqube/
-
-# mailpit
-mailpit/
-
-# Config
-.config/
 
 # dotenv files
 .env
@@ -496,10 +487,3 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
-
-
-# appsettings.json
-appsettings.Development.json
-
-# Environment
-.env

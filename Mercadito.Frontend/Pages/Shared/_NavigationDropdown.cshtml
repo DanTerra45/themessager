@@ -1,0 +1,45 @@
+@model Mercadito.Frontend.Pages.Shared.Navigation.NavigationTopLevelItem
+@{
+    var dropdown = Model.Dropdown!;
+    var dropdownAlignmentClass = dropdown.AlignEnd ? "dropdown-menu-end" : string.Empty;
+}
+
+<li class="nav-item dropdown app-nav-dropdown" data-app-nav-dropdown="true">
+    <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"
+       href="#"
+       id="@dropdown.Id"
+       role="button"
+       data-bs-toggle="dropdown"
+       data-app-nav-dropdown-toggle="true"
+       aria-expanded="false">
+        @Model.Label
+    </a>
+    <ul class="dropdown-menu app-nav-dropdown-menu @dropdownAlignmentClass" aria-labelledby="@dropdown.Id">
+        @for (var index = 0; index < dropdown.Items.Count; index++)
+        {
+            var item = dropdown.Items[index];
+            <li>
+                @if (!string.IsNullOrWhiteSpace(item.PagePath))
+                {
+                    <a class="dropdown-item app-nav-dropdown-item" asp-area="" asp-page="@item.PagePath">
+                        <i class="@item.IconCss"></i>
+                        <section>
+                            <span>@item.Title</span>
+                            <small>@item.Description</small>
+                        </section>
+                    </a>
+                }
+                else
+                {
+                    <a class="dropdown-item app-nav-dropdown-item" href="@(string.IsNullOrWhiteSpace(item.Href) ? "#" : item.Href)">
+                        <i class="@item.IconCss"></i>
+                        <section>
+                            <span>@item.Title</span>
+                            <small>@item.Description</small>
+                        </section>
+                    </a>
+                }
+            </li>
+        }
+    </ul>
+</li>
