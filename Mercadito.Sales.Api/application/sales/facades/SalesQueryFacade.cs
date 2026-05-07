@@ -1,12 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.application.sales.models;
-using Mercadito.src.application.sales.ports.input;
-using Mercadito.src.application.sales.ports.output;
-using Mercadito.src.domain.shared;
-using Mercadito.src.domain.shared.exceptions;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Application.Sales.Ports.Input;
+using Mercadito.Sales.Api.Application.Sales.Ports.Output;
+using Mercadito.Sales.Api.Domain.Shared;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.application.sales.facades
+namespace Mercadito.Sales.Api.Application.Sales.Facades
 {
     public sealed class SalesQueryFacade(ISalesRepository salesRepository) : ISalesQueryFacade
     {

@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Mercadito.Sales.Api.Contracts.Common;
 using Mercadito.Sales.Api.Contracts.Employees;
-using Mercadito.src.application.employees.models;
-using Mercadito.src.application.employees.ports.input;
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Employees.Models;
+using Mercadito.Sales.Api.Application.Employees.Ports.Input;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Sales.Api.Controllers;

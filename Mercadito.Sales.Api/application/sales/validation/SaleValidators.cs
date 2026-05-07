@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.application.sales.models;
-using Mercadito.src.domain.shared;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Domain.Shared;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.application.sales.validation
+namespace Mercadito.Sales.Api.Application.Sales.Validation
 {
     public sealed class RegisterSaleValidator : IRegisterSaleValidator
     {

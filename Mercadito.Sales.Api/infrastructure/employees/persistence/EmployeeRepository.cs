@@ -1,17 +1,17 @@
-using Mercadito.src.application.employees.ports.output;
+using Mercadito.Sales.Api.Application.Employees.Ports.Output;
 using Dapper;
-using Mercadito.src.shared.infrastructure.persistence;
-using Mercadito.src.domain.employees.entities;
-using Mercadito.src.application.employees.models;
-using Mercadito.src.domain.shared.repository;
+using Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
+using Mercadito.Sales.Api.Domain.Employees.Entities;
+using Mercadito.Sales.Api.Application.Employees.Models;
+using Mercadito.Sales.Api.Domain.Shared.Repository;
 using MySqlConnector;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Text;
-using Mercadito.src.domain.shared.exceptions;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.infrastructure.employees.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Employees.Persistence
 {
     public class EmployeeRepository(IDbConnectionFactory dbConnection) : IEmployeeRepository, ICrudRepository<Employee, Employee, EmployeeModel, long>
     {

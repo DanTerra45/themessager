@@ -1,7 +1,7 @@
 using System.Data;
 using MySqlConnector;
 
-namespace Mercadito.src.shared.infrastructure.persistence;
+namespace Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
 
 public class MySqlConnectionFactory : IDbConnectionFactory
 {

@@ -1,4 +1,4 @@
-namespace Mercadito.src.application.employees.models
+namespace Mercadito.Sales.Api.Application.Employees.Models
 {
     public class EmployeeModel
     {

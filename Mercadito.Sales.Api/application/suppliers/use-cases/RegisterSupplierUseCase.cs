@@ -1,12 +1,12 @@
-using Mercadito.src.suppliers.application.models;
-using Mercadito.src.suppliers.application.ports.input;
-using Mercadito.src.suppliers.application.ports.output;
-using Mercadito.src.domain.shared.validation;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Suppliers.Models;
+using Mercadito.Sales.Api.Application.Suppliers.Ports.Input;
+using Mercadito.Sales.Api.Application.Suppliers.Ports.Output;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
+using Mercadito.Sales.Api.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.suppliers.application.usecases
+namespace Mercadito.Sales.Api.Application.Suppliers.UseCases
 {
     public class RegisterSupplierUseCase(
         ISupplierRepository repository,

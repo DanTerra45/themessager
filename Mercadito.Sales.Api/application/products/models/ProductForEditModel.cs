@@ -1,4 +1,4 @@
-namespace Mercadito.src.application.products.models
+namespace Mercadito.Sales.Api.Application.Products.Models
 {
     public class ProductForEditModel
     {

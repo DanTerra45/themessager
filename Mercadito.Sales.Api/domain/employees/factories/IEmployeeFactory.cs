@@ -1,6 +1,6 @@
-using Mercadito.src.domain.employees.entities;
+using Mercadito.Sales.Api.Domain.Employees.Entities;
 
-namespace Mercadito.src.domain.employees.factories
+namespace Mercadito.Sales.Api.Domain.Employees.Factories
 {
     public sealed record CreateEmployeeValues(
         long? Ci,

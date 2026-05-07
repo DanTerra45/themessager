@@ -1,9 +1,9 @@
 using Dapper;
-using Mercadito.src.application.sales.models;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 using MySqlConnector;
 
-namespace Mercadito.src.infrastructure.sales.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
 {
     public sealed partial class SalesRepository
     {

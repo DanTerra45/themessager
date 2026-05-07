@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
-namespace Mercadito.src.application.shared.validation
+namespace Mercadito.Sales.Api.Application.Shared.Validation
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
     public sealed class PositiveAttribute : ValidationAttribute, IClientModelValidator

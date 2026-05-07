@@ -1,13 +1,13 @@
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.application.employees.models;
-using Mercadito.src.application.employees.ports.input;
-using Mercadito.src.application.employees.ports.output;
-using Mercadito.src.application.employees.validation;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Application.Employees.Models;
+using Mercadito.Sales.Api.Application.Employees.Ports.Input;
+using Mercadito.Sales.Api.Application.Employees.Ports.Output;
+using Mercadito.Sales.Api.Application.Employees.Validation;
+using Mercadito.Sales.Api.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.application.employees.usecases
+namespace Mercadito.Sales.Api.Application.Employees.UseCases
 {
     public class EmployeeManagementUseCase(
         IEmployeeRepository employeeRepository,

@@ -1,10 +1,10 @@
-using Mercadito.src.application.products.models;
-using Mercadito.src.domain.products.entities;
-using Mercadito.src.domain.products.factories;
-using Mercadito.src.domain.shared.validation;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Products.Models;
+using Mercadito.Sales.Api.Domain.Products.Entities;
+using Mercadito.Sales.Api.Domain.Products.Factories;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.products.validation
+namespace Mercadito.Sales.Api.Application.Products.Validation
 {
     public interface ICreateProductValidator : IValidator<CreateProductDto, Product>
     {

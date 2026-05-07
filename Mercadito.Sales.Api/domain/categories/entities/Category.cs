@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.categories.entities
+namespace Mercadito.Sales.Api.Domain.Categories.Entities
 {
     public class Category
     {

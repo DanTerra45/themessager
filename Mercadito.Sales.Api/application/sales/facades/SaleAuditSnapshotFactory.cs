@@ -1,6 +1,6 @@
-using Mercadito.src.application.sales.models;
+using Mercadito.Sales.Api.Application.Sales.Models;
 
-namespace Mercadito.src.application.sales.facades
+namespace Mercadito.Sales.Api.Application.Sales.Facades
 {
     internal static class SaleAuditSnapshotFactory
     {

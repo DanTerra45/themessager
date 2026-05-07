@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Mercadito.src.suppliers.application.models
+namespace Mercadito.Sales.Api.Application.Suppliers.Models
 {
     public class CreateSupplierDto
     {

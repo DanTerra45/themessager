@@ -1,7 +1,7 @@
-using Mercadito.src.application.categories.models;
-using Mercadito.src.domain.categories.entities;
+using Mercadito.Sales.Api.Application.Categories.Models;
+using Mercadito.Sales.Api.Domain.Categories.Entities;
 
-namespace Mercadito.src.application.categories.ports.output
+namespace Mercadito.Sales.Api.Application.Categories.Ports.Output
 {
     public interface ICategoryRepository
     {

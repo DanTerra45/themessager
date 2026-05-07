@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.products.entities
+namespace Mercadito.Sales.Api.Domain.Products.Entities
 {
     public class Product
     {

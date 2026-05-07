@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.application.shared.validation;
+using Mercadito.Sales.Api.Application.Shared.Validation;
 
-namespace Mercadito.src.application.employees.models
+namespace Mercadito.Sales.Api.Application.Employees.Models
 {
     public class UpdateEmployeeDto
     {

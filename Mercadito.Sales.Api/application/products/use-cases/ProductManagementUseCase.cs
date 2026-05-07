@@ -1,16 +1,16 @@
-using Mercadito.src.application.audit.services;
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.application.categories.models;
-using Mercadito.src.application.products.models;
-using Mercadito.src.application.products.ports.input;
-using Mercadito.src.application.products.ports.output;
-using Mercadito.src.application.products.validation;
-using Mercadito.src.domain.products.entities;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Audit.Services;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Application.Categories.Models;
+using Mercadito.Sales.Api.Application.Products.Models;
+using Mercadito.Sales.Api.Application.Products.Ports.Input;
+using Mercadito.Sales.Api.Application.Products.Ports.Output;
+using Mercadito.Sales.Api.Application.Products.Validation;
+using Mercadito.Sales.Api.Domain.Products.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.application.products.usecases
+namespace Mercadito.Sales.Api.Application.Products.UseCases
 {
     public class ProductManagementUseCase(
         IProductRepository productRepository,

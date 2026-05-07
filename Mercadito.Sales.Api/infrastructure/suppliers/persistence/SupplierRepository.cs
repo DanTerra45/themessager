@@ -1,14 +1,14 @@
-using Mercadito.src.suppliers.application.ports.output;
+using Mercadito.Sales.Api.Application.Suppliers.Ports.Output;
 using System.Data;
 using Dapper;
-using Mercadito.src.shared.infrastructure.persistence;
-using Mercadito.src.domain.shared.repository;
-using Mercadito.src.domain.suppliers.entities;
-using Mercadito.src.suppliers.application.models;
+using Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
+using Mercadito.Sales.Api.Domain.Shared.Repository;
+using Mercadito.Sales.Api.Domain.Suppliers.Entities;
+using Mercadito.Sales.Api.Application.Suppliers.Models;
 using MySqlConnector;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.infrastructure.suppliers.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Suppliers.Persistence
 {
     public class SupplierRepository(IDbConnectionFactory dbConnection) 
     : ISupplierRepository, ICrudRepository<CreateSupplierDto, UpdateSupplierDto, Supplier, long>

@@ -1,11 +1,11 @@
 using Dapper;
-using Mercadito.src.shared.infrastructure.persistence;
-using Mercadito.src.application.audit.ports.output;
-using Mercadito.src.domain.audit.entities;
+using Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
+using Mercadito.Sales.Api.Application.Audit.Ports.Output;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
 using MySqlConnector;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.infrastructure.audit.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Audit.Persistence
 {
     public sealed class AuditRepository(IDbConnectionFactory dbConnectionFactory) : IAuditRepository
     {

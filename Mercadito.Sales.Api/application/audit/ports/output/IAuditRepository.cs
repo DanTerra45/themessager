@@ -1,6 +1,6 @@
-using Mercadito.src.domain.audit.entities;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
 
-namespace Mercadito.src.application.audit.ports.output
+namespace Mercadito.Sales.Api.Application.Audit.Ports.Output
 {
     public interface IAuditRepository
     {

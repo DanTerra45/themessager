@@ -1,7 +1,7 @@
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.audit.ports.input
+namespace Mercadito.Sales.Api.Application.Audit.Ports.Input
 {
     public interface IRegisterAuditEntryUseCase
     {

@@ -1,7 +1,7 @@
-using Mercadito.src.application.sales.models;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.sales.ports.input
+namespace Mercadito.Sales.Api.Application.Sales.Ports.Input
 {
     public interface ISalesQueryFacade
     {

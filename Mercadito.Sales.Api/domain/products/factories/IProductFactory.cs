@@ -1,6 +1,6 @@
-using Mercadito.src.domain.products.entities;
+using Mercadito.Sales.Api.Domain.Products.Entities;
 
-namespace Mercadito.src.domain.products.factories
+namespace Mercadito.Sales.Api.Domain.Products.Factories
 {
     public sealed record CreateProductValues(
         string Name,

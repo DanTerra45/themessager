@@ -1,10 +1,10 @@
-using Mercadito.src.suppliers.application.models;
-using Mercadito.src.suppliers.application.ports.input;
-using Mercadito.src.suppliers.application.ports.output;
-using Mercadito.src.domain.suppliers.entities;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Suppliers.Models;
+using Mercadito.Sales.Api.Application.Suppliers.Ports.Input;
+using Mercadito.Sales.Api.Application.Suppliers.Ports.Output;
+using Mercadito.Sales.Api.Domain.Suppliers.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.suppliers.application.usecases
+namespace Mercadito.Sales.Api.Application.Suppliers.UseCases
 {
     public class GetAllSuppliersUseCase(ISupplierRepository repository) : IGetAllSuppliersUseCase
     {

@@ -1,10 +1,10 @@
-using Mercadito.src.application.employees.models;
-using Mercadito.src.domain.employees.entities;
-using Mercadito.src.domain.employees.factories;
-using Mercadito.src.domain.shared.validation;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Employees.Models;
+using Mercadito.Sales.Api.Domain.Employees.Entities;
+using Mercadito.Sales.Api.Domain.Employees.Factories;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.employees.validation
+namespace Mercadito.Sales.Api.Application.Employees.Validation
 {
     public interface ICreateEmployeeValidator : IValidator<CreateEmployeeDto, Employee>
     {

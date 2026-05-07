@@ -1,7 +1,7 @@
-using Mercadito.src.domain.suppliers.entities;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Domain.Suppliers.Entities;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.domain.suppliers.factories
+namespace Mercadito.Sales.Api.Domain.Suppliers.Factories
 {
     public class SupplierFactory : ISupplierFactory
     {

@@ -1,6 +1,6 @@
-using Mercadito.src.domain.suppliers.entities;
+using Mercadito.Sales.Api.Domain.Suppliers.Entities;
 
-namespace Mercadito.src.domain.suppliers.factories
+namespace Mercadito.Sales.Api.Domain.Suppliers.Factories
 {
     public sealed record CreateSupplierValues(
         string Codigo,

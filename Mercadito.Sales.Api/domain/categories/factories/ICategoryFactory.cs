@@ -1,6 +1,6 @@
-using Mercadito.src.domain.categories.entities;
+using Mercadito.Sales.Api.Domain.Categories.Entities;
 
-namespace Mercadito.src.domain.categories.factories
+namespace Mercadito.Sales.Api.Domain.Categories.Factories
 {
     public sealed record CreateCategoryValues(
         string Code,

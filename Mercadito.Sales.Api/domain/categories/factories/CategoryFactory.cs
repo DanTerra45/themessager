@@ -1,7 +1,7 @@
-using Mercadito.src.domain.categories.entities;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Domain.Categories.Entities;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.domain.categories.factories
+namespace Mercadito.Sales.Api.Domain.Categories.Factories
 {
     public class CategoryFactory : ICategoryFactory
     {

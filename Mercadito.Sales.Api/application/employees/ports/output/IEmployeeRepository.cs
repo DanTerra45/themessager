@@ -1,7 +1,7 @@
-using Mercadito.src.application.employees.models;
-using Mercadito.src.domain.employees.entities;
+using Mercadito.Sales.Api.Application.Employees.Models;
+using Mercadito.Sales.Api.Domain.Employees.Entities;
 
-namespace Mercadito.src.application.employees.ports.output
+namespace Mercadito.Sales.Api.Application.Employees.Ports.Output
 {
     public interface IEmployeeRepository
     {

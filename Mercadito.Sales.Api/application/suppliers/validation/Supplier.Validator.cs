@@ -1,8 +1,8 @@
-using Mercadito.src.domain.shared.validation;
-using Mercadito.src.suppliers.application.models;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
+using Mercadito.Sales.Api.Application.Suppliers.Models;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.suppliers.application.validation
+namespace Mercadito.Sales.Api.Application.Suppliers.Validation
 {
     public abstract class SupplierValidator : ISupplierFormHintsProvider
     {

@@ -1,7 +1,7 @@
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.application.sales.models;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Application.Sales.Models;
 
-namespace Mercadito.src.application.sales.ports.output
+namespace Mercadito.Sales.Api.Application.Sales.Ports.Output
 {
     public interface ISalesRepository
     {

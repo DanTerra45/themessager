@@ -1,6 +1,6 @@
-using Mercadito.src.application.categories.models;
+using Mercadito.Sales.Api.Application.Categories.Models;
 
-namespace Mercadito.src.application.products.ports.output
+namespace Mercadito.Sales.Api.Application.Products.Ports.Output
 {
     public interface IProductCategoryLookupRepository
     {

@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.shared.repository
+namespace Mercadito.Sales.Api.Domain.Shared.Repository
 {
     public interface ICrudRepository<TCreateModel, TUpdateModel, TReadModel, TId>
     {

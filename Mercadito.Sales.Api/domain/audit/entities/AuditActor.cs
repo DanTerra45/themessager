@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.audit.entities
+namespace Mercadito.Sales.Api.Domain.Audit.Entities
 {
     public sealed class AuditActor
     {

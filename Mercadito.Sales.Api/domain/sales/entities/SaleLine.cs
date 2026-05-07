@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.sales.entities
+namespace Mercadito.Sales.Api.Domain.Sales.Entities
 {
     public sealed class SaleLine
     {

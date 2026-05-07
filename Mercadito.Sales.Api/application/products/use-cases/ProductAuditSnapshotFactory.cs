@@ -1,7 +1,7 @@
-using Mercadito.src.application.products.models;
-using Mercadito.src.domain.products.entities;
+using Mercadito.Sales.Api.Application.Products.Models;
+using Mercadito.Sales.Api.Domain.Products.Entities;
 
-namespace Mercadito.src.application.products.usecases
+namespace Mercadito.Sales.Api.Application.Products.UseCases
 {
     internal static class ProductAuditSnapshotFactory
     {

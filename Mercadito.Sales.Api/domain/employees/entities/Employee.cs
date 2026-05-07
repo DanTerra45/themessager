@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.employees.entities
+namespace Mercadito.Sales.Api.Domain.Employees.Entities
 {
     public class Employee
     {

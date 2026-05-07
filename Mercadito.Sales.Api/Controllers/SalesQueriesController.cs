@@ -1,8 +1,8 @@
 using Mercadito.Sales.Api.Contracts.Common;
 using Mercadito.Sales.Api.Contracts.Sales;
-using Mercadito.src.application.sales.models;
-using Mercadito.src.application.sales.ports.input;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Application.Sales.Ports.Input;
+using Mercadito.Sales.Api.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Sales.Api.Controllers;

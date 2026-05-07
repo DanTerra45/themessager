@@ -1,6 +1,6 @@
-using Mercadito.src.application.products.models;
+using Mercadito.Sales.Api.Application.Products.Models;
 
-namespace Mercadito.src.application.products.ports.output
+namespace Mercadito.Sales.Api.Application.Products.Ports.Output
 {
     public interface IProductRepository
     {

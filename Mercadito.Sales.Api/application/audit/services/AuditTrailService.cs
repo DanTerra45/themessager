@@ -1,9 +1,9 @@
 using System.Text.Json;
-using Mercadito.src.application.audit.ports.input;
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Audit.Ports.Input;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.audit.services
+namespace Mercadito.Sales.Api.Application.Audit.Services
 {
     public sealed class AuditTrailService(
         IRegisterAuditEntryUseCase registerAuditEntryUseCase,

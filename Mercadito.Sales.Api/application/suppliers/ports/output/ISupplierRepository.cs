@@ -1,7 +1,7 @@
-using Mercadito.src.suppliers.application.models;
-using Mercadito.src.domain.suppliers.entities;
+using Mercadito.Sales.Api.Application.Suppliers.Models;
+using Mercadito.Sales.Api.Domain.Suppliers.Entities;
 
-namespace Mercadito.src.suppliers.application.ports.output
+namespace Mercadito.Sales.Api.Application.Suppliers.Ports.Output
 {
     public interface ISupplierRepository
     {

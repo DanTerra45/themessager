@@ -1,8 +1,8 @@
-using Mercadito.src.application.sales.ports.output;
-using Mercadito.src.domain.shared.exceptions;
-using Mercadito.src.shared.infrastructure.persistence;
+using Mercadito.Sales.Api.Application.Sales.Ports.Output;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
+using Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
 
-namespace Mercadito.src.infrastructure.sales.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
 {
     public sealed partial class SalesRepository(IDbConnectionFactory dbConnection) : ISalesRepository
     {

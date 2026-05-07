@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.suppliers.entities
+namespace Mercadito.Sales.Api.Domain.Suppliers.Entities
 {
     public class Supplier
     {

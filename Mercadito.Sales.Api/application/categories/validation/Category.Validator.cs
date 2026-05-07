@@ -1,10 +1,10 @@
-using Mercadito.src.application.categories.models;
-using Mercadito.src.domain.categories.entities;
-using Mercadito.src.domain.categories.factories;
-using Mercadito.src.domain.shared.validation;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Categories.Models;
+using Mercadito.Sales.Api.Domain.Categories.Entities;
+using Mercadito.Sales.Api.Domain.Categories.Factories;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.categories.validation
+namespace Mercadito.Sales.Api.Application.Categories.Validation
 {
     public interface ICreateCategoryValidator : IValidator<CreateCategoryDto, Category>
     {

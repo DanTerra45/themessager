@@ -1,7 +1,7 @@
-using Mercadito.src.suppliers.application.models;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Suppliers.Models;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.suppliers.application.ports.input
+namespace Mercadito.Sales.Api.Application.Suppliers.Ports.Input
 {
     public interface IGetAllSuppliersUseCase
     {

@@ -1,7 +1,7 @@
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 using System.ComponentModel.DataAnnotations;
 
-namespace Mercadito.src.application.categories.models
+namespace Mercadito.Sales.Api.Application.Categories.Models
 {
     public class CreateCategoryDto : IValidatableObject
     {

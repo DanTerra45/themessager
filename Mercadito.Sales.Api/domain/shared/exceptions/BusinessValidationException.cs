@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.shared.exceptions
+namespace Mercadito.Sales.Api.Domain.Shared.Exceptions
 {
     public sealed class BusinessValidationException : Exception
     {

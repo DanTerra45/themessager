@@ -1,11 +1,11 @@
 using System.Data;
 using System.Text;
 using Dapper;
-using Mercadito.src.application.products.models;
+using Mercadito.Sales.Api.Application.Products.Models;
 using MySqlConnector;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.infrastructure.products.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Products.Persistence
 {
     public partial class ProductRepository
     {

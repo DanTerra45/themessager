@@ -1,7 +1,7 @@
-using Mercadito.src.domain.employees.entities;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Domain.Employees.Entities;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 
-namespace Mercadito.src.domain.employees.factories
+namespace Mercadito.Sales.Api.Domain.Employees.Factories
 {
     public class EmployeeFactory : IEmployeeFactory
     {

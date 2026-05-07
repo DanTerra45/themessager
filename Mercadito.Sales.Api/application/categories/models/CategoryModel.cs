@@ -1,4 +1,4 @@
-namespace Mercadito.src.application.categories.models
+namespace Mercadito.Sales.Api.Application.Categories.Models
 {
     public class CategoryModel
     {

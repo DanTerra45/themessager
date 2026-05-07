@@ -1,8 +1,8 @@
-using Mercadito.src.application.categories.models;
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Application.Categories.Models;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
 
-namespace Mercadito.src.application.categories.ports.input
+namespace Mercadito.Sales.Api.Application.Categories.Ports.Input
 {
     public interface ICategoryManagementUseCase
     {

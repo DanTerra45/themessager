@@ -1,8 +1,8 @@
-using Mercadito.src.application.shared.validation;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Application.Shared.Validation;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 using System.ComponentModel.DataAnnotations;
 
-namespace Mercadito.src.application.products.models
+namespace Mercadito.Sales.Api.Application.Products.Models
 {
     public class UpdateProductDto : IValidatableObject
     {

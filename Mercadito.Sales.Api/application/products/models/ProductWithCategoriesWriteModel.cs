@@ -1,6 +1,6 @@
-using Mercadito.src.domain.products.entities;
+using Mercadito.Sales.Api.Domain.Products.Entities;
 
-namespace Mercadito.src.application.products.models
+namespace Mercadito.Sales.Api.Application.Products.Models
 {
     public class ProductWithCategoriesWriteModel
     {

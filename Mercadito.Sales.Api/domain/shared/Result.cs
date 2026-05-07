@@ -1,4 +1,4 @@
-namespace Mercadito.src.domain.shared
+namespace Mercadito.Sales.Api.Domain.Shared
 {
     public class Result
     {

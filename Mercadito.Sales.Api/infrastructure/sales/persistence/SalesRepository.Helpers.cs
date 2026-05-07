@@ -1,11 +1,11 @@
 using System.Data;
 using Dapper;
-using Mercadito.src.application.sales.models;
-using Mercadito.src.domain.shared.exceptions;
-using Mercadito.src.domain.shared.validation;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Validation;
 using MySqlConnector;
 
-namespace Mercadito.src.infrastructure.sales.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
 {
     public sealed partial class SalesRepository
     {
@@ -32,7 +32,7 @@ namespace Mercadito.src.infrastructure.sales.persistence
             }
 
             var integerPartInWords = ConvertNumberToWords(integerPart);
-            return string.Concat(integerPartInWords, " ", decimalPart.ToString("00"), "/100 Bolivianos");
+            return string.Concat("Son ", integerPartInWords, " ", decimalPart.ToString("00"), "/100 Bolivianos");
         }
 
         private static string ConvertNumberToWords(long value)

@@ -1,13 +1,13 @@
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.application.categories.models;
-using Mercadito.src.application.categories.ports.input;
-using Mercadito.src.application.categories.ports.output;
-using Mercadito.src.application.categories.validation;
-using Mercadito.src.domain.shared;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Application.Categories.Models;
+using Mercadito.Sales.Api.Application.Categories.Ports.Input;
+using Mercadito.Sales.Api.Application.Categories.Ports.Output;
+using Mercadito.Sales.Api.Application.Categories.Validation;
+using Mercadito.Sales.Api.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.application.categories.usecases
+namespace Mercadito.Sales.Api.Application.Categories.UseCases
 {
     public class CategoryManagementUseCase(
         ICategoryRepository categoryRepository,

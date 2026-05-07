@@ -1,10 +1,10 @@
-using Mercadito.src.application.products.ports.output;
-using Mercadito.src.shared.infrastructure.persistence;
-using Mercadito.src.application.products.models;
-using Mercadito.src.domain.shared.repository;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Application.Products.Ports.Output;
+using Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
+using Mercadito.Sales.Api.Application.Products.Models;
+using Mercadito.Sales.Api.Domain.Shared.Repository;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.infrastructure.products.persistence
+namespace Mercadito.Sales.Api.Infrastructure.Products.Persistence
 {
     public partial class ProductRepository(IDbConnectionFactory dbConnection) : IProductRepository, ICrudRepository<ProductWithCategoriesWriteModel, ProductWithCategoriesWriteModel, ProductForEditModel, long>
     {

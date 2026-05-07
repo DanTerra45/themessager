@@ -1,4 +1,4 @@
-namespace Mercadito.src.application.sales.models
+namespace Mercadito.Sales.Api.Application.Sales.Models
 {
     public sealed class SaleReceiptDto
     {

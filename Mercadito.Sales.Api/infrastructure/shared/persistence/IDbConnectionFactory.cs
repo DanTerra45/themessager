@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace Mercadito.src.shared.infrastructure.persistence;
+namespace Mercadito.Sales.Api.Infrastructure.Shared.Persistence;
 
 public interface IDbConnectionFactory
 {

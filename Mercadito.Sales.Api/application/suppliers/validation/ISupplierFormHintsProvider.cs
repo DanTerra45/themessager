@@ -1,4 +1,4 @@
-namespace Mercadito.src.suppliers.application.validation
+namespace Mercadito.Sales.Api.Application.Suppliers.Validation
 {
     public interface ISupplierFormHintsProvider
     {

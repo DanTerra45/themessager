@@ -1,14 +1,14 @@
 using System.ComponentModel.DataAnnotations;
-using Mercadito.src.application.audit.services;
-using Mercadito.src.application.sales.models;
-using Mercadito.src.application.sales.ports.input;
-using Mercadito.src.application.sales.ports.output;
-using Mercadito.src.application.sales.validation;
-using Mercadito.src.domain.audit.entities;
-using Mercadito.src.domain.shared;
-using Mercadito.src.domain.shared.exceptions;
+using Mercadito.Sales.Api.Application.Audit.Services;
+using Mercadito.Sales.Api.Application.Sales.Models;
+using Mercadito.Sales.Api.Application.Sales.Ports.Input;
+using Mercadito.Sales.Api.Application.Sales.Ports.Output;
+using Mercadito.Sales.Api.Application.Sales.Validation;
+using Mercadito.Sales.Api.Domain.Audit.Entities;
+using Mercadito.Sales.Api.Domain.Shared;
+using Mercadito.Sales.Api.Domain.Shared.Exceptions;
 
-namespace Mercadito.src.application.sales.facades
+namespace Mercadito.Sales.Api.Application.Sales.Facades
 {
     public sealed class RegisterSaleFacade(
         ISalesRepository salesRepository,
