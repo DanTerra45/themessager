@@ -22,9 +22,17 @@ public interface ISalesApiAdapter
         int take = 20,
         string sortBy = "createdat",
         string sortDirection = "desc",
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
+        string status = "",
+        string paymentMethod = "",
         CancellationToken cancellationToken = default);
 
     Task<ApiResponseDto<SalesMetricsDto>> GetMetricsAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResponseDto<DailyCashClosingReportDto>> GetDailyCashClosingReportAsync(
+        DateOnly businessDate,
+        CancellationToken cancellationToken = default);
 
     Task<ApiResponseDto<SaleDetailDto>> GetSaleDetailAsync(long saleId, CancellationToken cancellationToken = default);
 

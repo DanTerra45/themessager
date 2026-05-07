@@ -74,17 +74,41 @@ namespace Mercadito.Sales.Api.Application.Sales.Facades
             }
         }
 
-        public async Task<Result<IReadOnlyList<SaleSummaryItem>>> GetRecentSalesAsync(int take = 20, string sortBy = "createdat", string sortDirection = "desc", CancellationToken cancellationToken = default)
+        public async Task<Result<IReadOnlyList<SaleSummaryItem>>> GetRecentSalesAsync(
+            int take = 20,
+            string sortBy = "createdat",
+            string sortDirection = "desc",
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            string status = "",
+            string paymentMethod = "",
+            CancellationToken cancellationToken = default)
         {
             var normalizedTake = 20;
             if (take > 0)
             {
-                normalizedTake = Math.Min(take, 100);
+                normalizedTake = Math.Min(take, 500);
+            }
+
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value > toDate.Value)
+            {
+                return Result.Failure<IReadOnlyList<SaleSummaryItem>>("La fecha inicial no puede ser mayor a la fecha final.");
             }
 
             try
             {
-                var sales = await salesRepository.GetRecentSalesAsync(normalizedTake, sortBy, sortDirection, cancellationToken);
+                var normalizedStatus = NormalizeKnownValue(status, "Registrada", "Anulada");
+                var normalizedPaymentMethod = NormalizeKnownValue(paymentMethod, "Efectivo", "Tarjeta", "QR");
+                var sales = await salesRepository.GetRecentSalesAsync(
+                    normalizedTake,
+                    sortBy,
+                    sortDirection,
+                    fromDate,
+                    toDate,
+                    normalizedStatus,
+                    normalizedPaymentMethod,
+                    cancellationToken);
+
                 return Result.Success<IReadOnlyList<SaleSummaryItem>>(sales);
             }
             catch (DataStoreUnavailableException exception)
@@ -103,6 +127,24 @@ namespace Mercadito.Sales.Api.Application.Sales.Facades
             catch (DataStoreUnavailableException exception)
             {
                 return Result.Failure<SalesOverviewMetrics>(exception.Message);
+            }
+        }
+
+        public async Task<Result<DailyCashClosingReport>> GetDailyCashClosingReportAsync(DateOnly businessDate, CancellationToken cancellationToken = default)
+        {
+            if (businessDate == default)
+            {
+                return Result.Failure<DailyCashClosingReport>("La fecha del cierre de caja es inválida.");
+            }
+
+            try
+            {
+                var report = await salesRepository.GetDailyCashClosingReportAsync(businessDate, cancellationToken);
+                return Result.Success(report);
+            }
+            catch (DataStoreUnavailableException exception)
+            {
+                return Result.Failure<DailyCashClosingReport>(exception.Message);
             }
         }
 
@@ -150,6 +192,25 @@ namespace Mercadito.Sales.Api.Application.Sales.Facades
             {
                 return Result.Failure<SaleReceiptDto>(exception.Message);
             }
+        }
+
+        private static string NormalizeKnownValue(string? value, params string[] allowedValues)
+        {
+            var normalizedValue = ValidationText.NormalizeCollapsed(value);
+            if (string.IsNullOrWhiteSpace(normalizedValue))
+            {
+                return string.Empty;
+            }
+
+            foreach (var allowedValue in allowedValues)
+            {
+                if (string.Equals(normalizedValue, allowedValue, StringComparison.OrdinalIgnoreCase))
+                {
+                    return allowedValue;
+                }
+            }
+
+            return string.Empty;
         }
     }
 }

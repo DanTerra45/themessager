@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Globalization;
 using System.Text.Json;
 using Mercadito.Frontend.Adapters.Common;
 using Mercadito.Frontend.Dtos.Common;
@@ -42,12 +43,20 @@ public sealed class HttpSalesApiAdapter(IHttpClientFactory httpClientFactory) : 
         int take = 20,
         string sortBy = "createdat",
         string sortDirection = "desc",
+        DateOnly? fromDate = null,
+        DateOnly? toDate = null,
+        string status = "",
+        string paymentMethod = "",
         CancellationToken cancellationToken = default)
     {
         var query = BuildQuery(
             ("take", take.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("sortBy", sortBy),
-            ("sortDirection", sortDirection));
+            ("sortDirection", sortDirection),
+            ("fromDate", fromDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+            ("toDate", toDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+            ("status", status),
+            ("paymentMethod", paymentMethod));
 
         return GetAsync<IReadOnlyList<SaleSummaryDto>>($"api/sales/recent{query}", cancellationToken);
     }
@@ -55,6 +64,14 @@ public sealed class HttpSalesApiAdapter(IHttpClientFactory httpClientFactory) : 
     public Task<ApiResponseDto<SalesMetricsDto>> GetMetricsAsync(CancellationToken cancellationToken = default)
     {
         return GetAsync<SalesMetricsDto>("api/sales/metrics", cancellationToken);
+    }
+
+    public Task<ApiResponseDto<DailyCashClosingReportDto>> GetDailyCashClosingReportAsync(
+        DateOnly businessDate,
+        CancellationToken cancellationToken = default)
+    {
+        var query = BuildQuery(("businessDate", businessDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        return GetAsync<DailyCashClosingReportDto>($"api/sales/reports/daily-cash-closing{query}", cancellationToken);
     }
 
     public Task<ApiResponseDto<SaleDetailDto>> GetSaleDetailAsync(long saleId, CancellationToken cancellationToken = default)

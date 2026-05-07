@@ -63,9 +63,21 @@ public sealed class SalesQueriesController(ISalesQueryFacade salesQueryFacade) :
         [FromQuery] int take = 20,
         [FromQuery] string sortBy = "createdat",
         [FromQuery] string sortDirection = "desc",
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        [FromQuery] string status = "",
+        [FromQuery] string paymentMethod = "",
         CancellationToken cancellationToken = default)
     {
-        var result = await salesQueryFacade.GetRecentSalesAsync(take, sortBy, sortDirection, cancellationToken);
+        var result = await salesQueryFacade.GetRecentSalesAsync(
+            take,
+            sortBy,
+            sortDirection,
+            fromDate,
+            toDate,
+            status,
+            paymentMethod,
+            cancellationToken);
         if (result.IsFailure)
         {
             return BadRequest(ToFailure<IReadOnlyList<SaleSummaryResponse>>(result));
@@ -85,6 +97,21 @@ public sealed class SalesQueriesController(ISalesQueryFacade salesQueryFacade) :
         }
 
         return Ok(ApiResponse<SalesMetricsResponse>.Ok(MapMetrics(result.Value)));
+    }
+
+    [HttpGet("reports/daily-cash-closing")]
+    public async Task<ActionResult<ApiResponse<DailyCashClosingReportResponse>>> GetDailyCashClosingReportAsync(
+        [FromQuery] DateOnly? businessDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        var reportDate = businessDate ?? DateOnly.FromDateTime(DateTime.Today);
+        var result = await salesQueryFacade.GetDailyCashClosingReportAsync(reportDate, cancellationToken);
+        if (result.IsFailure)
+        {
+            return BadRequest(ToFailure<DailyCashClosingReportResponse>(result));
+        }
+
+        return Ok(ApiResponse<DailyCashClosingReportResponse>.Ok(MapDailyCashClosingReport(result.Value)));
     }
 
     [HttpGet("{saleId:long}")]
@@ -170,6 +197,32 @@ public sealed class SalesQueriesController(ISalesQueryFacade salesQueryFacade) :
             metrics.SalesTodayCount,
             metrics.SalesTodayTotal,
             metrics.AverageTicketToday);
+    }
+
+    private static DailyCashClosingReportResponse MapDailyCashClosingReport(DailyCashClosingReport report)
+    {
+        return new DailyCashClosingReportResponse(
+            report.BusinessDate,
+            report.GeneratedAt,
+            report.RegisteredSalesCount,
+            report.CancelledSalesCount,
+            report.RegisteredAmountTotal,
+            report.CancelledAmountTotal,
+            report.AverageTicket,
+            report.PaymentMethods
+                .Select(paymentMethod => new DailyPaymentMethodSummaryResponse(
+                    paymentMethod.PaymentMethod,
+                    paymentMethod.SalesCount,
+                    paymentMethod.TotalAmount))
+                .ToList(),
+            report.Products
+                .Select(product => new DailyProductSalesSummaryResponse(
+                    product.ProductId,
+                    product.ProductName,
+                    product.QuantitySold,
+                    product.AverageUnitPrice,
+                    product.TotalAmount))
+                .ToList());
     }
 
     private static SaleDetailResponse MapSaleDetail(SaleDetailDto sale)

@@ -5,6 +5,7 @@ using Mercadito.Frontend.Adapters.Sales;
 using Mercadito.Frontend.Adapters.Suppliers;
 using Mercadito.Frontend.Adapters.Users;
 using Mercadito.Frontend.Authentication;
+using Mercadito.Frontend.Pages.Sales;
 using Mercadito.Frontend.Pages.Shared.Navigation;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
@@ -61,6 +62,8 @@ builder.Services.AddScoped<IProductsApiAdapter, HttpProductsApiAdapter>();
 builder.Services.AddScoped<ISuppliersApiAdapter, HttpSuppliersApiAdapter>();
 builder.Services.AddScoped<IUsersApiAdapter, HttpUsersApiAdapter>();
 builder.Services.AddScoped<INavigationMenuService, NavigationMenuService>();
+builder.Services.AddScoped<IDailyCashClosingExcelExporter, DailyCashClosingExcelExporter>();
+builder.Services.AddScoped<ISalesListingExcelExporter, SalesListingExcelExporter>();
 
 var app = builder.Build();
 

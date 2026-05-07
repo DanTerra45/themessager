@@ -162,12 +162,22 @@ namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
             }
         }
 
-        public async Task<IReadOnlyList<SaleSummaryItem>> GetRecentSalesAsync(int take, string sortBy, string sortDirection, CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<SaleSummaryItem>> GetRecentSalesAsync(
+            int take,
+            string sortBy,
+            string sortDirection,
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            string status = "",
+            string paymentMethod = "",
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
                 var orderByClause = BuildRecentSalesOrderByClause(sortBy, sortDirection);
+                var startDate = fromDate?.ToDateTime(TimeOnly.MinValue);
+                var endDateExclusive = toDate?.AddDays(1).ToDateTime(TimeOnly.MinValue);
                 var query = string.Concat(@"
                     SELECT
                         v.id AS Id,
@@ -181,12 +191,23 @@ namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
                         v.estado AS Status
                     FROM ventas v
                     INNER JOIN clientes c ON c.id = v.clienteId
+                    WHERE (@StartDate IS NULL OR v.fechaRegistro >= @StartDate)
+                    AND (@EndDateExclusive IS NULL OR v.fechaRegistro < @EndDateExclusive)
+                    AND (@Status = '' OR v.estado = @Status)
+                    AND (@PaymentMethod = '' OR v.metodoPago = @PaymentMethod)
                     ORDER BY ", orderByClause, @"
                     LIMIT @Take;");
 
                 var command = new CommandDefinition(
                     query,
-                    new { Take = take },
+                    new
+                    {
+                        Take = take,
+                        StartDate = startDate,
+                        EndDateExclusive = endDateExclusive,
+                        Status = status,
+                        PaymentMethod = paymentMethod
+                    },
                     cancellationToken: cancellationToken);
 
                 var rows = await connection.QueryAsync<SaleSummaryRow>(command);
@@ -277,6 +298,126 @@ namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
             catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
             {
                 throw CreateDataStoreUnavailableException("consultar el resumen de ventas", exception);
+            }
+        }
+
+        public async Task<DailyCashClosingReport> GetDailyCashClosingReportAsync(DateOnly businessDate, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+                var startDate = businessDate.ToDateTime(TimeOnly.MinValue);
+                var endDate = businessDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+                const string totalsQuery = @"
+                    SELECT
+                        SUM(CASE WHEN v.estado = @RegisteredStatus THEN 1 ELSE 0 END) AS RegisteredSalesCount,
+                        SUM(CASE WHEN v.estado = @CancelledStatus THEN 1 ELSE 0 END) AS CancelledSalesCount,
+                        COALESCE(SUM(CASE WHEN v.estado = @RegisteredStatus THEN v.total ELSE 0 END), 0) AS RegisteredAmountTotal,
+                        COALESCE(SUM(CASE WHEN v.estado = @CancelledStatus THEN v.total ELSE 0 END), 0) AS CancelledAmountTotal,
+                        COALESCE(AVG(CASE WHEN v.estado = @RegisteredStatus THEN v.total ELSE NULL END), 0) AS AverageTicket
+                    FROM ventas v
+                    WHERE v.fechaRegistro >= @StartDate
+                    AND v.fechaRegistro < @EndDate;";
+
+                var totalsCommand = new CommandDefinition(
+                    totalsQuery,
+                    new
+                    {
+                        RegisteredStatus,
+                        CancelledStatus,
+                        StartDate = startDate,
+                        EndDate = endDate
+                    },
+                    cancellationToken: cancellationToken);
+
+                var totals = await connection.QuerySingleAsync<DailyCashClosingTotalsRow>(totalsCommand);
+
+                const string paymentMethodsQuery = @"
+                    SELECT
+                        v.metodoPago AS PaymentMethod,
+                        COUNT(*) AS SalesCount,
+                        COALESCE(SUM(v.total), 0) AS TotalAmount
+                    FROM ventas v
+                    WHERE v.fechaRegistro >= @StartDate
+                    AND v.fechaRegistro < @EndDate
+                    AND v.estado = @RegisteredStatus
+                    GROUP BY v.metodoPago
+                    ORDER BY TotalAmount DESC, v.metodoPago ASC;";
+
+                var paymentMethodsCommand = new CommandDefinition(
+                    paymentMethodsQuery,
+                    new
+                    {
+                        RegisteredStatus,
+                        StartDate = startDate,
+                        EndDate = endDate
+                    },
+                    cancellationToken: cancellationToken);
+
+                var paymentRows = await connection.QueryAsync<DailyPaymentMethodSummaryRow>(paymentMethodsCommand);
+                var paymentMethods = paymentRows
+                    .Select(row => new DailyPaymentMethodSummary(
+                        row.PaymentMethod,
+                        row.SalesCount,
+                        decimal.Round(row.TotalAmount, 2, MidpointRounding.AwayFromZero)))
+                    .ToList();
+
+                const string productsQuery = @"
+                    SELECT
+                        d.productId AS ProductId,
+                        d.nombreProductoSnapshot AS ProductName,
+                        COALESCE(SUM(d.cantidad), 0) AS QuantitySold,
+                        COALESCE(SUM(d.importe) / NULLIF(SUM(d.cantidad), 0), 0) AS AverageUnitPrice,
+                        COALESCE(SUM(d.importe), 0) AS TotalAmount
+                    FROM detalleVenta d
+                    INNER JOIN ventas v ON v.id = d.ventaId
+                    WHERE v.fechaRegistro >= @StartDate
+                    AND v.fechaRegistro < @EndDate
+                    AND v.estado = @RegisteredStatus
+                    GROUP BY d.productId, d.nombreProductoSnapshot
+                    ORDER BY TotalAmount DESC, QuantitySold DESC, d.nombreProductoSnapshot ASC;";
+
+                var productsCommand = new CommandDefinition(
+                    productsQuery,
+                    new
+                    {
+                        RegisteredStatus,
+                        StartDate = startDate,
+                        EndDate = endDate
+                    },
+                    cancellationToken: cancellationToken);
+
+                var productRows = await connection.QueryAsync<DailyProductSalesSummaryRow>(productsCommand);
+                var products = productRows
+                    .Select(row => new DailyProductSalesSummary(
+                        row.ProductId,
+                        row.ProductName,
+                        row.QuantitySold,
+                        decimal.Round(row.AverageUnitPrice, 2, MidpointRounding.AwayFromZero),
+                        decimal.Round(row.TotalAmount, 2, MidpointRounding.AwayFromZero)))
+                    .ToList();
+
+                return new DailyCashClosingReport
+                {
+                    BusinessDate = businessDate,
+                    GeneratedAt = DateTime.Now,
+                    RegisteredSalesCount = totals.RegisteredSalesCount,
+                    CancelledSalesCount = totals.CancelledSalesCount,
+                    RegisteredAmountTotal = decimal.Round(totals.RegisteredAmountTotal, 2, MidpointRounding.AwayFromZero),
+                    CancelledAmountTotal = decimal.Round(totals.CancelledAmountTotal, 2, MidpointRounding.AwayFromZero),
+                    AverageTicket = decimal.Round(totals.AverageTicket, 2, MidpointRounding.AwayFromZero),
+                    PaymentMethods = paymentMethods,
+                    Products = products
+                };
+            }
+            catch (MySqlException exception)
+            {
+                throw CreateDataStoreUnavailableException("generar el cierre diario de caja", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                throw CreateDataStoreUnavailableException("generar el cierre diario de caja", exception);
             }
         }
 

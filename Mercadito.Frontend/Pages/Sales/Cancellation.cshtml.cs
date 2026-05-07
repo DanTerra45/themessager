@@ -39,7 +39,11 @@ public sealed class CancellationModel(ISalesApiAdapter salesApiAdapter, ILogger<
             logger.LogWarning("No se pudo cargar el resumen de anulaciones: {Errors}", string.Join(" | ", metricsResult.Errors));
         }
 
-        var salesResult = await salesApiAdapter.GetRecentSalesAsync(30, SortBy, SortDirection, HttpContext.RequestAborted);
+        var salesResult = await salesApiAdapter.GetRecentSalesAsync(
+            30,
+            SortBy,
+            SortDirection,
+            cancellationToken: HttpContext.RequestAborted);
         if (salesResult.Success && salesResult.Data != null)
         {
             RecentSales = salesResult.Data;

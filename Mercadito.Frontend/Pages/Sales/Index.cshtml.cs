@@ -36,7 +36,11 @@ public sealed class IndexModel(ISalesApiAdapter salesApiAdapter, ILogger<IndexMo
             logger.LogWarning("No se pudieron cargar las métricas de ventas: {Errors}", string.Join(" | ", metricsResult.Errors));
         }
 
-        var salesResult = await salesApiAdapter.GetRecentSalesAsync(20, SortBy, SortDirection, HttpContext.RequestAborted);
+        var salesResult = await salesApiAdapter.GetRecentSalesAsync(
+            20,
+            SortBy,
+            SortDirection,
+            cancellationToken: HttpContext.RequestAborted);
         if (salesResult.Success && salesResult.Data != null)
         {
             RecentSales = salesResult.Data;

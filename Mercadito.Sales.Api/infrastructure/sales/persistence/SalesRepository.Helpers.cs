@@ -642,6 +642,31 @@ namespace Mercadito.Sales.Api.Infrastructure.Sales.Persistence
             public decimal AverageTicketToday { get; init; }
         }
 
+        private sealed class DailyCashClosingTotalsRow
+        {
+            public int RegisteredSalesCount { get; init; }
+            public int CancelledSalesCount { get; init; }
+            public decimal RegisteredAmountTotal { get; init; }
+            public decimal CancelledAmountTotal { get; init; }
+            public decimal AverageTicket { get; init; }
+        }
+
+        private sealed class DailyPaymentMethodSummaryRow
+        {
+            public string PaymentMethod { get; init; } = string.Empty;
+            public int SalesCount { get; init; }
+            public decimal TotalAmount { get; init; }
+        }
+
+        private sealed class DailyProductSalesSummaryRow
+        {
+            public long ProductId { get; init; }
+            public string ProductName { get; init; } = string.Empty;
+            public int QuantitySold { get; init; }
+            public decimal AverageUnitPrice { get; init; }
+            public decimal TotalAmount { get; init; }
+        }
+
         private sealed class SaleDetailHeaderRow
         {
             public long Id { get; init; }
