@@ -26,7 +26,7 @@ namespace Domain.Database
     {
         int? Limit { get; set; }
         int? Offset { get; set; }
-        TFields OrderBy { get; set; }           // default(TFields) = "sin orden"
+        TFields OrderBy { get; set; }     
         bool OrderDescending { get; set; }
         IEnumerable<TFields> SelectedFields { get; set; }
         List<FilterCondition<TFields>> Filters { get; set; }

@@ -2,16 +2,22 @@ using Domain.Entities.Enums;
 
 namespace Domain.Entities;
 
-public record User(
-    int Id,
-    string Username,
-    string Email,   
-    string Password,
-    UserRole Role,
-    int CreatorId,
-    DateTime LastLogin,
-    bool NeedPasswordChange,
-    UserState State,
-    DateTime CreatedAt,
-    DateTime UpdatedAt
-){}
+public class User
+{
+    public int Id { get; set; }
+    public string Username { get; set; }
+    public string Email { get; set; }
+    public string Password { get; set; }
+    public UserRole Role { get; set; }
+    public int CreatorId { get; set; }
+    public DateTime LastLogin { get; set; }
+    public bool NeedPasswordChange { get; set; }
+    public UserState State { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    public string ToString()
+    {
+        return $"User(Id={Id}, Username={Username}, Email={Email}, Role={Role}, State={State})";
+    }
+}

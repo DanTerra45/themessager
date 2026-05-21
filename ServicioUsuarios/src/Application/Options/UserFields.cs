@@ -1,3 +1,5 @@
+using Domain.Database;
+
 namespace Application.Options
 {
     public enum UserFields
@@ -14,22 +16,23 @@ namespace Application.Options
         CreatedAt,
         UpdatedAt
     }
-    public static class UserFieldsExtensions
+    public sealed class UserSchema: ITableSchema<UserFields>
     {
-        public static string ToColumnName(this UserFields field) => field switch
+        private static Dictionary<UserFields, string> Fields = new()
         {
-            UserFields.Id => "id",
-            UserFields.Username => "username",
-            UserFields.Email => "email",
-            UserFields.Password => "password",
-            UserFields.Role => "user_role",
-            UserFields.CreatorId => "creator_id",
-            UserFields.LastLogin => "last_login",
-            UserFields.NeedPasswordChange => "need_change_password",
-            UserFields.State => "state",
-            UserFields.CreatedAt => "created_at",
-            UserFields.UpdatedAt => "updated_at",
-            _ => throw new ArgumentOutOfRangeException(nameof(field), $"No column mapping defined for {field}")
+            { UserFields.Id, "id AS Id" },
+            { UserFields.Username, "username AS Username" },
+            { UserFields.Email, "email AS Email" },
+            { UserFields.Password, "password AS Password" },
+            { UserFields.Role, "role AS Role" },
+            { UserFields.CreatorId, "creator_id AS CreatorId" },
+            { UserFields.LastLogin, "last_login AS LastLogin" },
+            { UserFields.NeedPasswordChange, "need_change_password AS NeedPasswordChange" },
+            { UserFields.State, "state AS State" },
+            { UserFields.CreatedAt, "created_at AS CreatedAt" },
+            { UserFields.UpdatedAt, "updated_at AS UpdatedAt" }
         };
+        public string GetAll() => string.Join(", ", Fields.Values);
+        public string Get(UserFields field) => Fields.TryGetValue(field, out var columnName) ? columnName : throw new ArgumentException($"Invalid field: {field}");
     }
 }

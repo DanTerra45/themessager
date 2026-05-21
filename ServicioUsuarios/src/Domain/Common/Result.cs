@@ -2,58 +2,64 @@ using System.Collections;
 
 namespace Domain.Common;
 
+public enum ErrorType
+{
+    Validation,
+    NotFound,
+    NotImplemented,
+    Conflict,
+    Internal
+}
+
+public sealed record AppError(
+    string Code,
+    string Message,
+    ErrorType Type,
+    string? Field = null);
+
 public class Result
 {
     public bool IsSuccess { get; }
     public bool IsFailure => !IsSuccess;
-    private readonly Dictionary<string, List<string>> _errors = new();
-    public IReadOnlyDictionary<string, IEnumerable<string>> Errors
-        => _errors.ToDictionary(k => k.Key, v => (IEnumerable<string>)v.Value);
+    public IReadOnlyCollection<AppError> Errors { get; }
 
-    protected Result(bool isSuccess) => IsSuccess = isSuccess;
+    protected Result(bool isSuccess, IReadOnlyCollection<AppError>? errors = null)
+    {
+        IsSuccess = isSuccess;
+        Errors = errors ?? Array.Empty<AppError>();
+    }
 
     public static Result Success() => new(true);
-    public static Result Failure(string key, string message)
-    {
-        var r = new Result(false);
-        r._errors[key] = new() { message };
-        return r;
-    }
-    public static Result Failure(Dictionary<string, IEnumerable<string>> errors)
-    {
-        var r = new Result(false);
-        foreach (var kv in errors) r._errors[kv.Key] = kv.Value.ToList();
-        return r;
-    }
-    public void AddError(string key, string message)
-    {
-        if (!_errors.ContainsKey(key)) _errors[key] = new();
-        _errors[key].Add(message);
-    }
+    public static Result Failure(AppError error) => new(false, new[] { error });
+    public static Result Failure(IEnumerable<AppError> errors) => new(false, errors.ToArray());
+    public static Result Validation(string field, string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.Validation, field));
+    public static Result NotFound(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.NotFound));
+    public static Result NotImplemented(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.NotImplemented));
+    public static Result Internal(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.Internal));
 }
 
 public class Result<T> : Result
 {
-    public bool IsSuccess { get; }
-    public new bool IsFailure => !IsSuccess;
     public T Value { get; }
-    private readonly Dictionary<string, List<string>> _errors = new();
-    public new IReadOnlyDictionary<string, IEnumerable<string>> Errors
-        => _errors.ToDictionary(k => k.Key, v => (IEnumerable<string>)v.Value);
 
-    protected Result(bool isSuccess, T value) : base(isSuccess) => Value = value;
+    protected Result(bool isSuccess, T value, IReadOnlyCollection<AppError>? errors = null) : base(isSuccess, errors)
+    {
+        Value = value;
+    }
 
-    public static new Result<T> Success(T value) => new(true, value);
-    public static new Result<T> Failure(string key, string message)
-    {
-        var r = new Result<T>(false, default!);
-        r._errors[key] = new() { message };
-        return r;
-    }
-    public static new Result<T> Failure(Dictionary<string, IEnumerable<string>> errors)
-    {
-        var r = new Result<T>(false, default!);
-        foreach (var kv in errors) r._errors[kv.Key] = kv.Value.ToList();
-        return r;
-    }
+    public static Result<T> Success(T value) => new(true, value);
+    public static new Result<T> Failure(AppError error) => new(false, default!, new[] { error });
+    public static new Result<T> Failure(IEnumerable<AppError> errors) => new(false, default!, errors.ToArray());
+    public static new Result<T> Validation(string field, string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.Validation, field));
+    public static new Result<T> NotFound(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.NotFound));
+    public static new Result<T> NotImplemented(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.NotImplemented));
+    public static new Result<T> Internal(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.Internal));
 }

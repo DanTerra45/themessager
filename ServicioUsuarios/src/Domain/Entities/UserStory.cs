@@ -2,12 +2,13 @@ using Domain.Entities.Enums;
 
 namespace Domain.Entities;
 
-public record UserStory(
-    int Id,
-    int UserId,
-    int OperatorId,
-    UserState PreviousState,
-    UserState ActualState,
-    string DisableReason,
-    DateTime CreatedAt
-){}
+public class UserStory
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int OperatorId { get; set; }
+    public UserState PreviousState { get; set; }
+    public UserState ActualState { get; set; }
+    public string DisableReason { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

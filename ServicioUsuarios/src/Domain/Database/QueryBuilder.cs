@@ -1,65 +1,193 @@
 using System.Text;
+using Application.Options;
 using Dapper;
-using Domain.Database;
 
-namespace Infrastructure.Database
+namespace Domain.Database
 {
-    public class QueryBuilder<TFields> where TFields : Enum
+    public class QueryBuilder<TOptions, TFields>
+        where TOptions : IQueryOptions<TFields>
+        where TFields : Enum
     {
-        private readonly Func<TFields, string> _getColumnName;
-        public StringBuilder Sql { get; private set; }
-        public DynamicParameters Parameters { get; private set; }
-
-        public QueryBuilder(Func<TFields, string> getColumnName)
+        private readonly StringBuilder _sb = new();
+        private  DynamicParameters _parameters = new();
+        private readonly string _tableName;
+        private readonly ITableSchema<TFields> _schema;
+        private int _paramCounter = 0;
+        public QueryBuilder(string tableName, ITableSchema<TFields> schema)
         {
-            _getColumnName = getColumnName;
-            Sql = new StringBuilder();
-            Parameters = new DynamicParameters();
+            _tableName = tableName;
+            _schema = schema;
         }
 
-        public void Select(IEnumerable<TFields> fields, string tableName)
+        public QueryBuilder<TOptions, TFields> Select(TOptions options)
         {
-            if (fields == null || !fields.Any())
-            {
-                Sql.Append($"SELECT * FROM {tableName}");
-            }
-            else
-            {
-                var columnNames = fields.Select(f => _getColumnName(f));
-                Sql.Append($"SELECT {string.Join(", ", columnNames)} FROM {tableName}");
-            }
-        }
-        public void Where(IQueryOptions<TFields> options, string tableName)
-        {
-            if (options.Filters == null || !options.Filters.Any())
-                return;
+            var fields = options?.SelectedFields != null && options.SelectedFields.Any()
+                ? string.Join(", ", options.SelectedFields.Select(f => _schema.Get(f)))
+                : _schema.GetAll();
 
-            Sql.Append(" WHERE ");
-            var conditions = new List<string>();
-            int paramIndex = 0;
+            _sb.Append($"SELECT {fields} FROM {_tableName}");
+            return this;
+        }
+
+        public QueryBuilder<TOptions, TFields> Where(TOptions options)
+        {
+            _sb.Append(" WHERE 1=1");
+
+            if (options?.Filters == null || !options.Filters.Any())
+                return this;
 
             foreach (var filter in options.Filters)
             {
-                var columnName = _getColumnName(filter.Field);
-                var paramName = $"@param{paramIndex++}";
+                var column = _schema.Get(filter.Field);
+                var baseName = filter.Field.ToString();
+                string paramName() => $"{baseName}_{_paramCounter++}";
 
-                string condition = filter.Operator switch
+                switch (filter.Operator)
                 {
-                    FilterOperator.Equals => $"{columnName} = {paramName}",
-                    FilterOperator.NotEquals => $"{columnName} <> {paramName}",
-                    FilterOperator.GreaterThan => $"{columnName} > {paramName}",
-                    FilterOperator.LessThan => $"{columnName} < {paramName}",
-                    FilterOperator.GreaterOrEqual => $"{columnName} >= {paramName}",
-                    FilterOperator.LessOrEqual => $"{columnName} <= {paramName}",
-                    FilterOperator.Contains => $"{columnName} LIKE CONCAT('%', {paramName}, '%')",
-                    _ => throw new NotSupportedException($"Unsupported operator: {filter.Operator}")
-                };
-
-                conditions.Add(condition);
-                Parameters.Add(paramName, filter.Value);
+                    case FilterOperator.Equals:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} = @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.NotEquals:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} <> @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.GreaterThan:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} > @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.GreaterThanOrEqual:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} >= @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.LessThan:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} < @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.LessThanOrEqual:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} <= @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.Contains:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} LIKE @{p}");
+                            _parameters.Add(p, $"%{filter.Value}%");
+                            break;
+                        }
+                    case FilterOperator.StartsWith:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} LIKE @{p}");
+                            _parameters.Add(p, $"{filter.Value}%");
+                            break;
+                        }
+                    case FilterOperator.EndsWith:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} LIKE @{p}");
+                            _parameters.Add(p, $"%{filter.Value}");
+                            break;
+                        }
+                    case FilterOperator.Like:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND {column} LIKE @{p}");
+                            _parameters.Add(p, filter.Value);
+                            break;
+                        }
+                    case FilterOperator.ILike:
+                        {
+                            var p = paramName();
+                            _sb.Append($" AND LOWER({column}) LIKE LOWER(@{p})");
+                            var v = filter.Value?.ToString();
+                            _parameters.Add(p, $"%{v}%");
+                            break;
+                        }
+                    case FilterOperator.Between:
+                        {
+                            if (filter.Value is Tuple<object, object> range)
+                            {
+                                var pStart = paramName();
+                                var pEnd = paramName();
+                                _sb.Append($" AND {column} BETWEEN @{pStart} AND @{pEnd}");
+                                _parameters.Add(pStart, range.Item1);
+                                _parameters.Add(pEnd, range.Item2);
+                            }
+                            else
+                            {
+                                throw new ArgumentException("Value for 'Between' must be a Tuple<object, object>.");
+                            }
+                            break;
+                        }
+                    case FilterOperator.IsNull:
+                        _sb.Append($" AND {column} IS NULL");
+                        break;
+                    case FilterOperator.IsNotNull:
+                        _sb.Append($" AND {column} IS NOT NULL");
+                        break;
+                    default:
+                        throw new NotSupportedException($"Operator {filter.Operator} not supported.");
+                }
             }
-
-            Sql.Append(string.Join(" AND ", conditions));
+            return this;
+        }
+        public QueryBuilder<TOptions, TFields> OrderBy(TOptions options)
+        {
+            if (!EqualityComparer<TFields>.Default.Equals(options.OrderBy, default))
+            {
+                var column = _schema.Get(options.OrderBy);
+                _sb.Append($" ORDER BY {column} {(options.OrderDescending ? "DESC" : "ASC")}");
+            }
+            return this;
+        }
+        public QueryBuilder<TOptions, TFields> Paginate(TOptions options)
+        {
+            if (options.Limit is not null)
+                _sb.Append($" LIMIT {options.Limit} OFFSET {options.Offset ?? 0}");
+            return this;
+        }
+        public QueryBuilder<TOptions, TFields> BuildFromOptions(TOptions options)
+        {
+            return Select(options).Where(options).OrderBy(options).Paginate(options);
+        }
+        public QueryBuilder<TOptions, TFields> Reset()
+        {
+            _sb.Clear();
+            _parameters = new DynamicParameters();
+            _paramCounter = 0;
+            return this;
+        }
+        public (string Sql, DynamicParameters Parameters) Query(string sql, DynamicParameters parameters)
+        {
+            _sb.Append(sql);
+            foreach (var p in parameters.ParameterNames)
+            {
+                _parameters.Add(p, parameters.Get<dynamic>(p));
+            }
+            return (_sb.ToString(), _parameters);
+        }
+        public (string Sql, DynamicParameters Parameters) Build()
+        {
+            return (_sb.ToString(), _parameters);
         }
     }
 }

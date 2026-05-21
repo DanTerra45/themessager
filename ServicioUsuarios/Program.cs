@@ -1,24 +1,24 @@
+using Application.Factories;
+using Application.Options;
 using Domain.Database;
+using Domain.Entities;
+using Domain.Factories;
 using Infrastructure.Database;
-using Infrastructure.Repositories;
+using Infrastructure.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddScoped<IDbConnectionFactory, MySqlConnectionFactory>();
 builder.Services.AddScoped<UserRepository>();
 
+builder.Services.AddScoped<IRepositoryFactory<User,int,UserFields,UserOptions>, UserFactory>();
+builder.Services.AddScoped<Infrastructure.Service.UserService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
 app.UseHttpsRedirection();
 app.MapControllers();
 
