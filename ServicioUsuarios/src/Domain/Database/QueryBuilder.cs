@@ -19,10 +19,15 @@ namespace Domain.Database
             _schema = schema;
         }
 
+        private static object? NormalizeParameterValue(object? value)
+        {
+            return value is Enum enumValue ? enumValue.ToString() : value;
+        }
+
         public QueryBuilder<TOptions, TFields> Select(TOptions options)
         {
             var fields = options?.SelectedFields != null && options.SelectedFields.Any()
-                ? string.Join(", ", options.SelectedFields.Select(f => _schema.Get(f)))
+                ? string.Join(", ", options.SelectedFields.Select(f => _schema.Get(f, SqlAction.Select)))
                 : _schema.GetAll();
 
             _sb.Append($"SELECT {fields} FROM {_tableName}");
@@ -38,7 +43,7 @@ namespace Domain.Database
 
             foreach (var filter in options.Filters)
             {
-                var column = _schema.Get(filter.Field);
+                var column = _schema.Get(filter.Field, SqlAction.Insert);
                 var baseName = filter.Field.ToString();
                 string paramName() => $"{baseName}_{_paramCounter++}";
 
@@ -154,7 +159,7 @@ namespace Domain.Database
         {
             if (!EqualityComparer<TFields>.Default.Equals(options.OrderBy, default))
             {
-                var column = _schema.Get(options.OrderBy);
+                var column = _schema.Get(options.OrderBy, SqlAction.Insert);
                 _sb.Append($" ORDER BY {column} {(options.OrderDescending ? "DESC" : "ASC")}");
             }
             return this;
@@ -184,6 +189,50 @@ namespace Domain.Database
                 _parameters.Add(p, parameters.Get<dynamic>(p));
             }
             return (_sb.ToString(), _parameters);
+        }
+        public QueryBuilder<TOptions, TFields> Insert<TRequest>(TOptions options, TRequest entity) where TRequest : class
+        {
+            var insertFields = options?.SelectedFields != null && options.SelectedFields.Any()
+                ? options.SelectedFields
+                : Enum.GetValues(typeof(TFields)).Cast<TFields>().Where(f => !EqualityComparer<TFields>.Default.Equals(f, default));
+
+            var columns = options?.SelectedFields != null && options.SelectedFields.Any()
+                ? string.Join(", ", insertFields.Select(f => _schema.Get(f, SqlAction.Insert)))
+                : string.Join(", ", insertFields.Select(f => _schema.Get(f, SqlAction.Insert)));
+
+            var paramNames = options?.SelectedFields != null && options.SelectedFields.Any()
+                ? string.Join(", ", insertFields.Select(f => $"@{f}"))
+                : string.Join(", ", insertFields.Select(f => $"@{f}"));
+
+            var sql = $"INSERT INTO {_tableName} ({columns}) VALUES ({paramNames})";
+             _sb.Append(sql);
+             _parameters = new DynamicParameters();
+            foreach (var p in insertFields)
+            {
+                var rawValue = entity.GetType().GetProperty(p.ToString())?.GetValue(entity);
+                _parameters.Add(p.ToString(), NormalizeParameterValue(rawValue));
+            }
+            return this;
+        }
+        public QueryBuilder<TOptions, TFields> Update<TRequest>(TOptions options, TRequest entity) where TRequest : class
+        {
+            var updateFields = options?.SelectedFields != null && options.SelectedFields.Any()
+                ? options.SelectedFields
+                : Enum.GetValues(typeof(TFields)).Cast<TFields>().Where(f => !EqualityComparer<TFields>.Default.Equals(f, default));
+
+            var setClause = string.Join(", ", updateFields.Select(f => $"{_schema.Get(f, SqlAction.Update)} = @{f}"));
+
+            _sb.Clear();
+            _sb.Append($"UPDATE {_tableName} SET {setClause}");
+
+            _parameters = new DynamicParameters();
+            foreach (var p in updateFields)
+            {
+                var rawValue = entity.GetType().GetProperty(p.ToString())?.GetValue(entity);
+                _parameters.Add(p.ToString(), NormalizeParameterValue(rawValue));
+            }
+
+            return this;
         }
         public (string Sql, DynamicParameters Parameters) Build()
         {
