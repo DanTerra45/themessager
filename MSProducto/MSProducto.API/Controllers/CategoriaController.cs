@@ -38,6 +38,13 @@ public class CategoriaController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateCategoriaDto dto, CancellationToken ct = default)
     {
         var result = await _service.CreateAsync(CategoriaMapper.ToDomain(dto), null!, ct);
+        if (result.IsSuccess)
+        {
+            var created = await _service.GetForEditAsync(result.Value, ct);
+            if (created != null)
+                return CreatedAtAction(nameof(Get), new { id = created.Id }, CategoriaMapper.ToDto(created));
+            return CreatedAtAction(nameof(Get), new { id = result.Value }, result.Value);
+        }
         return MapResult(result, 201);
     }
 
@@ -52,7 +59,12 @@ public class CategoriaController : ControllerBase
         categoria.Description = dto.Descripcion;
 
         var result = await _service.UpdateAsync(categoria, null!, ct);
-        return MapResult(result);
+        if (result.IsSuccess) return Ok();
+        if (result.Error?.Contains("Acceso denegado") == true)
+            return Unauthorized(new { error = result.Error });
+        if (result.Error?.Contains("no encontrado") == true || result.Error?.Contains("not found") == true)
+            return NotFound(new { error = result.Error });
+        return BadRequest(new { error = result.Error });
     }
 
     [HttpDelete("{id:long}")]
@@ -64,9 +76,9 @@ public class CategoriaController : ControllerBase
         return NoContent();
     }
 
-    private IActionResult MapResult(Result r, int successCode = 200)
+    private IActionResult MapResult<T>(Result<T> r, int successCode = 200)
     {
-        if (r.IsSuccess) return StatusCode(successCode);
+        if (r.IsSuccess) return StatusCode(successCode, r.Value);
         if (r.ValidationErrors?.Any() == true)
             return UnprocessableEntity(new { errors = r.ValidationErrors });
         if (r.Error?.Contains("Acceso denegado") == true)

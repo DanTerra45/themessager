@@ -11,7 +11,7 @@ namespace MSProducto.Domain.Ports.Input
         Task<bool> HasProductsByCursorAsync(long categoryFilter, string sortBy, string sortDirection, long cursorProductId, bool isNextPage, string searchTerm = "", CancellationToken cancellationToken = default);
         Task<Producto?> GetForEditAsync(long productId, CancellationToken cancellationToken = default);
         Task<bool> DeleteAsync(long productId, AuditActor actor, CancellationToken cancellationToken = default);
-        Task<Result> CreateAsync(Producto newProduct, AuditActor actor, CancellationToken cancellationToken = default);
+        Task<Result<long>> CreateAsync(Producto newProduct, AuditActor actor, CancellationToken cancellationToken = default);
         Task<Result> UpdateAsync(Producto updateProduct, AuditActor actor, CancellationToken cancellationToken = default);
     }
 }

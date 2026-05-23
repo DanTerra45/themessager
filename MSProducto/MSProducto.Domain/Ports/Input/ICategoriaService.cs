@@ -10,7 +10,7 @@ namespace MSProducto.Domain.Ports.Input
         Task<bool> HasCategoriesByCursorAsync(string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default);
         Task<string> GetNextCategoryCodePreviewAsync(CancellationToken cancellationToken = default);
         Task<Categoria?> GetForEditAsync(long categoryId, CancellationToken cancellationToken = default);
-        Task<Result> CreateAsync(Categoria newCategory, AuditActor actor, CancellationToken cancellationToken = default);
+        Task<Result<long>> CreateAsync(Categoria newCategory, AuditActor actor, CancellationToken cancellationToken = default);
         Task<Result> UpdateAsync(Categoria editCategory, AuditActor actor, CancellationToken cancellationToken = default);
         Task<bool> DeleteAsync(long categoryId, AuditActor actor, CancellationToken cancellationToken = default);
     }

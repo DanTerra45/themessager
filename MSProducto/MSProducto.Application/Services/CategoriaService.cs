@@ -53,15 +53,15 @@ namespace MSProducto.Application.Services
             return await _repository.GetByIdAsync(categoryId, cancellationToken);
         }
 
-        public async Task<Result> CreateAsync(Categoria newCategory, AuditActor actor, CancellationToken cancellationToken = default)
+        public async Task<Result<long>> CreateAsync(Categoria newCategory, AuditActor actor, CancellationToken cancellationToken = default)
         {
             if (!_userExtractor.IsAuthenticated())
-                return Result.Failure("Acceso denegado: usuario no autenticado.");
+                return Result.Failure<long>("Acceso denegado: usuario no autenticado.");
 
             _logger.LogInformation("Action: Create by {U}", _userExtractor.GetCurrentUsername());
 
-            await _repository.CreateAsync(newCategory, cancellationToken);
-            return Result.Success();
+            var createdId = await _repository.CreateAsync(newCategory, cancellationToken);
+            return Result.Success(createdId);
         }
 
         public async Task<Result> UpdateAsync(Categoria editCategory, AuditActor actor, CancellationToken cancellationToken = default)

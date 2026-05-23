@@ -82,20 +82,20 @@ namespace MSProducto.Application.Services
             return affectedRows > 0;
         }
 
-        public async Task<Result> CreateAsync(Producto newProduct, AuditActor actor, CancellationToken cancellationToken = default)
+        public async Task<Result<long>> CreateAsync(Producto newProduct, AuditActor actor, CancellationToken cancellationToken = default)
         {
             if (!_userExtractor.IsAuthenticated())
-                return Result.Failure("Acceso denegado: usuario no autenticado.");
+                return Result.Failure<long>("Acceso denegado: usuario no autenticado.");
 
             _logger.LogInformation("Action: Create by {U}", _userExtractor.GetCurrentUsername());
 
             var createdId = await _productoRepository.CreateAsync(newProduct, cancellationToken);
             if (createdId > 0)
             {
-                return Result.Success();
+                return Result.Success(createdId);
             }
 
-            return Result.Failure("Failed to create product.");
+            return Result.Failure<long>("Failed to create product.");
         }
 
         public async Task<Result> UpdateAsync(Producto updateProduct, AuditActor actor, CancellationToken cancellationToken = default)
