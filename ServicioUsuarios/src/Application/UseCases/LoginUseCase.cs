@@ -1,10 +1,11 @@
 using Application.Auth;
 using Application.Options;
 using Application.Service;
-using Application.utils;
+using Application.Utils;
 using Domain.Common;
 using Domain.Database;
 using Domain.Dto.Jwt;
+using Domain.Dto.Response;
 using Domain.Entities;
 using Domain.Mappers;
 
@@ -22,7 +23,7 @@ namespace Application.UseCases
             _logger = logger;
         }
 
-        public async Task<Result<string>> Execute(UserLoginRequest loginRequest)
+        public async Task<Result<LoginResponse>> Execute(UserLoginRequest loginRequest)
         {
             var options = new UserOptions();
             options.AddFilter(UserFields.Email, FilterOperator.Equals, loginRequest.Email);
@@ -31,14 +32,14 @@ namespace Application.UseCases
             if (!userResult.IsSuccess )
             {
                 _logger.LogWarning("Login failed for email: {Email}", loginRequest.Email);
-                return Result<string>.Failure(new AppError("401", "Invalid credentials", ErrorType.Conflict));
+                return Result<LoginResponse>.Failure(new AppError("401", "Invalid credentials", ErrorType.Conflict));
             }
             _logger.LogInformation("Login successful for email: {Email}", loginRequest.Email);
             var authenticated = PasswordUtils.VerifyPassword(loginRequest.Password, userResult.Value.Password);
             if (!authenticated) 
             {
                 _logger.LogWarning("Login failed for email: {Email}", loginRequest.Email);
-                return Result<string>.Failure(new AppError("401", "Invalid credentials", ErrorType.Conflict));
+                return Result<LoginResponse>.Failure(new AppError("401", "Invalid credentials", ErrorType.Conflict));
             }
             var token = _jwtService.GenerateToken(userResult.Value.ToJwtPayload());
             userResult.Value.LastLogin = DateTime.UtcNow;
@@ -46,7 +47,7 @@ namespace Application.UseCases
             options.AddFilter(UserFields.Id, FilterOperator.Equals, userResult.Value.Id);
             options.SelectFields([UserFields.LastLogin]);
             await _userService.UpdateAsync(userResult.Value, options);
-            return Result<string>.Success(token);
+            return Result<LoginResponse>.Success(new LoginResponse(token, userResult.Value.NeedPasswordChange));
         }
     }
 }

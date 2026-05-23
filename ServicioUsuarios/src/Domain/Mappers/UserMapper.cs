@@ -1,4 +1,4 @@
-using Application.utils;
+using Application.Utils;
 using Domain.Dto.Jwt;
 using Domain.Dto.Register;
 using Domain.Dto.Response;
@@ -17,7 +17,9 @@ namespace Domain.Mappers
                 Email:user.Email,
                 Role:user.Role.ToString(),
                 NeedPasswordChange:user.NeedPasswordChange,
-                State:user.State.ToString()
+                State:user.State.ToString(),
+                LastLogin:user.LastLogin,
+                CreatedAt:user.CreatedAt
             );
         }
         public static User ToEntity(this RegisterUserDto dto)
@@ -32,7 +34,7 @@ namespace Domain.Mappers
                 Id = null,
                 Username = dto.Username,
                 Email = dto.Email,
-                Password = PasswordUtils.HashPassword(dto.Password),
+                Password = dto.Password,
                 Role = role,
                 NeedPasswordChange = true,
                 State = UserState.Active,
@@ -42,12 +44,12 @@ namespace Domain.Mappers
                 CreatorId = dto.CreatorId
             };
         }
-        public static RegisterUserDto ToRegisterDto(this CreateUserDto dto,int creatorId)
+        public static RegisterUserDto ToRegisterDto(this CreateUserDto dto,int creatorId,string? password = null)
         {
             return new RegisterUserDto(
                 Username: dto.Username,
                 Email: dto.Email,
-                Password: dto.Password,
+                Password: password ?? "TempPass123",
                 Role: dto.Role,
                 CreatorId: creatorId
             );

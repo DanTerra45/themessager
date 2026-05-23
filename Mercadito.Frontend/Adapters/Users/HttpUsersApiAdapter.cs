@@ -12,7 +12,7 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
 
     public Task<ApiResponseDto<IReadOnlyList<UserSummaryDto>>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
-        return GetAsync<IReadOnlyList<UserSummaryDto>>("api/users", cancellationToken);
+        return GetAsync<IReadOnlyList<UserSummaryDto>>("api/users/all", cancellationToken);
     }
 
     public Task<ApiResponseDto<IReadOnlyList<AvailableEmployeeDto>>> GetAvailableEmployeesAsync(CancellationToken cancellationToken = default)
@@ -78,7 +78,7 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
     {
         return SendAsync<LoginRequestDto, LoginResponseDto>(
             HttpMethod.Post,
-            "api/users/login",
+            "api/auth/login",
             request,
             actor: null,
             cancellationToken);
@@ -88,29 +88,30 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
         RequestPasswordResetRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<RequestPasswordResetRequestDto, bool>(
-            HttpMethod.Post,
-            "api/users/password-reset/request",
-            request,
-            actor: null,
-            cancellationToken);
+        return Task.FromResult(ApiResponseDto<bool>.Fail("El servicio de usuarios nuevo todavía no expone el flujo público de restablecimiento."));
     }
 
     public Task<ApiResponseDto<PasswordResetTokenDto>> ValidatePasswordResetTokenAsync(
         string token,
         CancellationToken cancellationToken = default)
     {
-        return GetAsync<PasswordResetTokenDto>($"api/users/password-reset/{Uri.EscapeDataString(token)}", cancellationToken);
+        return Task.FromResult(ApiResponseDto<PasswordResetTokenDto>.Fail("El servicio de usuarios nuevo todavía no expone la validación pública del token."));
     }
 
     public Task<ApiResponseDto<bool>> CompletePasswordResetAsync(
         CompletePasswordResetRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<CompletePasswordResetRequestDto, bool>(
+        var backendRequest = new
+        {
+            Token = request.Token,
+            NewPassword = request.Password
+        };
+
+        return SendAsync<object, bool>(
             HttpMethod.Post,
-            "api/users/password-reset/complete",
-            request,
+            "api/auth/reset-password/confirm",
+            backendRequest,
             actor: null,
             cancellationToken);
     }
@@ -121,12 +122,7 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<ForcePasswordChangeRequestDto, bool>(
-            HttpMethod.Post,
-            $"api/users/{userId}/force-password-change",
-            request,
-            actor,
-            cancellationToken);
+        return Task.FromResult(ApiResponseDto<bool>.Fail("El servicio de usuarios nuevo todavía no expone el cambio forzado de contraseña para el frontend."));
     }
 
     private async Task<ApiResponseDto<T>> GetAsync<T>(string requestUri, CancellationToken cancellationToken)

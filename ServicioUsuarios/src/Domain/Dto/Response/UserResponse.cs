@@ -8,5 +8,7 @@ public record UserResponse(
     string Email,   
     string Role,
     bool NeedPasswordChange,
-    string State
+    string State,
+    DateTime? LastLogin,
+    DateTime? CreatedAt
 ){}

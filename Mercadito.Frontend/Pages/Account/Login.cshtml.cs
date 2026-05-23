@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using Mercadito.Frontend.Adapters.Users;
 using Mercadito.Frontend.Authentication;
 using Mercadito.Frontend.Dtos.Users;
@@ -16,8 +18,9 @@ namespace Mercadito.Frontend.Pages.Account;
 public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageModel
 {
     [BindProperty]
-    [Required(ErrorMessage = "El usuario es obligatorio.")]
-    public string Username { get; set; } = string.Empty;
+    [Required(ErrorMessage = "El email es obligatorio.")]
+    [EmailAddress(ErrorMessage = "El email no tiene un formato válido.")]
+    public string Email { get; set; } = string.Empty;
 
     [BindProperty]
     [Required(ErrorMessage = "La contraseña es obligatoria.")]
@@ -42,7 +45,7 @@ public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageM
         ReturnUrl = NormalizeReturnUrl(ReturnUrl);
 
         var result = await usersApiAdapter.LoginAsync(
-            new LoginRequestDto(Username, Password),
+            new LoginRequestDto(Email, Password),
             HttpContext.RequestAborted);
 
         if (!result.Success || result.Data == null)
@@ -58,19 +61,9 @@ public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageM
         }
 
         var user = result.Data;
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.UserId.ToString(CultureInfo.InvariantCulture)),
-            new(ClaimTypes.Name, user.UserName),
-            new(ClaimTypes.Role, user.Role)
-        };
+        var claims = BuildClaimsFromAccessToken(user.AccessToken);
 
-        if (user.EmployeeId.HasValue)
-        {
-            claims.Add(new Claim("employee_id", user.EmployeeId.Value.ToString(CultureInfo.InvariantCulture)));
-        }
-
-        if (user.MustChangePassword)
+        if (user.NeedChangePassword)
         {
             claims.Add(new Claim(FrontendUserClaimTypes.MustChangePassword, "true"));
         }
@@ -85,7 +78,7 @@ public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageM
             });
 
         TempData["SuccessMessage"] = "Sesión iniciada.";
-        if (user.MustChangePassword)
+        if (user.NeedChangePassword)
         {
             return LocalRedirect("/ChangePassword");
         }
@@ -108,5 +101,84 @@ public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageM
         }
 
         return returnUrl.StartsWith('/') ? returnUrl : "/";
+    }
+
+    private static List<Claim> BuildClaimsFromAccessToken(string accessToken)
+    {
+        var payload = ParseJwtPayload(accessToken);
+        var sub = GetClaimValue(payload, "sub");
+        var nickname = GetClaimValue(payload, "nickname");
+        var email = GetClaimValue(payload, "email");
+        var role = GetClaimValue(payload, "role");
+
+        var claims = new List<Claim>();
+
+        if (!string.IsNullOrWhiteSpace(sub) && long.TryParse(sub, NumberStyles.None, CultureInfo.InvariantCulture, out var userId))
+        {
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(nickname))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, nickname));
+        }
+        else if (!string.IsNullOrWhiteSpace(email))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, email));
+        }
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            claims.Add(new Claim(ClaimTypes.Email, email));
+        }
+
+        return claims;
+    }
+
+    private static JsonElement ParseJwtPayload(string accessToken)
+    {
+        var parts = accessToken.Split('.');
+        if (parts.Length < 2)
+        {
+            return default;
+        }
+
+        var payloadBytes = Base64UrlDecode(parts[1]);
+        using var document = JsonDocument.Parse(payloadBytes);
+        return document.RootElement.Clone();
+    }
+
+    private static string? GetClaimValue(JsonElement payload, string claimName)
+    {
+        if (payload.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (!payload.TryGetProperty(claimName, out var claimValue))
+        {
+            return null;
+        }
+
+        return claimValue.ValueKind switch
+        {
+            JsonValueKind.String => claimValue.GetString(),
+            JsonValueKind.Number => claimValue.GetRawText(),
+            JsonValueKind.True => bool.TrueString,
+            JsonValueKind.False => bool.FalseString,
+            _ => claimValue.GetRawText()
+        };
+    }
+
+    private static byte[] Base64UrlDecode(string input)
+    {
+        var padded = input.Replace('-', '+').Replace('_', '/');
+        padded = padded.PadRight(padded.Length + (4 - padded.Length % 4) % 4, '=');
+        return Convert.FromBase64String(padded);
     }
 }

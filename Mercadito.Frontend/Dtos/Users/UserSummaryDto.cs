@@ -11,8 +11,7 @@ public sealed record UserSummaryDto(
     string? EmployeeCargo,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? LastLoginAt)
+    DateTime? LastLogin)
 {
     public string? EmployeeFullName => EmployeeName;
-    public DateTime? LastLogin => LastLoginAt;
 }

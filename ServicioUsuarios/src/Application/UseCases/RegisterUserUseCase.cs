@@ -1,4 +1,5 @@
 using Application.Service;
+using Application.Utils;
 using Domain.Common;
 using Domain.Dto.Register;
 using Domain.Dto.Response;
@@ -9,17 +10,26 @@ namespace Application.UseCases
     public class RegisterUserUseCase
     {
         private readonly UserService _userService;
-
-        public RegisterUserUseCase(UserService userService)
+        private readonly EmailService _emailService;
+        public RegisterUserUseCase(UserService userService, EmailService emailService)
         {
             _userService = userService;
+            _emailService = emailService;
         }
 
         public async Task<Result<int>> Execute(CreateUserDto createUserDto,int creatorId)
         {
-            var registerDto = createUserDto.ToRegisterDto(creatorId);
+            var (password, hashedPassword) = PasswordUtils.GenerateSecurePassword(20);
+            var registerDto = createUserDto.ToRegisterDto(creatorId,hashedPassword);
             var createdUser = await _userService.CreateAsync(registerDto);
-            return createdUser;
+            if (!createdUser.IsSuccess) return createdUser;
+            await _emailService.SendOnboardingAsync(
+                createUserDto.Email,
+                createUserDto.Username,
+                createUserDto.Role,
+                password,
+                "http://localhost:5173/define-password");
+            return Result<int>.Success(createdUser.Value);
         }
     }
 }

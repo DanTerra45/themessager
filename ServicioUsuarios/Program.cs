@@ -3,6 +3,7 @@ using Application.Factories;
 using Application.Options;
 using Application.Service;
 using Application.UseCases;
+using Application.Utils;
 using Domain.Database;
 using Domain.Entities;
 using Domain.Factories;
@@ -61,13 +62,19 @@ builder.Services.AddAuthorization(options =>{
     options.AddPolicy("OperatorOrAdmin", p => p.RequireRole("Operator", "Admin"));
 });
 
-builder.Services.AddScoped<IDbConnectionFactory, MySqlConnectionFactory>();
+builder.Services.AddScoped<IDbConnectionFactory, NpgsqlConnectionFactory>();
 builder.Services.AddScoped<UserRepository>();
 
 builder.Services.AddScoped<IRepositoryFactory<User,int,UserFields,UserOptions>, UserFactory>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RegisterUserUseCase>();
 builder.Services.AddScoped<LoginUseCase>();
+builder.Services.AddScoped<PasswordResetTokenService>();
+builder.Services.AddScoped<RequestPasswordResetUseCase>();
+builder.Services.AddScoped<ResetPasswordUseCase>();
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddScoped<MailKitEmailSender>();
+builder.Services.AddScoped<EmailService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -105,3 +112,9 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
+
+
+
+
+
+

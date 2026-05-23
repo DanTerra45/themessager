@@ -41,7 +41,9 @@ public class UserController : ControllerBase
 							UserFields.Email,
 							UserFields.NeedPasswordChange,
 							UserFields.Role,
-							UserFields.State])
+							UserFields.State,
+							UserFields.LastLogin,
+							UserFields.CreatedAt])
 						.SetPagination(limit ?? 10, offset ?? 0)
 						.SetOrdering(orderBy ?? UserFields.Id, orderDescending);
 		var result = await _userService.GetAllAsync(options);

@@ -67,8 +67,26 @@
                         </td>
                         <td>@user.Role</td>
                         <td>@(string.IsNullOrWhiteSpace(user.Email) ? "Sin correo" : user.Email)</td>
-                        <td style="font-family: var(--font-mono);">@(user.LastLogin.HasValue ? user.LastLogin.Value.ToString("dd/MM/yyyy HH:mm") : "Sin ingreso")</td>
-                        <td style="font-family: var(--font-mono);">@user.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td style="font-family: var(--font-mono);">
+                            @if (user.LastLogin.HasValue)
+                            {
+                                <span class="js-datetime" data-utc="@user.LastLogin.Value.ToString("o")">@user.LastLogin.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span>Sin ingreso</span>
+                            }
+                        </td>
+                        <td style="font-family: var(--font-mono);">
+                            @if (user.CreatedAt.Year > 1)
+                            {
+                                <span class="js-datetime" data-utc="@user.CreatedAt.ToString("o")">@user.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span>Sin registro</span>
+                            }
+                        </td>
                         <td class="text-center">
                             <div class="users-actions-wrap">
                                 @if (canSendResetLink)

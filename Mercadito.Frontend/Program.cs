@@ -50,7 +50,7 @@ builder.Services.AddHttpClient("SalesApi", client =>
 });
 builder.Services.AddHttpClient("UsersApi", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["Services:UsersApi"] ?? "http://localhost:5102");
+    client.BaseAddress = new Uri(builder.Configuration["Services:UsersApi"] ?? "http://localhost:5078");
 });
 builder.Services.AddScoped<ISalesApiAdapter, HttpSalesApiAdapter>();
 builder.Services.AddScoped<IEmployeesApiAdapter, HttpEmployeesApiAdapter>();

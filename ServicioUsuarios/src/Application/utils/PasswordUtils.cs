@@ -1,16 +1,21 @@
+using System;
 using System.Security.Cryptography;
 using System.Text;
 using Konscious.Security.Cryptography;
 
-namespace Application.utils
+namespace Application.Utils
 {
     public static class PasswordUtils
     {
-        private readonly static int SaltSize = 16; // Size of the salt in bytes
-        private readonly static int HashSize = 32; // Size of the hash in bytes
-        private readonly static int Iterations = 4; // Number of iterations for the hashing algorithm
+        private readonly static int SaltSize = 16; 
+        private readonly static int HashSize = 32; 
+        private readonly static int Iterations = 4; 
         private readonly static int DegreeOfParallelism = 2;
-        private readonly static int MemorySize = 1024 * 256; // Memory size in bytes (1 MB)
+        // 1024 * 256 KB = 256 MB (Excelente configuración para Argon2id)
+        private readonly static int MemorySize = 1024 * 256; 
+
+        // Conjunto de caracteres seguro y legible (sin caracteres confusos si se desea, o completo)
+        private const string AllowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?";
 
         public static string HashPassword(string password)
         {
@@ -25,41 +30,82 @@ namespace Application.utils
             Array.Copy(hash, 0, combinedBytes, salt.Length, hash.Length);
             return Convert.ToBase64String(combinedBytes);
         }
+
         private static byte[] HashPassword(string password, byte[] salt)
         {
-            var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password))
+            using (var argon2 = new Argon2id(Encoding.UTF8.GetBytes(password)))
             {
-                Salt = salt,
-                DegreeOfParallelism = DegreeOfParallelism,
-                MemorySize = MemorySize,
-                Iterations = Iterations
-            };
-            return argon2.GetBytes(HashSize);
+                argon2.Salt = salt;
+                argon2.DegreeOfParallelism = DegreeOfParallelism;
+                argon2.MemorySize = MemorySize;
+                argon2.Iterations = Iterations;
+                return argon2.GetBytes(HashSize);
+            }
         }
+
         public static bool VerifyPassword(string password, string hashedPassword)
         {
-            byte[] combinedBytes = Convert.FromBase64String(hashedPassword);
+            try
+            {
+                byte[] combinedBytes = Convert.FromBase64String(hashedPassword);
+                if (combinedBytes.Length != SaltSize + HashSize) return false;
 
-            byte[] salt = new byte[SaltSize];
-            byte[] hash = new byte[HashSize];
-            Array.Copy(combinedBytes, 0, salt, 0, SaltSize);
-            Array.Copy(combinedBytes, SaltSize, hash, 0, HashSize);
+                byte[] salt = new byte[SaltSize];
+                byte[] hash = new byte[HashSize];
+                Array.Copy(combinedBytes, 0, salt, 0, SaltSize);
+                Array.Copy(combinedBytes, SaltSize, hash, 0, HashSize);
 
-            byte[] newHash = HashPassword(password, salt);
+                byte[] newHash = HashPassword(password, salt);
 
-            return CryptographicOperations.FixedTimeEquals(hash, newHash);
+                return CryptographicOperations.FixedTimeEquals(hash, newHash);
+            }
+            catch
+            {
+                return false; // Previene fallos por strings Base64 malformados
+            }
         }
+
         public static (string Password, string Hash) GenerateSecurePassword(int length = 15)
         {
-            byte[] randomBytes = new byte[length];
-            using (var rng = RandomNumberGenerator.Create())
+            if (length < 8) throw new ArgumentException("La contraseña debe tener al menos 8 caracteres por seguridad.");
+
+            StringBuilder passwordBuilder = new StringBuilder(length);
+            
+            // Usamos el método moderno y eficiente de .NET para generar enteros criptográficos
+            for (int i = 0; i < length; i++)
             {
-                rng.GetBytes(randomBytes);
+                int randomIndex = RandomNumberGenerator.GetInt32(0, AllowedChars.Length);
+                passwordBuilder.Append(AllowedChars[randomIndex]);
             }
-            string securePassword = Convert.ToBase64String(randomBytes).Substring(0, length);
+
+            string securePassword = passwordBuilder.ToString();
             string passwordHash = HashPassword(securePassword);
-            Console.WriteLine($"Password: {securePassword} | Hash: {passwordHash}");
+
             return (securePassword, passwordHash);
+        }
+
+        public static (string Token, string Hash) GeneratePasswordResetToken(int lengthInBytes = 32)
+        {
+            var tokenBytes = RandomNumberGenerator.GetBytes(lengthInBytes);
+            var token = Base64UrlEncode(tokenBytes);
+            var hash = HashToken(token);
+
+            return (token, hash);
+        }
+
+        public static string HashToken(string token)
+        {
+            var tokenBytes = Encoding.UTF8.GetBytes(token);
+            var hashBytes = SHA256.HashData(tokenBytes);
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+        private static string Base64UrlEncode(byte[] value)
+        {
+            return Convert.ToBase64String(value)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
         }
     }
 }

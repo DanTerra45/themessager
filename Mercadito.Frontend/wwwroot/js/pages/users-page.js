@@ -187,4 +187,29 @@
         showModalIfNeeded(configElement.dataset.showTemporaryPasswordModal === 'true', 'temporaryPasswordModal');
         showModalIfNeeded(configElement.dataset.showDeactivateModal === 'true', 'deactivateUserModal');
     });
+    
+    // Convierte elementos con clase .js-datetime (data-utc) a hora local y formato dd/MM/yyyy HH:mm
+    function pad(v) { return v.toString().padStart(2, '0'); }
+    function formatLocalDateIsoToDisplay(iso) {
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return null;
+            return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function renderDateTimeElements() {
+        var nodes = document.querySelectorAll('.js-datetime');
+        nodes.forEach(function (n) {
+            var iso = n.getAttribute('data-utc');
+            if (!iso) return;
+            var formatted = formatLocalDateIsoToDisplay(iso);
+            if (formatted) n.textContent = formatted;
+        });
+    }
+
+    // Ejecutar conversión cuando DOM cargado
+    document.addEventListener('DOMContentLoaded', renderDateTimeElements);
 })();

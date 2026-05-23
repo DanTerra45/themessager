@@ -22,7 +22,8 @@ public sealed class ResetPasswordModel(IUsersApiAdapter usersApiAdapter) : Front
             PasswordReset.Token = token.Trim();
         }
 
-        await LoadTokenStateAsync();
+        IsTokenValid = !string.IsNullOrWhiteSpace(PasswordReset.Token);
+        Username = IsTokenValid ? "tu usuario" : string.Empty;
         return Page();
     }
 
@@ -38,26 +39,10 @@ public sealed class ResetPasswordModel(IUsersApiAdapter usersApiAdapter) : Front
                 TempData["ErrorMessage"] = FirstErrorOrDefault(result, "No se pudo actualizar la contraseña.");
             }
 
-            await LoadTokenStateAsync();
             return Page();
         }
 
         TempData["SuccessMessage"] = "La contraseña fue actualizada. Ya puedes iniciar sesión.";
         return LocalRedirect("/Login");
-    }
-
-    private async Task LoadTokenStateAsync()
-    {
-        var result = await usersApiAdapter.ValidatePasswordResetTokenAsync(PasswordReset.Token, HttpContext.RequestAborted);
-        if (!result.Success || result.Data == null)
-        {
-            IsTokenValid = false;
-            Username = string.Empty;
-            TempData["ErrorMessage"] = FirstErrorOrDefault(result, "El enlace de restablecimiento no es válido.");
-            return;
-        }
-
-        IsTokenValid = true;
-        Username = result.Data.UserName;
     }
 }
