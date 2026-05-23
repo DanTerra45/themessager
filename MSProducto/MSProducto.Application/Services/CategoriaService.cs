@@ -60,7 +60,7 @@ namespace MSProducto.Application.Services
 
             _logger.LogInformation("Action: Create by {U}", _userExtractor.GetCurrentUsername());
 
-            var createdId = await _repository.CreateAsync(newCategory, cancellationToken);
+            await _repository.CreateAsync(newCategory, cancellationToken);
             return Result.Success();
         }
 

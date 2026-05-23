@@ -3,6 +3,7 @@ namespace MSProducto.Domain.Common
     public class Result
     {
         private readonly Dictionary<string, List<string>> _errors = [];
+        private readonly List<string>? _validationErrors;
 
         public bool IsSuccess { get; }
 
@@ -10,36 +11,39 @@ namespace MSProducto.Domain.Common
 
         public IReadOnlyDictionary<string, List<string>> Errors => _errors;
 
-        public string ErrorMessage { get; }
+        public IReadOnlyList<string>? ValidationErrors => _validationErrors;
 
-        protected Result(bool isSuccess, string errorMessage, IReadOnlyDictionary<string, List<string>>? errors = null)
+        public string Error { get; }
+
+        protected Result(bool isSuccess, string error, IReadOnlyDictionary<string, List<string>>? errors = null, IReadOnlyList<string>? validationErrors = null)
         {
-            if (errorMessage == null)
+            if (error == null)
             {
-                errorMessage = string.Empty;
+                error = string.Empty;
             }
 
-            if (isSuccess && !string.IsNullOrEmpty(errorMessage))
+            if (isSuccess && !string.IsNullOrEmpty(error))
             {
-                throw new ArgumentException("Successful result must not contain an error message.", nameof(errorMessage));
+                throw new ArgumentException("Successful result must not contain an error message.", nameof(error));
             }
 
-            if (!isSuccess && string.IsNullOrWhiteSpace(errorMessage))
+            if (!isSuccess && string.IsNullOrWhiteSpace(error))
             {
-                throw new ArgumentException("Failed result must contain a non-empty error message.", nameof(errorMessage));
+                throw new ArgumentException("Failed result must contain a non-empty error message.", nameof(error));
             }
 
             IsSuccess = isSuccess;
-            ErrorMessage = errorMessage;
+            Error = error;
+            _validationErrors = validationErrors != null ? new List<string>(validationErrors) : null;
 
             if (errors == null)
             {
                 return;
             }
 
-            foreach (var error in errors)
+            foreach (var errorItem in errors)
             {
-                _errors[error.Key] = [.. error.Value];
+                _errors[errorItem.Key] = [.. errorItem.Value];
             }
         }
 
@@ -48,14 +52,19 @@ namespace MSProducto.Domain.Common
             return new Result(true, string.Empty);
         }
 
-        public static Result Failure(string errorMessage)
+        public static Result Failure(string error)
         {
-            if (errorMessage == null)
+            if (error == null)
             {
-                errorMessage = string.Empty;
+                error = string.Empty;
             }
 
-            return new Result(false, errorMessage);
+            return new Result(false, error);
+        }
+
+        public static Result Failure(string error, IReadOnlyList<string> validationErrors)
+        {
+            return new Result(false, error, validationErrors: validationErrors);
         }
 
         public static Result Failure(IReadOnlyDictionary<string, List<string>> errors)
@@ -68,14 +77,19 @@ namespace MSProducto.Domain.Common
             return new Result<T>(true, value, string.Empty);
         }
 
-        public static Result<T> Failure<T>(string errorMessage)
+        public static Result<T> Failure<T>(string error)
         {
-            if (errorMessage == null)
+            if (error == null)
             {
-                errorMessage = string.Empty;
+                error = string.Empty;
             }
 
-            return new Result<T>(false, default!, errorMessage);
+            return new Result<T>(false, default!, error);
+        }
+
+        public static Result<T> Failure<T>(string error, IReadOnlyList<string> validationErrors)
+        {
+            return new Result<T>(false, default!, error, validationErrors: validationErrors);
         }
 
         public static Result<T> Failure<T>(IReadOnlyDictionary<string, List<string>> errors)
@@ -98,10 +112,10 @@ namespace MSProducto.Domain.Common
             return "La operación no pudo completarse por errores de validación.";
         }
 
-        public void Deconstruct(out bool isSuccess, out string errorMessage)
+        public void Deconstruct(out bool isSuccess, out string error)
         {
             isSuccess = IsSuccess;
-            errorMessage = ErrorMessage;
+            error = Error;
         }
 
         public override string ToString()
@@ -111,7 +125,7 @@ namespace MSProducto.Domain.Common
                 return "Result: Success";
             }
 
-            return $"Result: Failure - {ErrorMessage}";
+            return $"Result: Failure - {Error}";
         }
     }
 
@@ -145,8 +159,8 @@ namespace MSProducto.Domain.Common
             }
         }
 
-        protected internal Result(bool isSuccess, T value, string errorMessage, IReadOnlyDictionary<string, List<string>>? errors = null)
-            : base(isSuccess, errorMessage, errors)
+        protected internal Result(bool isSuccess, T value, string error, IReadOnlyDictionary<string, List<string>>? errors = null, IReadOnlyList<string>? validationErrors = null)
+            : base(isSuccess, error, errors, validationErrors)
         {
             _value = value!;
         }
@@ -163,11 +177,11 @@ namespace MSProducto.Domain.Common
             return false;
         }
 
-        public void Deconstruct(out T value, out bool isSuccess, out string errorMessage)
+        public void Deconstruct(out T value, out bool isSuccess, out string error)
         {
             value = ValueOrDefault;
             isSuccess = IsSuccess;
-            errorMessage = ErrorMessage;
+            error = Error;
         }
 
         public override string ToString()
@@ -177,7 +191,7 @@ namespace MSProducto.Domain.Common
                 return $"Result<{typeof(T).Name}>: Success";
             }
 
-            return $"Result<{typeof(T).Name}>: Failure - {ErrorMessage}";
+            return $"Result<{typeof(T).Name}>: Failure - {Error}";
         }
     }
 }

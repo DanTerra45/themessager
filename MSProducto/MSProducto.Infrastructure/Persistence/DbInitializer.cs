@@ -14,10 +14,15 @@ namespace MSProducto.Infrastructure.Persistence
             _factory = factory;
         }
 
-        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        public void InitializeAsync(CancellationToken cancellationToken = default)
         {
-            using var connection = (MySqlConnection)_factory.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
+            Initialize(_factory);
+        }
+
+        public static void Initialize(IDbConnectionFactory factory)
+        {
+            using var connection = (MySqlConnection)factory.CreateConnection();
+            connection.Open();
 
             const string createCategoriasTable = @"
 CREATE TABLE IF NOT EXISTS categorias (
@@ -55,9 +60,9 @@ CREATE TABLE IF NOT EXISTS categoriaDeProducto (
     FOREIGN KEY (categoriaId) REFERENCES categorias(id) ON DELETE CASCADE
 );";
 
-            await connection.ExecuteAsync(createCategoriasTable);
-            await connection.ExecuteAsync(createProductosTable);
-            await connection.ExecuteAsync(createCategoriaDeProductoTable);
+            connection.Execute(createCategoriasTable);
+            connection.Execute(createProductosTable);
+            connection.Execute(createCategoriaDeProductoTable);
         }
     }
 }
