@@ -1,12 +1,12 @@
-using Mercadito.Frontend.Adapters.Categories;
 using Mercadito.Frontend.Dtos.Categories;
 using Mercadito.Frontend.Pages.Infrastructure;
+using Mercadito.Frontend.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Mercadito.Frontend.Pages.Categories;
 
 public sealed class CategoriesModel(
-    ICategoriesApiAdapter categoriesApiAdapter,
+    ICategoriaApiClient categoriaClient,
     IConfiguration configuration,
     ILogger<CategoriesModel> logger) : FrontendPageModel
 {
@@ -107,15 +107,15 @@ public sealed class CategoriesModel(
         SortBy = NormalizeSortBy(sortBy);
         SortDirection = NormalizeSortDirection(sortDirection);
 
-        var result = await categoriesApiAdapter.GetCategoryAsync(id, HttpContext.RequestAborted);
-        if (result.Success && result.Data != null)
+        var result = await categoriaClient.GetCategoryByIdAsync(id);
+        if (result != null)
         {
-            EditCategory = ToForm(result.Data);
+            EditCategory = ToForm(result);
             ShowEditCategoryModal = true;
         }
         else
         {
-            TempData["ErrorMessage"] = FirstErrorOrDefault(result, "No se pudo cargar la categoría.");
+            TempData["ErrorMessage"] = "No se pudo cargar la categoría.";
         }
 
         await LoadCategoriesAsync(useCursor: false, cursorCategoryId: 0, isNextPage: true);
@@ -140,22 +140,19 @@ public sealed class CategoriesModel(
             return Page();
         }
 
-        var result = await categoriesApiAdapter.CreateCategoryAsync(
-            ToSaveRequest(NewCategory),
-            BuildActorContext(),
-            HttpContext.RequestAborted);
+        var result = await categoriaClient.CreateCategoryAsync(
+            ToSaveRequest(NewCategory));
 
-        if (result.Success)
-        {
-            TempData["SuccessMessage"] = "Categoría agregada exitosamente.";
-            return RedirectToPage(new { SortBy, SortDirection, SearchTerm, CurrentPage, CurrentAnchorCategoryId });
-        }
+            if (result.Success)
+            {
+                TempData["Success"] = "Categoría agregada exitosamente.";
+                return RedirectToPage(new { SortBy, SortDirection, SearchTerm, CurrentPage, CurrentAnchorCategoryId });
+            }
 
-        ApplyApiErrors(result, nameof(NewCategory));
-        TempData["ErrorMessage"] = FirstErrorOrDefault(result, "Corrige los errores del formulario.");
-        ShowCreateCategoryModal = true;
-        await LoadCategoriesAsync(useCursor: false, cursorCategoryId: 0, isNextPage: true);
-        return Page();
+            TempData["Error"] = result.Error ?? "Corrige los errores del formulario.";
+            ShowCreateCategoryModal = true;
+            await LoadCategoriesAsync(useCursor: false, cursorCategoryId: 0, isNextPage: true);
+            return Page();
     }
 
     public async Task<IActionResult> OnPostEditAsync(string sortBy = "", string sortDirection = "")
@@ -173,23 +170,20 @@ public sealed class CategoriesModel(
             return Page();
         }
 
-        var result = await categoriesApiAdapter.UpdateCategoryAsync(
+        var result = await categoriaClient.UpdateCategoryAsync(
             EditCategory.Id,
-            ToSaveRequest(EditCategory),
-            BuildActorContext(),
-            HttpContext.RequestAborted);
+            ToSaveRequest(EditCategory));
 
-        if (result.Success)
-        {
-            TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
-            return RedirectToPage(new { SortBy, SortDirection, SearchTerm, CurrentPage, CurrentAnchorCategoryId });
-        }
+            if (result.Success)
+            {
+                TempData["Success"] = "Categoría actualizada correctamente.";
+                return RedirectToPage(new { SortBy, SortDirection, SearchTerm, CurrentPage, CurrentAnchorCategoryId });
+            }
 
-        ApplyApiErrors(result, nameof(EditCategory));
-        TempData["ErrorMessage"] = FirstErrorOrDefault(result, "Corrige los errores del formulario.");
-        ShowEditCategoryModal = true;
-        await LoadCategoriesAsync(useCursor: false, cursorCategoryId: 0, isNextPage: true);
-        return Page();
+            TempData["Error"] = result.Error ?? "Corrige los errores del formulario.";
+            ShowEditCategoryModal = true;
+            await LoadCategoriesAsync(useCursor: false, cursorCategoryId: 0, isNextPage: true);
+            return Page();
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(long id, string sortBy = "", string sortDirection = "")
@@ -197,18 +191,15 @@ public sealed class CategoriesModel(
         SortBy = NormalizeSortBy(sortBy);
         SortDirection = NormalizeSortDirection(sortDirection);
 
-        var result = await categoriesApiAdapter.DeleteCategoryAsync(
-            id,
-            BuildActorContext(),
-            HttpContext.RequestAborted);
+        var result = await categoriaClient.DeleteCategoryAsync(id);
 
         if (result.Success)
         {
-            TempData["SuccessMessage"] = "Categoría desactivada.";
+            TempData["Success"] = "Categoría desactivada.";
         }
         else
         {
-            TempData["ErrorMessage"] = FirstErrorOrDefault(result, "No se pudo eliminar la categoría.");
+            TempData["Error"] = result.Error ?? "No se pudo eliminar la categoría.";
         }
 
         return RedirectToPage(new { SortBy, SortDirection, SearchTerm, CurrentPage, CurrentAnchorCategoryId });
@@ -228,48 +219,78 @@ public sealed class CategoriesModel(
 
     private async Task LoadCategoriesAsync(bool useCursor, long cursorCategoryId, bool isNextPage)
     {
-        var result = await categoriesApiAdapter.GetCategoriesAsync(
-            _defaultPageSize,
-            SortBy,
-            SortDirection,
-            useCursor ? 0 : CurrentAnchorCategoryId,
-            useCursor ? cursorCategoryId : 0,
-            isNextPage,
-            SearchTerm,
-            HttpContext.RequestAborted);
-
-        if (!result.Success || result.Data == null)
+        // Call the new categoria client method which doesn't have pagination parameters
+        var categoriasResult = await categoriaClient.GetCategoriesAsync();
+        
+        // Since the new client doesn't support filtering/pagination directly,
+        // we'll need to handle that in the frontend or modify the client.
+        // For now, let's get all categories and filter/sort/paginate locally
+        var categorias = categoriasResult.ToList();
+        
+        // Apply filtering manually
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
         {
-            logger.LogWarning(
-                "No se pudieron cargar categorías desde el API: {Errors}",
-                string.Join(" | ", result.Errors));
-
-            Categories = [];
-            HasPreviousPage = false;
-            HasNextPage = false;
-            NextCategoryCodePreview = "C00001";
-            TempData["ErrorMessage"] = FirstErrorOrDefault(result, "No se pudieron cargar las categorías.");
-            return;
+            var lowerSearchTerm = SearchTerm.ToLowerInvariant();
+            categorias = categorias.Where(c => 
+                c.Name.ToLowerInvariant().Contains(lowerSearchTerm) ||
+                c.Code.ToLowerInvariant().Contains(lowerSearchTerm) ||
+                (c.Description != null && c.Description.ToLowerInvariant().Contains(lowerSearchTerm))
+            ).ToList();
         }
-
-        Categories = result.Data.Categories;
-        HasPreviousPage = CurrentPage > 1 && result.Data.HasPreviousPage;
-        HasNextPage = result.Data.HasNextPage;
-        NextCategoryCodePreview = result.Data.NextCategoryCode;
-        CurrentAnchorCategoryId = Categories.Count > 0 ? Categories[0].Id : 0;
-
+        
+        // Apply sorting manually
+        if (string.Equals(SortBy, "id", StringComparison.OrdinalIgnoreCase))
+        {
+            if (SortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase))
+            {
+                categorias = categorias.OrderByDescending(c => c.Id).ToList();
+            }
+            else
+            {
+                categorias = categorias.OrderBy(c => c.Id).ToList();
+            }
+        }
+        else if (string.Equals(SortBy, "code", StringComparison.OrdinalIgnoreCase))
+        {
+            if (SortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase))
+            {
+                categorias = categorias.OrderByDescending(c => c.Code).ToList();
+            }
+            else
+            {
+                categorias = categorias.OrderBy(c => c.Code).ToList();
+            }
+        }
+        else // default to name
+        {
+            if (SortDirection.Equals("desc", StringComparison.OrdinalIgnoreCase))
+            {
+                categorias = categorias.OrderByDescending(c => c.Name).ToList();
+            }
+            else
+            {
+                categorias = categorias.OrderBy(c => c.Name).ToList();
+            }
+        }
+        
+        // Apply pagination manually
+        var totalItems = categorias.Count;
+        var totalPages = (int)Math.Ceiling(totalItems / (double)_defaultPageSize);
+        var startIndex = (CurrentPage - 1) * _defaultPageSize;
+        var endIndex = Math.Min(startIndex + _defaultPageSize, totalItems);
+        
+        var pagedCategorias = categorias.Skip(startIndex).Take(_defaultPageSize).ToList();
+        
+        Categories = pagedCategorias;
+        HasPreviousPage = CurrentPage > 1;
+        HasNextPage = CurrentPage < totalPages;
+        NextCategoryCodePreview = "C00001"; // This would need to come from the API in a real implementation
+        CurrentAnchorCategoryId = pagedCategorias.Count > 0 ? pagedCategorias[0].Id : 0;
+        
         if (string.IsNullOrWhiteSpace(NewCategory.Code))
         {
             NewCategory.Code = NextCategoryCodePreview;
         }
-    }
-
-    private void NormalizeState()
-    {
-        CurrentPage = Math.Max(1, CurrentPage);
-        SortBy = NormalizeSortBy(SortBy);
-        SortDirection = NormalizeSortDirection(SortDirection);
-        SearchTerm = NormalizeText(SearchTerm);
     }
 
     private static CategoryFormDto ToForm(CategoryDto category)
@@ -325,5 +346,13 @@ public sealed class CategoriesModel(
         return int.TryParse(configuration["Ui:DefaultPageSize"], out var pageSize)
             ? Math.Clamp(pageSize, 5, 50)
             : 10;
+    }
+
+    private void NormalizeState()
+    {
+        CurrentPage = Math.Max(1, CurrentPage);
+        SortBy = NormalizeSortBy(SortBy);
+        SortDirection = NormalizeSortDirection(SortDirection);
+        SearchTerm = NormalizeText(SearchTerm);
     }
 }

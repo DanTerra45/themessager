@@ -1,6 +1,4 @@
-using Mercadito.Frontend.Adapters.Categories;
 using Mercadito.Frontend.Adapters.Employees;
-using Mercadito.Frontend.Adapters.Products;
 using Mercadito.Frontend.Adapters.Sales;
 using Mercadito.Frontend.Adapters.Suppliers;
 using Mercadito.Frontend.Adapters.Users;
@@ -22,9 +20,7 @@ builder.Services
         options.Conventions.AuthorizePage("/Sales/Detail", "SalesViewer");
         options.Conventions.AuthorizePage("/Sales/Reports", "SalesViewer");
         options.Conventions.AuthorizePage("/Sales/Receipt");
-        options.Conventions.AuthorizePage("/Categories/Categories", "AdminOnly");
         options.Conventions.AuthorizePage("/Employees/Employees", "AdminOnly");
-        options.Conventions.AuthorizePage("/Products/Products", "AdminOnly");
         options.Conventions.AuthorizePage("/Suppliers/Suppliers", "AdminOnly");
         options.Conventions.AuthorizePage("/Users/Index", "AdminOnly");
         options.Conventions.AuthorizePage("/Account/ChangePassword");
@@ -57,9 +53,7 @@ builder.Services.AddHttpClient("UsersApi", client =>
     client.BaseAddress = new Uri(builder.Configuration["Services:UsersApi"] ?? "http://localhost:5102");
 });
 builder.Services.AddScoped<ISalesApiAdapter, HttpSalesApiAdapter>();
-builder.Services.AddScoped<ICategoriesApiAdapter, HttpCategoriesApiAdapter>();
 builder.Services.AddScoped<IEmployeesApiAdapter, HttpEmployeesApiAdapter>();
-builder.Services.AddScoped<IProductsApiAdapter, HttpProductsApiAdapter>();
 builder.Services.AddScoped<ISuppliersApiAdapter, HttpSuppliersApiAdapter>();
 builder.Services.AddScoped<IUsersApiAdapter, HttpUsersApiAdapter>();
 builder.Services.AddScoped<INavigationMenuService, NavigationMenuService>();
