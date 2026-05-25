@@ -7,6 +7,7 @@ using Mercadito.Frontend.Adapters.Users;
 using Mercadito.Frontend.Authentication;
 using Mercadito.Frontend.Pages.Sales;
 using Mercadito.Frontend.Pages.Shared.Navigation;
+using Mercadito.Frontend.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,6 +65,24 @@ builder.Services.AddScoped<IUsersApiAdapter, HttpUsersApiAdapter>();
 builder.Services.AddScoped<INavigationMenuService, NavigationMenuService>();
 builder.Services.AddScoped<IDailyCashClosingExcelExporter, DailyCashClosingExcelExporter>();
 builder.Services.AddScoped<ISalesListingExcelExporter, SalesListingExcelExporter>();
+
+// Auth header forwarding handler for MS Producto
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<AuthHeaderHandler>();
+
+// Typed client — MS Producto (products)
+builder.Services.AddHttpClient<IProductoApiClient, ProductoApiClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["MicroserviceUrls:Producto"]!);
+})
+.AddHttpMessageHandler<AuthHeaderHandler>();
+
+// Typed client — MS Producto (categories)
+builder.Services.AddHttpClient<ICategoriaApiClient, CategoriaApiClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["MicroserviceUrls:Producto"]!);
+})
+.AddHttpMessageHandler<AuthHeaderHandler>();
 
 var app = builder.Build();
 
