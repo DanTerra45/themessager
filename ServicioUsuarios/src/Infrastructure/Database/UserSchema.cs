@@ -1,28 +1,9 @@
+using Application.Options;
 using Domain.Database;
+using Domain.Database.Fields;
 
-namespace Application.Options
+namespace Infrastructure.Database
 {
-    public enum SqlAction
-    {
-        Select,
-        Insert,
-        Update,
-        Delete
-    }
-    public enum UserFields
-    {
-        Id,
-        Username,
-        Email,
-        Password,
-        Role,
-        CreatorId,
-        LastLogin,
-        NeedPasswordChange,
-        State,
-        CreatedAt,
-        UpdatedAt
-    }
     public sealed class UserSchema: ITableSchema<UserFields>
     {
         private static readonly Dictionary<UserFields, Dictionary<SqlAction, string>> Fields = new()

@@ -84,13 +84,10 @@ namespace Application.Utils
             return (securePassword, passwordHash);
         }
 
-        public static (string Token, string Hash) GeneratePasswordResetToken(int lengthInBytes = 32)
+        public static string GenerateToken()
         {
-            var tokenBytes = RandomNumberGenerator.GetBytes(lengthInBytes);
-            var token = Base64UrlEncode(tokenBytes);
-            var hash = HashToken(token);
-
-            return (token, hash);
+            var tokenBytes = RandomNumberGenerator.GetBytes(32);
+            return Base64UrlEncode(tokenBytes);
         }
 
         public static string HashToken(string token)
@@ -99,7 +96,11 @@ namespace Application.Utils
             var hashBytes = SHA256.HashData(tokenBytes);
             return Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
-
+        public static string DecodeToken(string token)
+        {
+            var tokenBytes = Convert.FromHexString(token);
+            return Encoding.UTF8.GetString(tokenBytes);
+        }
         private static string Base64UrlEncode(byte[] value)
         {
             return Convert.ToBase64String(value)

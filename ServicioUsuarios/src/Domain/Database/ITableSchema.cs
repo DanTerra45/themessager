@@ -1,4 +1,5 @@
 using Application.Options;
+using Domain.Database.Fields;
 
 namespace Domain.Database
 {

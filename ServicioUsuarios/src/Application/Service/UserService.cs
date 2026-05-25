@@ -1,6 +1,7 @@
 using Application.Options;
 using Domain.Common;
 using Domain.Database;
+using Domain.Database.Fields;
 using Domain.Dto.Register;
 using Domain.Dto.Response;
 using Domain.Entities;
@@ -56,7 +57,11 @@ namespace Application.Service
                 _logger.LogWarning("Invalid request type: {Type}", typeof(TRequest).Name);
                 return Result<bool>.Failure(new AppError("400", "Invalid request type", ErrorType.Conflict));
             }
-            return await _repository.UpdateAsync<User>(user, options);
+            return await _repository.UpdateAsync<TRequest>(request, options);
+        }
+        public async Task<Result<bool>> DeleteAsync(UserOptions? options)
+        {
+            return await _repository.DeleteAsync(options);
         }
     }
 }

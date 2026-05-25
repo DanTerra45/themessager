@@ -20,13 +20,13 @@ namespace Infrastructure.Repository
             _tableName = tableName; 
             _logger = logger;
         }
-        private async Task<Result<IEnumerable<TEntity>>> ExecuteQueryAsync(string sql, DynamicParameters parameters)
+        protected async Task<Result<IEnumerable<TEntity>>> ExecuteQueryAsync(string sql, DynamicParameters parameters)
         {
             using var connection =await _db.CreateConnectionAsync();
             var result = await connection.QueryAsync<TEntity>(sql,parameters);
             return Result<IEnumerable<TEntity>>.Success(result);
         }
-        private async Task<int> ExecuteNonQueryAsync(string sql, DynamicParameters parameters)
+        protected async Task<int> ExecuteNonQueryAsync(string sql, DynamicParameters parameters)
         {
             using var connection = await _db.CreateConnectionAsync();
             return await connection.ExecuteAsync(sql,parameters);
@@ -122,7 +122,7 @@ namespace Infrastructure.Repository
                 return Result<bool>.Failure(new AppError(ex.GetType().Name, ex.Message, ErrorType.Internal));
             }
         }
-        public async Task<Result<bool>> DeleteAsync(TId id, TOptions? options, CancellationToken cancellationToken = default)
+        public virtual async Task<Result<bool>> DeleteAsync(TOptions? options, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

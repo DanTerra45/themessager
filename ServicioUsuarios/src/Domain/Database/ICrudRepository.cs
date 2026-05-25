@@ -12,6 +12,6 @@ namespace Domain.Database
         Task<Result<TEntity>> GetOneAsync(TOptions? options);
         Task<Result<TId>> CreateAsync<TRequest>(TRequest request, TOptions? options, CancellationToken cancellationToken = default) where TRequest : class;
         Task<Result<bool>> UpdateAsync<TRequest>(TRequest request, TOptions? options, CancellationToken cancellationToken = default) where TRequest : class;
-        Task<Result<bool>> DeleteAsync(TId id, TOptions? options, CancellationToken cancellationToken = default);
+        Task<Result<bool>> DeleteAsync(TOptions? options, CancellationToken cancellationToken = default);
     }
 }

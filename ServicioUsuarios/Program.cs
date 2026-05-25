@@ -5,6 +5,7 @@ using Application.Service;
 using Application.UseCases;
 using Application.Utils;
 using Domain.Database;
+using Domain.Database.Fields;
 using Domain.Entities;
 using Domain.Factories;
 using Infrastructure.Database;
@@ -64,8 +65,10 @@ builder.Services.AddAuthorization(options =>{
 
 builder.Services.AddScoped<IDbConnectionFactory, NpgsqlConnectionFactory>();
 builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<PasswordResetTokenRepository>();
 
 builder.Services.AddScoped<IRepositoryFactory<User,int,UserFields,UserOptions>, UserFactory>();
+builder.Services.AddScoped<IRepositoryFactory<PasswordResetToken,int,PasswordResetTokenFields,PasswordResetTokenOptions>, PasswordResetTokenFactory>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RegisterUserUseCase>();
 builder.Services.AddScoped<LoginUseCase>();
@@ -75,6 +78,7 @@ builder.Services.AddScoped<ResetPasswordUseCase>();
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<MailKitEmailSender>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<AssignTemporaryPasswordUseCase>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

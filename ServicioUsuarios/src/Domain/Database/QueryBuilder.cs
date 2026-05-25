@@ -1,6 +1,7 @@
 using System.Text;
 using Application.Options;
 using Dapper;
+using Domain.Database.Fields;
 
 namespace Domain.Database
 {
@@ -46,6 +47,7 @@ namespace Domain.Database
                 var column = _schema.Get(filter.Field, SqlAction.Insert);
                 var baseName = filter.Field.ToString();
                 string paramName() => $"{baseName}_{_paramCounter++}";
+                var normalizedValue = NormalizeParameterValue(filter.Value);
 
                 switch (filter.Operator)
                 {
@@ -53,77 +55,77 @@ namespace Domain.Database
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} = @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.NotEquals:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} <> @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.GreaterThan:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} > @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.GreaterThanOrEqual:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} >= @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.LessThan:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} < @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.LessThanOrEqual:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} <= @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.Contains:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, $"%{filter.Value}%");
+                            _parameters.Add(p, $"%{normalizedValue}%");
                             break;
                         }
                     case FilterOperator.StartsWith:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, $"{filter.Value}%");
+                            _parameters.Add(p, $"{normalizedValue}%");
                             break;
                         }
                     case FilterOperator.EndsWith:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, $"%{filter.Value}");
+                            _parameters.Add(p, $"%{normalizedValue}");
                             break;
                         }
                     case FilterOperator.Like:
                         {
                             var p = paramName();
                             _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, filter.Value);
+                            _parameters.Add(p, normalizedValue);
                             break;
                         }
                     case FilterOperator.ILike:
                         {
                             var p = paramName();
                             _sb.Append($" AND LOWER({column}) LIKE LOWER(@{p})");
-                            var v = filter.Value?.ToString();
+                            var v = normalizedValue?.ToString();
                             _parameters.Add(p, $"%{v}%");
                             break;
                         }
@@ -134,8 +136,8 @@ namespace Domain.Database
                                 var pStart = paramName();
                                 var pEnd = paramName();
                                 _sb.Append($" AND {column} BETWEEN @{pStart} AND @{pEnd}");
-                                _parameters.Add(pStart, range.Item1);
-                                _parameters.Add(pEnd, range.Item2);
+                                _parameters.Add(pStart, NormalizeParameterValue(range.Item1));
+                                _parameters.Add(pEnd, NormalizeParameterValue(range.Item2));
                             }
                             else
                             {

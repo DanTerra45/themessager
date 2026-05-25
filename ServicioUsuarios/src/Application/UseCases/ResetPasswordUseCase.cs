@@ -5,6 +5,7 @@ using Domain.Common;
 using Domain.Dto.Auth;
 using Domain.Entities;
 using Domain.Database;
+using Domain.Database.Fields;
 
 namespace Application.UseCases;
 
@@ -24,6 +25,39 @@ public sealed class ResetPasswordUseCase
         _logger = logger;
     }
 
+    private async Task<bool> InvalidateToken(PasswordResetToken token)
+    {
+        var passwordOptions = new PasswordResetTokenOptions();
+
+        passwordOptions.SelectFields([PasswordResetTokenFields.UsedAt]);
+        passwordOptions.AddFilter(PasswordResetTokenFields.UserId, FilterOperator.Equals, token.UserId);
+        passwordOptions.AddFilter(PasswordResetTokenFields.UsedAt, FilterOperator.IsNull, null);
+        token.UsedAt = DateTime.UtcNow;
+        var result = await _tokenService.UpdateAsync(token, passwordOptions);
+
+        return result.IsSuccess;
+    }
+    
+    private async Task<Result<PasswordResetToken>> GetValidTokenAsync(string tokenHash)
+    {
+        var passwordOptions = new PasswordResetTokenOptions();
+        passwordOptions.SelectFields([PasswordResetTokenFields.Id,PasswordResetTokenFields.UserId,PasswordResetTokenFields.Token,PasswordResetTokenFields.Expiration,PasswordResetTokenFields.UsedAt,PasswordResetTokenFields.CreatedAt]);
+        passwordOptions.AddFilter(PasswordResetTokenFields.Token, FilterOperator.Equals, tokenHash);
+        passwordOptions.AddFilter(PasswordResetTokenFields.UsedAt, FilterOperator.IsNull, null);
+        passwordOptions.AddFilter(PasswordResetTokenFields.Expiration, FilterOperator.GreaterThan, DateTime.UtcNow);
+        var tokenResult = await _tokenService.GetOneAsync(passwordOptions);
+        return tokenResult;
+    }
+    private async Task<bool> MarkTokenAsUsedAsync(PasswordResetToken token)
+    {
+        var passwordOptions = new PasswordResetTokenOptions();
+        passwordOptions.SelectFields([PasswordResetTokenFields.UsedAt]);
+        passwordOptions.AddFilter(PasswordResetTokenFields.Id, FilterOperator.Equals, token.Id);
+        token.UsedAt = DateTime.UtcNow;
+        var result = await _tokenService.UpdateAsync(token, passwordOptions);
+        return result.IsSuccess;
+    }
+
     public async Task<Result<bool>> Execute(ResetPasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
@@ -32,7 +66,7 @@ public sealed class ResetPasswordUseCase
         }
 
         var tokenHash = PasswordUtils.HashToken(request.Token);
-        var tokenResult = await _tokenService.GetValidByTokenHashAsync(tokenHash, DateTime.UtcNow);
+        var tokenResult = await GetValidTokenAsync(tokenHash);
         if (!tokenResult.IsSuccess || tokenResult.Value is null)
         {
             return Result<bool>.Failure(new AppError("401", "Invalid or expired reset token.", ErrorType.Conflict));
@@ -61,10 +95,10 @@ public sealed class ResetPasswordUseCase
             return Result<bool>.Failure(updateResult.Errors);
         }
 
-        var markTokenResult = await _tokenService.MarkAsUsedAsync(tokenResult.Value.Id, DateTime.UtcNow);
-        if (!markTokenResult.IsSuccess)
+        var markTokenResult = await MarkTokenAsUsedAsync(tokenResult.Value);
+        if (!markTokenResult)
         {
-            return Result<bool>.Failure(markTokenResult.Errors);
+            return Result<bool>.Failure(new AppError("500", "Failed to mark token as used.", ErrorType.Internal));
         }
 
         _logger.LogInformation("Password reset completed for user {UserId}", userResult.Value.Id);

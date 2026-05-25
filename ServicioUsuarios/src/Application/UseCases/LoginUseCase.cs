@@ -4,6 +4,7 @@ using Application.Service;
 using Application.Utils;
 using Domain.Common;
 using Domain.Database;
+using Domain.Database.Fields;
 using Domain.Dto.Jwt;
 using Domain.Dto.Response;
 using Domain.Entities;

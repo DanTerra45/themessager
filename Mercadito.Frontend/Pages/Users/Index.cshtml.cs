@@ -160,7 +160,7 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
         }
 
         foreach (var error in result.ValidationErrors)
-        {
+        { 
             var key = error.Key switch
             {
                 "Password" => $"{nameof(TemporaryPassword)}.{nameof(TemporaryPassword.TemporaryPassword)}",
