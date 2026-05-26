@@ -20,16 +20,30 @@ namespace Infrastructure.Repository
             _tableName = tableName; 
             _logger = logger;
         }
-        protected async Task<Result<IEnumerable<TEntity>>> ExecuteQueryAsync(string sql, DynamicParameters parameters)
+        protected async Task<Result<IEnumerable<TEntity>>> ExecuteQueryAsync(string sql, DynamicParameters parameters, IDbTransaction? transaction = null)
         {
-            using var connection =await _db.CreateConnectionAsync();
-            var result = await connection.QueryAsync<TEntity>(sql,parameters);
-            return Result<IEnumerable<TEntity>>.Success(result);
-        }
-        protected async Task<int> ExecuteNonQueryAsync(string sql, DynamicParameters parameters)
-        {
+            if (transaction != null)
+            {
+                var txConn = transaction.Connection;
+                var result = await txConn.QueryAsync<TEntity>(sql, parameters, transaction);
+                return Result<IEnumerable<TEntity>>.Success(result);
+            }
+
             using var connection = await _db.CreateConnectionAsync();
-            return await connection.ExecuteAsync(sql,parameters);
+            var resultNoTx = await connection.QueryAsync<TEntity>(sql, parameters);
+            return Result<IEnumerable<TEntity>>.Success(resultNoTx);
+        }
+
+        protected async Task<int> ExecuteNonQueryAsync(string sql, DynamicParameters parameters, IDbTransaction? transaction = null)
+        {
+            if (transaction != null)
+            {
+                var txConn = transaction.Connection;
+                return await txConn.ExecuteAsync(sql, parameters, transaction);
+            }
+
+            using var connection = await _db.CreateConnectionAsync();
+            return await connection.ExecuteAsync(sql, parameters);
         }
         public async Task<Result<IEnumerable<TEntity>>> GetAllAsync(TOptions? options)
         {

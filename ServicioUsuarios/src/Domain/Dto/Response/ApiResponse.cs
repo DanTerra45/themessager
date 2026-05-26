@@ -3,7 +3,7 @@ namespace Domain.Dto.Response
     public abstract class ApiResponse
     {
         public bool IsSuccess { get; }
-        public object? Data { get; }
+        public object? Data { get; protected set; }
         public ApiResponse(bool isSuccess)
         {
             IsSuccess = isSuccess;
@@ -13,18 +13,16 @@ namespace Domain.Dto.Response
     }
     public class ApiResponseOk : ApiResponse
     {
-        private readonly object? _data;
         public ApiResponseOk(object? data) : base(true)
         {
-            _data = data;
+            Data = data;
         }
     }
     public class ApiResponseFailure : ApiResponse
     {
-        private readonly object? _data;
         public ApiResponseFailure(object? data = null) : base(false)
         {
-            _data = data;
+            Data = data;
         }
     }
 }

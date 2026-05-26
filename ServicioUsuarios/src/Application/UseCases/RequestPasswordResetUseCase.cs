@@ -98,7 +98,7 @@ public sealed class RequestPasswordResetUseCase
             token = PasswordUtils.DecodeToken(tokenResult.TokenHash);
         }
         var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        var resetUrl = $"{frontendBaseUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}";
+        var resetUrl = $"{frontendBaseUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(token)}&username={Uri.EscapeDataString(userResult.Value.Username)}";
 
         await _emailService.SendPasswordResetAsync(
             userResult.Value.Email,

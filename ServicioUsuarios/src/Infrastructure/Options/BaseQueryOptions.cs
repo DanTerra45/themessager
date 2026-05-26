@@ -8,7 +8,7 @@ where ITableField : Enum
     
     public int? Limit { get; set; }
     public int? Offset { get; set; }
-    public ITableField OrderBy { get; set; }
+    public ITableField OrderBy { get; set; } = default!;
     public bool OrderDescending { get; set; } = false;
     public IEnumerable<ITableField> SelectedFields { get; set; } = new List<ITableField>();
     public List<FilterCondition<ITableField>> Filters { get; set; } = new();
@@ -16,6 +16,26 @@ where ITableField : Enum
     public IQueryOptions<ITableField> AddFilter(ITableField field, FilterOperator op, object? value)
     {
         Filters.Add(new(field, op, value));
+        return this;
+    }
+    public IQueryOptions<ITableField> AddLogicalFilter(IEnumerable<FilterCondition<ITableField>> conditions, LogicalOperator or)
+    {
+        var materializedConditions = conditions?.ToList() ?? new List<FilterCondition<ITableField>>();
+
+        if (!materializedConditions.Any())
+        {
+            return this;
+        }
+
+        if (or == LogicalOperator.Or)
+        {
+            // OR groups are stored as a special condition so the query builder can render them with parentheses.
+            Filters.Add(new(default!, FilterOperator.Equals, materializedConditions));
+        }
+        else
+        {
+            Filters.AddRange(materializedConditions);
+        }
         return this;
     }
     public BaseQueryOptions<ITableField> SetOrdering(ITableField field, bool descending = false)
@@ -46,7 +66,7 @@ where ITableField : Enum
     {
         Limit = null;
         Offset = null;
-        OrderBy = default;
+        OrderBy = default!;
         OrderDescending = false;
         SelectedFields = new List<ITableField>();
         Filters.Clear();

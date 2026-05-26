@@ -44,118 +44,109 @@ namespace Domain.Database
 
             foreach (var filter in options.Filters)
             {
-                var column = _schema.Get(filter.Field, SqlAction.Insert);
-                var baseName = filter.Field.ToString();
-                string paramName() => $"{baseName}_{_paramCounter++}";
-                var normalizedValue = NormalizeParameterValue(filter.Value);
-
-                switch (filter.Operator)
+                if (IsLogicalGroup(filter, LogicalOperator.Or, out var groupedConditions))
                 {
-                    case FilterOperator.Equals:
+                    if (!groupedConditions.Any())
+                    {
+                        continue;
+                    }
+
+                    _sb.Append(" AND (");
+
+                    var firstCondition = true;
+                    foreach (var condition in groupedConditions)
+                    {
+                        if (!firstCondition)
                         {
-                            var p = paramName();
-                            _sb.Append($" AND {column} = @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
+                            _sb.Append(" OR ");
                         }
-                    case FilterOperator.NotEquals:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} <> @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
-                        }
-                    case FilterOperator.GreaterThan:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} > @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
-                        }
-                    case FilterOperator.GreaterThanOrEqual:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} >= @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
-                        }
-                    case FilterOperator.LessThan:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} < @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
-                        }
-                    case FilterOperator.LessThanOrEqual:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} <= @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
-                        }
-                    case FilterOperator.Contains:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, $"%{normalizedValue}%");
-                            break;
-                        }
-                    case FilterOperator.StartsWith:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, $"{normalizedValue}%");
-                            break;
-                        }
-                    case FilterOperator.EndsWith:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, $"%{normalizedValue}");
-                            break;
-                        }
-                    case FilterOperator.Like:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND {column} LIKE @{p}");
-                            _parameters.Add(p, normalizedValue);
-                            break;
-                        }
-                    case FilterOperator.ILike:
-                        {
-                            var p = paramName();
-                            _sb.Append($" AND LOWER({column}) LIKE LOWER(@{p})");
-                            var v = normalizedValue?.ToString();
-                            _parameters.Add(p, $"%{v}%");
-                            break;
-                        }
-                    case FilterOperator.Between:
-                        {
-                            if (filter.Value is Tuple<object, object> range)
-                            {
-                                var pStart = paramName();
-                                var pEnd = paramName();
-                                _sb.Append($" AND {column} BETWEEN @{pStart} AND @{pEnd}");
-                                _parameters.Add(pStart, NormalizeParameterValue(range.Item1));
-                                _parameters.Add(pEnd, NormalizeParameterValue(range.Item2));
-                            }
-                            else
-                            {
-                                throw new ArgumentException("Value for 'Between' must be a Tuple<object, object>.");
-                            }
-                            break;
-                        }
-                    case FilterOperator.IsNull:
-                        _sb.Append($" AND {column} IS NULL");
-                        break;
-                    case FilterOperator.IsNotNull:
-                        _sb.Append($" AND {column} IS NOT NULL");
-                        break;
-                    default:
-                        throw new NotSupportedException($"Operator {filter.Operator} not supported.");
+
+                        _sb.Append(BuildFilterClause(condition));
+                        firstCondition = false;
+                    }
+
+                    _sb.Append(")");
+                    continue;
                 }
+
+                _sb.Append(" AND ");
+                _sb.Append(BuildFilterClause(filter));
             }
             return this;
+        }
+
+        private static bool IsLogicalGroup(FilterCondition<TFields> filter, LogicalOperator logicalOperator, out IReadOnlyCollection<FilterCondition<TFields>> conditions)
+        {
+            if (logicalOperator == LogicalOperator.Or
+                && EqualityComparer<TFields>.Default.Equals(filter.Field, default)
+                && filter.Value is IEnumerable<FilterCondition<TFields>> groupedConditions)
+            {
+                conditions = groupedConditions as IReadOnlyCollection<FilterCondition<TFields>> ?? groupedConditions.ToList();
+                return true;
+            }
+
+            conditions = Array.Empty<FilterCondition<TFields>>();
+            return false;
+        }
+
+        private string BuildFilterClause(FilterCondition<TFields> filter)
+        {
+            var column = _schema.Get(filter.Field, SqlAction.Insert);
+            var baseName = filter.Field.ToString();
+            string paramName() => $"{baseName}_{_paramCounter++}";
+            var normalizedValue = NormalizeParameterValue(filter.Value);
+
+            return filter.Operator switch
+            {
+                FilterOperator.Equals => BuildBinaryClause(column, paramName(), "=", normalizedValue),
+                FilterOperator.NotEquals => BuildBinaryClause(column, paramName(), "<>", normalizedValue),
+                FilterOperator.GreaterThan => BuildBinaryClause(column, paramName(), ">", normalizedValue),
+                FilterOperator.GreaterThanOrEqual => BuildBinaryClause(column, paramName(), ">=", normalizedValue),
+                FilterOperator.LessThan => BuildBinaryClause(column, paramName(), "<", normalizedValue),
+                FilterOperator.LessThanOrEqual => BuildBinaryClause(column, paramName(), "<=", normalizedValue),
+                FilterOperator.Contains => BuildLikeClause(column, paramName(), $"%{normalizedValue}%"),
+                FilterOperator.StartsWith => BuildLikeClause(column, paramName(), $"{normalizedValue}%"),
+                FilterOperator.EndsWith => BuildLikeClause(column, paramName(), $"%{normalizedValue}"),
+                FilterOperator.Like => BuildLikeClause(column, paramName(), normalizedValue),
+                FilterOperator.ILike => BuildILikeClause(column, paramName(), normalizedValue),
+                FilterOperator.Between => BuildBetweenClause(column, paramName, filter.Value),
+                FilterOperator.IsNull => $"{column} IS NULL",
+                FilterOperator.IsNotNull => $"{column} IS NOT NULL",
+                _ => throw new NotSupportedException($"Operator {filter.Operator} not supported.")
+            };
+        }
+
+        private string BuildBinaryClause(string column, string parameterName, string operatorSql, object? value)
+        {
+            _parameters.Add(parameterName, value);
+            return $"{column} {operatorSql} @{parameterName}";
+        }
+
+        private string BuildLikeClause(string column, string parameterName, object? value)
+        {
+            _parameters.Add(parameterName, value);
+            return $"{column} LIKE @{parameterName}";
+        }
+
+        private string BuildILikeClause(string column, string parameterName, object? value)
+        {
+            var text = value?.ToString();
+            _parameters.Add(parameterName, $"%{text}%");
+            return $"LOWER({column}) LIKE LOWER(@{parameterName})";
+        }
+
+        private string BuildBetweenClause(string column, Func<string> paramName, object? value)
+        {
+            if (value is not Tuple<object, object> range)
+            {
+                throw new ArgumentException("Value for 'Between' must be a Tuple<object, object>.");
+            }
+
+            var pStart = paramName();
+            var pEnd = paramName();
+            _parameters.Add(pStart, NormalizeParameterValue(range.Item1));
+            _parameters.Add(pEnd, NormalizeParameterValue(range.Item2));
+            return $"{column} BETWEEN @{pStart} AND @{pEnd}";
         }
         public QueryBuilder<TOptions, TFields> OrderBy(TOptions options)
         {

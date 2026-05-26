@@ -24,27 +24,35 @@ namespace Application.UseCases
             _logger = logger;
         }
 
-        public async Task<Result<LoginResponse>> Execute(UserLoginRequest loginRequest)
+        private async Task<Result<User?>> GetUserByEmailOrUsernameAsync(string emailOrUsername)
         {
             var options = new UserOptions();
-            options.AddFilter(UserFields.Email, FilterOperator.Equals, loginRequest.Email);
-            var userResult = await _userService.GetOneAsync(options);
+            options.AddLogicalFilter([new FilterCondition<UserFields>(UserFields.Email, FilterOperator.Equals, emailOrUsername),new FilterCondition<UserFields>(UserFields.Username, FilterOperator.Equals, emailOrUsername)], LogicalOperator.Or);
 
-            if (!userResult.IsSuccess )
-            {
-                _logger.LogWarning("Login failed for email: {Email}", loginRequest.Email);
-                return Result<LoginResponse>.Failure(new AppError("401", "Invalid credentials", ErrorType.Conflict));
+            var result = await _userService.GetOneAsync(options);
+            if (!result.IsSuccess)            {
+                _logger.LogWarning("No user found with email or username: {EmailOrUsername}", emailOrUsername);
+                return Result<User?>.Failure(new AppError("404", "User not found", ErrorType.NotFound));
             }
-            _logger.LogInformation("Login successful for email: {Email}", loginRequest.Email);
-            var authenticated = PasswordUtils.VerifyPassword(loginRequest.Password, userResult.Value.Password);
-            if (!authenticated) 
+            return result;
+        }
+
+        public async Task<Result<LoginResponse>> Execute(UserLoginRequest loginRequest)
+        {
+            var userResult = await GetUserByEmailOrUsernameAsync(loginRequest.EmailOrUsername);
+            if (!userResult.IsSuccess || userResult.Value is null)
             {
-                _logger.LogWarning("Login failed for email: {Email}", loginRequest.Email);
-                return Result<LoginResponse>.Failure(new AppError("401", "Invalid credentials", ErrorType.Conflict));
+                return Result<LoginResponse>.Failure(new AppError("404", "User not found", ErrorType.NotFound));
+            }
+            var authenticated = PasswordUtils.VerifyPassword(loginRequest.Password, userResult.Value.Password);
+            if (!authenticated)
+            {
+                _logger.LogWarning("Failed login attempt for user {EmailOrUsername}", loginRequest.EmailOrUsername);
+                return Result<LoginResponse>.Failure(new AppError("401", "Invalid credentials", ErrorType.Unauthorized));
             }
             var token = _jwtService.GenerateToken(userResult.Value.ToJwtPayload());
             userResult.Value.LastLogin = DateTime.UtcNow;
-            options = new UserOptions();
+            var options = new UserOptions();
             options.AddFilter(UserFields.Id, FilterOperator.Equals, userResult.Value.Id);
             options.SelectFields([UserFields.LastLogin]);
             await _userService.UpdateAsync(userResult.Value, options);

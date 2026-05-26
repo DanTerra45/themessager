@@ -17,6 +17,11 @@ namespace Domain.Database
         IsNull,
         IsNotNull
     }
+    public enum LogicalOperator
+    {
+        And,
+        Or
+    }
     public record FilterCondition<TFields>(
         TFields Field,
         FilterOperator Operator,
@@ -31,5 +36,6 @@ namespace Domain.Database
         IEnumerable<TFields> SelectedFields { get; set; }
         List<FilterCondition<TFields>> Filters { get; set; }
         IQueryOptions<TFields> AddFilter(TFields field, FilterOperator op, object? value);
+        IQueryOptions<TFields> AddLogicalFilter(IEnumerable<FilterCondition<TFields>> conditions, LogicalOperator or);
     }
 }

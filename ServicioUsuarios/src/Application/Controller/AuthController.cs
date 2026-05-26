@@ -61,6 +61,13 @@ public sealed class AuthController : ControllerBase
         var result = await _requestPasswordResetUseCase.Execute(userId);
         return this.ToActionResult(result, StatusCodes.Status200OK);
     }
+    [Authorize (Roles = "Admin")]
+    [HttpPut("send-reset-password/{userId}")]
+    public async Task<IActionResult> SendResetPassword(int userId)
+    {
+        var result = await _requestPasswordResetUseCase.Execute(userId);
+        return this.ToActionResult(result, StatusCodes.Status200OK);
+    }
 
     [AllowAnonymous]
     [HttpPost("reset-password/confirm")]

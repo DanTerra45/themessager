@@ -13,11 +13,13 @@ namespace Application.UseCases
         private readonly UserService _userService;
         private readonly ILogger<AssignTemporaryPasswordUseCase> _logger;
         private readonly EmailService _emailService;
-        public AssignTemporaryPasswordUseCase(UserService userService, ILogger<AssignTemporaryPasswordUseCase> logger, EmailService emailService)
+        private readonly IConfiguration _configuration;
+        public AssignTemporaryPasswordUseCase(UserService userService, ILogger<AssignTemporaryPasswordUseCase> logger, EmailService emailService, IConfiguration configuration)
         {
             _userService = userService;
             _logger = logger;
             _emailService = emailService;
+            _configuration = configuration;
         }
         public async Task<Result<bool>> Execute(int userId)
         {
@@ -37,12 +39,13 @@ namespace Application.UseCases
             {
                 return Result<bool>.Failure(result.Errors);
             }
+            var url = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
             await _emailService.SendOnboardingAsync(
                 user.Value.Email,
                 user.Value.Username ,
                 user.Value.Role.ToString(),
                 password,
-                "http://localhost:5173/define-password"
+                url.TrimEnd('/') + "/login?email_or_username=" + user.Value.Email
             );
             return Result<bool>.Success(true);
         }

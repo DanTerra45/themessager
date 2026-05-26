@@ -8,7 +8,9 @@ public enum ErrorType
     NotFound,
     NotImplemented,
     Conflict,
-    Internal
+    Internal,
+    Forbidden,
+    Unauthorized
 }
 
 public sealed record AppError(
@@ -40,6 +42,10 @@ public class Result
         Failure(new AppError(code, message, ErrorType.NotImplemented));
     public static Result Internal(string code, string message) =>
         Failure(new AppError(code, message, ErrorType.Internal));
+    public static Result Forbidden(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.Forbidden));
+    public static Result Unauthorized(string code, string message) =>
+        Failure(new AppError(code, message, ErrorType.Unauthorized));
 }
 
 public class Result<T> : Result

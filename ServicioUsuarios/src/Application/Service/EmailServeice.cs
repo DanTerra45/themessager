@@ -31,7 +31,7 @@ public sealed class EmailService
             string.Empty,
             "Tu cuenta fue creada correctamente.",
             $"Rol asignado: {role}.",
-            $"Tu contraseña temporal es: {temporaryPassword}.",
+            $"Tu contraseña temporal es: {temporaryPassword}",
             "Debes cambiarla al ingresar.",
             string.Empty,
             $"Accede aquí: {actionUrl}"
@@ -92,7 +92,7 @@ public sealed class EmailService
             "Un administrador reinició tu acceso al sistema.",
             "Tu contraseña anterior dejó de ser válida.",
             string.Empty,
-            $"Tu contraseña temporal es: {temporaryPassword}.",
+            $"Tu contraseña temporal es: {temporaryPassword}",
             string.Empty,
             $"Usa este enlace: {actionUrl}",
             string.Empty,

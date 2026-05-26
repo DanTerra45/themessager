@@ -11,6 +11,7 @@ using Domain.Common;
 using Domain.Database;
 using Domain.Entities.Enums;
 using Domain.Database.Fields;
+using Domain.Dto.Auth;
 
 namespace Application.Controller;
 
@@ -21,15 +22,21 @@ public class UserController : ControllerBase
     private readonly UserService _userService;
     private readonly RegisterUserUseCase _registerUserUseCase;
     private readonly AssignTemporaryPasswordUseCase _assignTemporaryPasswordUseCase;
+    private readonly DisableUserUseCase _disableUserUseCase;
+    private readonly ForgotPasswordUseCase _forgotPasswordUseCase;
 
     public UserController(
         UserService userService,
         RegisterUserUseCase registerUserUseCase,
-        AssignTemporaryPasswordUseCase assignTemporaryPasswordUseCase)
+        AssignTemporaryPasswordUseCase assignTemporaryPasswordUseCase,
+        DisableUserUseCase disableUserUseCase,
+        ForgotPasswordUseCase forgotPasswordUseCase)
     {
         _userService = userService;
         _registerUserUseCase = registerUserUseCase;
         _assignTemporaryPasswordUseCase = assignTemporaryPasswordUseCase;
+        _disableUserUseCase = disableUserUseCase;
+        _forgotPasswordUseCase = forgotPasswordUseCase;
     }
 
     [HttpGet("all")]
@@ -86,15 +93,27 @@ public class UserController : ControllerBase
         return this.ToActionResult(result, StatusCodes.Status201Created);
     }
 
+    [AllowAnonymous]
+    [HttpPut("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _forgotPasswordUseCase.Execute(request);
+        return this.ToActionResult(result);
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(int id,
+	[FromBody] DisableUserDto disableUserDto)
     {
-        var options = new UserOptions();
-        options.AddFilter(UserFields.Id, FilterOperator.Equals, id);
-        options.SelectFields(new[] { UserFields.State });
-
-        var result = await _userService.DeleteAsync(options);
+        
+        var result = await _disableUserUseCase.ExecuteAsync(
+                RegisterUserStoryDto.ToDisable(
+                    id,
+                    int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)),
+                    disableUserDto.Reason
+                )
+        );
         return this.ToActionResult(result);
     }
 }

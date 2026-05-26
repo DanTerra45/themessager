@@ -63,5 +63,18 @@ namespace Domain.Mappers
                 Role: user.Role.ToString()
             );
         }
+        public static UserStory ToUserStory(this RegisterUserStoryDto dto)
+        {
+            return new UserStory
+            {
+                Id = null,
+                UserId = dto.UserId,
+                OperatorId = int.Parse(dto.OperatorId),
+                PreviousState = dto.PreviousState ?? UserState.Active,
+                NewState = dto.NewState ?? UserState.Inactive,
+                DisableReason = dto.DisableReason,
+                CreatedAt = dto.CreatedAt ?? DateTime.UtcNow
+            };
+        }
     }
 }

@@ -64,21 +64,27 @@ builder.Services.AddAuthorization(options =>{
 });
 
 builder.Services.AddScoped<IDbConnectionFactory, NpgsqlConnectionFactory>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<UserStoryRepository>();
 builder.Services.AddScoped<PasswordResetTokenRepository>();
 
 builder.Services.AddScoped<IRepositoryFactory<User,int,UserFields,UserOptions>, UserFactory>();
+builder.Services.AddScoped<IRepositoryFactory<UserStory,int,UserStoryFields,UserStoryOptions>, UserStoryFactory>();
 builder.Services.AddScoped<IRepositoryFactory<PasswordResetToken,int,PasswordResetTokenFields,PasswordResetTokenOptions>, PasswordResetTokenFactory>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<UserStoryService>();
 builder.Services.AddScoped<RegisterUserUseCase>();
 builder.Services.AddScoped<LoginUseCase>();
 builder.Services.AddScoped<PasswordResetTokenService>();
 builder.Services.AddScoped<RequestPasswordResetUseCase>();
 builder.Services.AddScoped<ResetPasswordUseCase>();
+builder.Services.AddScoped<ForgotPasswordUseCase>();
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.AddScoped<MailKitEmailSender>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<AssignTemporaryPasswordUseCase>();
+builder.Services.AddScoped<DisableUserUseCase>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
