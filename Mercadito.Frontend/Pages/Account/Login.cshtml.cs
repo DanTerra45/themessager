@@ -17,7 +17,7 @@ namespace Mercadito.Frontend.Pages.Account;
 [AllowAnonymous]
 public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageModel
 {
-    [BindProperty]
+    [BindProperty(SupportsGet = true, Name = "email_or_username")]
     [Required(ErrorMessage = "El email o nombre de usuario es obligatorio.")]
     [EmailAddress(ErrorMessage = "El email no tiene un formato válido.")]
     public string EmailOrUsername { get; set; } = string.Empty;
