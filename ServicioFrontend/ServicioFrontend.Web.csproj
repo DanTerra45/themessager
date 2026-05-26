@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EPPlus" Version="8.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Shared\ServicioFrontend.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Dtos\**\*.cs" />
+    <Compile Remove="Authentication\**\*.cs" />
+    <Compile Remove="Validation\**\*.cs" />
+    <Compile Remove="Shared\**\*.cs" />
+    <None Include="Dtos\**\*" />
+    <None Include="Authentication\**\*" />
+    <None Include="Validation\**\*" />
+    <None Include="Shared\**\*" />
+  </ItemGroup>
+
+</Project>

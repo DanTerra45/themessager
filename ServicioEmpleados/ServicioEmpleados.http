@@ -1,0 +1,6 @@
+@ServicioEmpleados_HostAddress = http://localhost:5200
+
+GET {{ServicioEmpleados_HostAddress}}/health
+Accept: application/json
+
+###

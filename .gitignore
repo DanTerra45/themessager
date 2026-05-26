@@ -8,7 +8,6 @@
 .gemini/
 .claude/
 .kilo/
-.vsCode/
 
 # dotenv files
 .env
@@ -325,10 +324,6 @@ node_modules/
 **/*.Server/GeneratedArtifacts
 **/*.Server/ModelManifest.xml
 _Pvt_Extensions
-
-
-.kilo
-
 
 # Paket dependency manager
 .paket/paket.exe

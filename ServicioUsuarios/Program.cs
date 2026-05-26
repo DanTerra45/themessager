@@ -24,9 +24,33 @@ builder.Services.AddControllers()
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false));
     });
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddScoped<JwtService>();
-var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
+
+var postgresConnection = builder.Configuration.GetConnectionString("PostgresConnection");
+if (string.IsNullOrWhiteSpace(postgresConnection))
+{
+    throw new InvalidOperationException(
+        "Falta ConnectionStrings:PostgresConnection. Configuralo con dotnet user-secrets --project ServicioUsuarios/ServicioUsuarios.Api.csproj set \"ConnectionStrings:PostgresConnection\" \"<valor>\".");
+}
+
+var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+if (jwtOptions is null
+    || string.IsNullOrWhiteSpace(jwtOptions.Issuer)
+    || string.IsNullOrWhiteSpace(jwtOptions.Audience)
+    || string.IsNullOrWhiteSpace(jwtOptions.Key))
+{
+    throw new InvalidOperationException(
+        "Falta configuracion JWT. Define Jwt:Issuer, Jwt:Audience y Jwt:Key con dotnet user-secrets para ServicioUsuarios.");
+}
+
+if (jwtOptions.ExpiresMinutes <= 0)
+{
+    throw new InvalidOperationException("Jwt:ExpiresMinutes debe ser mayor a 0.");
+}
+
 var key = Encoding.UTF8.GetBytes(jwtOptions.Key);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -88,6 +112,11 @@ builder.Services.AddScoped<DisableUserUseCase>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -95,36 +124,13 @@ app.UseAuthorization();
 app.UseHttpsRedirection();
 app.MapControllers();
 
-
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapGet("/health", () =>
+    Results.Ok(new
+    {
+        service = "ServicioUsuarios",
+        status = "Healthy",
+        timestamp = DateTimeOffset.UtcNow
+    }));
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
-
-
-
-
-
 
