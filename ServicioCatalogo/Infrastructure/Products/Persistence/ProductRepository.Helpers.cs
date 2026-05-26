@@ -103,12 +103,14 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
         private static CommandDefinition BuildInsertProductCategoriesCommand(
             long productId,
             IReadOnlyList<long> normalizedCategoryIds,
+            long actorUserId,
             IDbTransaction transaction,
             CancellationToken cancellationToken)
         {
-            var queryBuilder = new StringBuilder("INSERT INTO categoriaDeProducto (productId, categoriaId) VALUES ");
+            var queryBuilder = new StringBuilder("INSERT INTO categoriaDeProducto (productId, categoriaId, created_by_user_id, updated_by_user_id) VALUES ");
             var parameters = new DynamicParameters();
             parameters.Add("ProductId", productId);
+            parameters.Add("ActorUserId", actorUserId);
 
             for (var index = 0; index < normalizedCategoryIds.Count; index++)
             {
@@ -120,7 +122,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                 var categoryParameterName = $"CategoryId{index}";
                 queryBuilder.Append("(@ProductId, @")
                     .Append(categoryParameterName)
-                    .Append(')');
+                    .Append(", @ActorUserId, @ActorUserId)");
 
                 parameters.Add(categoryParameterName, normalizedCategoryIds[index]);
             }

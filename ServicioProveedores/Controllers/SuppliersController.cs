@@ -5,6 +5,7 @@ using ServicioProveedores.Application.Suppliers.Models;
 using ServicioProveedores.Application.Suppliers.Ports.Input;
 using ServicioProveedores.Application.Suppliers.Validation;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ServicioProveedores.Controllers;
 
@@ -90,7 +91,7 @@ public sealed class SuppliersController(
             Contacto = request.Contacto,
             Rubro = request.Rubro,
             Telefono = request.Telefono
-        }, cancellationToken);
+        }, ResolveUserId(), cancellationToken);
 
         if (result.IsFailure)
         {
@@ -115,7 +116,7 @@ public sealed class SuppliersController(
             Contacto = request.Contacto,
             Rubro = request.Rubro,
             Telefono = request.Telefono
-        }, cancellationToken);
+        }, ResolveUserId(), cancellationToken);
 
         if (result.IsFailure)
         {
@@ -130,7 +131,7 @@ public sealed class SuppliersController(
         long supplierId,
         CancellationToken cancellationToken = default)
     {
-        var result = await deleteSupplierUseCase.ExecuteAsync(supplierId, cancellationToken);
+        var result = await deleteSupplierUseCase.ExecuteAsync(supplierId, ResolveUserId(), cancellationToken);
         if (result.IsFailure)
         {
             return ToFailureAction<bool>(result);
@@ -224,6 +225,23 @@ public sealed class SuppliersController(
     private static string NormalizeText(string? value)
     {
         return (value ?? string.Empty).Trim();
+    }
+
+    private long ResolveUserId()
+    {
+        var userIdText = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (long.TryParse(userIdText, out var userId) && userId > 0)
+        {
+            return userId;
+        }
+
+        userIdText = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (long.TryParse(userIdText, out userId) && userId > 0)
+        {
+            return userId;
+        }
+
+        return 1;
     }
 
     private static ApiResponse<T> ToFailure<T>(Result result)

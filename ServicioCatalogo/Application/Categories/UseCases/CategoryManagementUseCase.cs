@@ -136,7 +136,7 @@ namespace ServicioCatalogo.Application.Categories.UseCases
 
             try
             {
-                await categoryRepository.CreateAsync(validationResult.Value, cancellationToken);
+                await categoryRepository.CreateAsync(validationResult.Value, actor.UserId, cancellationToken);
                 return Result.Success();
             }
             catch (BusinessValidationException validationException)
@@ -188,7 +188,7 @@ namespace ServicioCatalogo.Application.Categories.UseCases
 
             try
             {
-                var affectedRows = await categoryRepository.UpdateAsync(validationResult.Value, cancellationToken);
+                var affectedRows = await categoryRepository.UpdateAsync(validationResult.Value, actor.UserId, cancellationToken);
                 if (affectedRows == 0)
                 {
                     return Result.Failure(new Dictionary<string, List<string>>
@@ -237,7 +237,7 @@ namespace ServicioCatalogo.Application.Categories.UseCases
 
             try
             {
-                var affectedRows = await categoryRepository.DeleteAsync(categoryId, cancellationToken);
+                var affectedRows = await categoryRepository.DeleteAsync(categoryId, actor.UserId, cancellationToken);
                 if (affectedRows == 0)
                 {
                     return Result.Failure(new Dictionary<string, List<string>>

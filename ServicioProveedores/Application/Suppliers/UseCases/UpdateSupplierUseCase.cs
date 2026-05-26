@@ -12,8 +12,16 @@ namespace ServicioProveedores.Application.Suppliers.UseCases
         ISupplierRepository repository,
         IValidator<UpdateSupplierDto, SupplierDto> validator) : IUpdateSupplierUseCase
     {
-        public async Task<Result<int>> ExecuteAsync(UpdateSupplierDto dto, CancellationToken cancellationToken = default)
+        public async Task<Result<int>> ExecuteAsync(UpdateSupplierDto dto, long actorUserId, CancellationToken cancellationToken = default)
         {
+            if (actorUserId <= 0)
+            {
+                return Result.Failure<int>(new Dictionary<string, List<string>>
+                {
+                    { "Validation", ["No se pudo resolver el actor de auditoría."] }
+                });
+            }
+
             var validationResult = validator.Validate(dto);
             if (validationResult.IsFailure)
             {
@@ -48,7 +56,7 @@ namespace ServicioProveedores.Application.Suppliers.UseCases
                     normalizedDto.Telefono = currentSupplier.Telefono;
                 }
 
-                var rowsAffected = await repository.UpdateAsync(normalizedDto, cancellationToken);
+                var rowsAffected = await repository.UpdateAsync(normalizedDto, actorUserId, cancellationToken);
                 if (rowsAffected == 0)
                 {
                     return Result.Failure<int>(new Dictionary<string, List<string>>

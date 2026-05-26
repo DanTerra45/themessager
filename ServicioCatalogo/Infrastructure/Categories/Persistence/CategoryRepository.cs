@@ -596,7 +596,7 @@ namespace ServicioCatalogo.Infrastructure.Categories.Persistence
             }
         }
 
-        public async Task<long> CreateAsync(Category category, CancellationToken cancellationToken = default)
+        public async Task<long> CreateAsync(Category category, long actorUserId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(category);
 
@@ -609,12 +609,12 @@ namespace ServicioCatalogo.Infrastructure.Categories.Persistence
                 var reservedCode = await ReserveNextCategoryCodeAsync(connection, transaction, cancellationToken);
 
                 const string query = @"INSERT INTO categorias
-                        (codigo, nombre, descripcion, estado) VALUES (@Code, @Name, @Description, @ActiveState);
+                        (codigo, nombre, descripcion, estado, created_by_user_id, updated_by_user_id) VALUES (@Code, @Name, @Description, @ActiveState, @ActorUserId, @ActorUserId);
                         SELECT LAST_INSERT_ID();";
 
                 var command = new CommandDefinition(
                     query,
-                    parameters: new { Code = reservedCode, category.Name, category.Description, ActiveState },
+                    parameters: new { Code = reservedCode, category.Name, category.Description, ActiveState, ActorUserId = actorUserId },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
 
@@ -653,7 +653,7 @@ namespace ServicioCatalogo.Infrastructure.Categories.Persistence
             }
         }
 
-        public async Task<int> UpdateAsync(Category category, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAsync(Category category, long actorUserId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(category);
 
@@ -661,12 +661,12 @@ namespace ServicioCatalogo.Infrastructure.Categories.Persistence
             try
             {
                 const string query = @"UPDATE categorias
-                        SET codigo = @Code, nombre = @Name, descripcion = @Description
+                        SET codigo = @Code, nombre = @Name, descripcion = @Description, updated_by_user_id = @UpdatedByUserId
                         WHERE id = @Id AND estado = @ActiveState";
 
                 var command = new CommandDefinition(
                     query,
-                    parameters: new { category.Id, category.Code, category.Name, category.Description, ActiveState },
+                    parameters: new { category.Id, category.Code, category.Name, category.Description, UpdatedByUserId = actorUserId, ActiveState },
                     cancellationToken: cancellationToken);
 
                 return await connection.ExecuteAsync(command);
@@ -689,17 +689,18 @@ namespace ServicioCatalogo.Infrastructure.Categories.Persistence
             }
         }
 
-        public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
                 const string query = @"UPDATE categorias
-                    SET estado = @InactiveState
+                    SET estado = @InactiveState,
+                        updated_by_user_id = @UpdatedByUserId
                     WHERE id = @Id AND estado = @ActiveState";
                 var command = new CommandDefinition(
                 query,
-                parameters: new { Id = id, ActiveState, InactiveState },
+                parameters: new { Id = id, ActiveState, InactiveState, UpdatedByUserId = actorUserId },
                 cancellationToken: cancellationToken);
 
                 return await connection.ExecuteAsync(command);

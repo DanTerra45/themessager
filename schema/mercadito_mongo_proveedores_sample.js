@@ -50,6 +50,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("2"),
@@ -62,6 +64,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("3"),
@@ -74,6 +78,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("4"),
@@ -86,6 +92,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("5"),
@@ -98,6 +106,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("6"),
@@ -110,6 +120,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("7"),
@@ -122,6 +134,8 @@ suppliers.insertMany([
     state: "A",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
   {
     _id: NumberLong("8"),
@@ -134,6 +148,8 @@ suppliers.insertMany([
     state: "I",
     created_at: now,
     updated_at: now,
+    created_by_user_id: NumberLong("1"),
+    updated_by_user_id: NumberLong("1"),
   },
 ]);
 

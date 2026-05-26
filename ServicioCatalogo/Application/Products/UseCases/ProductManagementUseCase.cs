@@ -145,7 +145,7 @@ namespace ServicioCatalogo.Application.Products.UseCases
                 }
 
                 var previousProduct = await productRepository.GetByIdAsync(productId, cancellationToken);
-                var affectedRows = await productRepository.DeleteAsync(productId, cancellationToken);
+                var affectedRows = await productRepository.DeleteAsync(productId, actor.UserId, cancellationToken);
                 if (affectedRows > 0 && previousProduct != null)
                 {
                     await auditTrailService.RecordAsync(
@@ -205,7 +205,7 @@ namespace ServicioCatalogo.Application.Products.UseCases
                     CategoryIds = validationResult.Value.CategoryIds
                 };
 
-                var productId = await productRepository.CreateAsync(writeModel, cancellationToken);
+                var productId = await productRepository.CreateAsync(writeModel, actor.UserId, cancellationToken);
                 if (productId > 0)
                 {
                     await auditTrailService.RecordAsync(
@@ -279,7 +279,7 @@ namespace ServicioCatalogo.Application.Products.UseCases
                 };
                 var previousProduct = await productRepository.GetByIdAsync(validationResult.Value.Id, cancellationToken);
 
-                var affectedRows = await productRepository.UpdateAsync(writeModel, cancellationToken);
+                var affectedRows = await productRepository.UpdateAsync(writeModel, actor.UserId, cancellationToken);
                 if (affectedRows > 0)
                 {
                     var auditSnapshot = ProductAuditSnapshotFactory.BuildImportantUpdateSnapshot(previousProduct, validationResult.Value);

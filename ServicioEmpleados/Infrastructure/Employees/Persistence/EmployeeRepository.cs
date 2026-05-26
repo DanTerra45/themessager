@@ -573,7 +573,7 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
             }
         }
 
-        public async Task<long> CreateAsync(Employee employee, CancellationToken cancellationToken = default)
+        public async Task<long> CreateAsync(Employee employee, long actorUserId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(employee);
 
@@ -588,9 +588,9 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
             try
             {
                 const string query = @"INSERT INTO empleados
-                        (ci, complemento, nombres, primerApellido, segundoApellido, cargo, numeroContacto, estado)
+                        (ci, complemento, nombres, primerApellido, segundoApellido, cargo, numeroContacto, estado, created_by_user_id, updated_by_user_id)
                         VALUES
-                        (@Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Cargo, @NumeroContacto, @ActiveState)
+                        (@Ci, @Complemento, @Nombres, @PrimerApellido, @SegundoApellido, @Cargo, @NumeroContacto, @ActiveState, @ActorUserId, @ActorUserId)
                         RETURNING id;";
 
                 var insertEmployeeCommand = new CommandDefinition(
@@ -604,7 +604,8 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
                         employee.SegundoApellido,
                         employee.Cargo,
                         employee.NumeroContacto,
-                        ActiveState
+                        ActiveState,
+                        ActorUserId = actorUserId
                     },
                     cancellationToken: cancellationToken);
 
@@ -647,7 +648,7 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
             }
         }
 
-        public async Task<int> UpdateAsync(Employee employee, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAsync(Employee employee, long actorUserId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(employee);
 
@@ -668,7 +669,8 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
                         primerApellido = @PrimerApellido,
                         segundoApellido = @SegundoApellido,
                         cargo = @Cargo,
-                        numeroContacto = @NumeroContacto
+                        numeroContacto = @NumeroContacto,
+                        updated_by_user_id = @UpdatedByUserId
                         WHERE id = @Id AND estado = @ActiveState";
 
                 var command = new CommandDefinition(
@@ -683,6 +685,7 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
                         employee.SegundoApellido,
                         employee.Cargo,
                         employee.NumeroContacto,
+                        UpdatedByUserId = actorUserId,
                         ActiveState
                     },
                     cancellationToken: cancellationToken);
@@ -711,16 +714,16 @@ namespace ServicioEmpleados.Infrastructure.Employees.Persistence
             }
         }
 
-        public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default)
         {
             try
             {
                 using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
-                const string query = "UPDATE empleados SET estado = @InactiveState WHERE id = @Id AND estado = @ActiveState";
+                const string query = "UPDATE empleados SET estado = @InactiveState, updated_by_user_id = @UpdatedByUserId WHERE id = @Id AND estado = @ActiveState";
 
                 var command = new CommandDefinition(
                 query,
-                parameters: new { Id = id, ActiveState, InactiveState },
+                parameters: new { Id = id, ActiveState, InactiveState, UpdatedByUserId = actorUserId },
                 cancellationToken: cancellationToken);
 
                 return await connection.ExecuteAsync(command);

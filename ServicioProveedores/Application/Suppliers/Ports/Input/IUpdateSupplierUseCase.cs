@@ -5,7 +5,7 @@ namespace ServicioProveedores.Application.Suppliers.Ports.Input
 {
     public interface IUpdateSupplierUseCase
     {
-        Task<Result<int>> ExecuteAsync(UpdateSupplierDto dto, CancellationToken cancellationToken = default);
+        Task<Result<int>> ExecuteAsync(UpdateSupplierDto dto, long actorUserId, CancellationToken cancellationToken = default);
     }
 }
 

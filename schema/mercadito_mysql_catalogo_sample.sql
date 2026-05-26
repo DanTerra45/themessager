@@ -9,20 +9,21 @@ START TRANSACTION;
 -- ============================================================
 -- CATEGORIAS
 -- ============================================================
-INSERT INTO `categorias` (`codigo`, `nombre`, `descripcion`, `estado`)
+INSERT INTO `categorias` (`codigo`, `nombre`, `descripcion`, `estado`, `created_by_user_id`, `updated_by_user_id`)
 VALUES
-  ('C00001', 'BEBIDAS', 'Gaseosas, jugos, agua y bebidas listas para consumo', 'A'),
-  ('C00002', 'LACTEOS', 'Leche, yogurt, quesos y derivados refrigerados', 'A'),
-  ('C00003', 'ABARROTES', 'Productos de despensa y uso diario', 'A'),
-  ('C00004', 'LIMPIEZA', 'Productos para limpieza y desinfeccion del hogar', 'A'),
-  ('C00005', 'SNACKS', 'Galletas, chips, chocolates y botanas', 'A'),
-  ('C00006', 'PANADERIA', 'Panes y horneados de consumo diario', 'A'),
-  ('C00007', 'CONGELADOS', 'Productos conservados a baja temperatura', 'A'),
-  ('C00008', 'CARNES', 'Cortes y preparados de carne fresca o refrigerada', 'A')
+  ('C00001', 'BEBIDAS', 'Gaseosas, jugos, agua y bebidas listas para consumo', 'A', 1, 1),
+  ('C00002', 'LACTEOS', 'Leche, yogurt, quesos y derivados refrigerados', 'A', 1, 1),
+  ('C00003', 'ABARROTES', 'Productos de despensa y uso diario', 'A', 1, 1),
+  ('C00004', 'LIMPIEZA', 'Productos para limpieza y desinfeccion del hogar', 'A', 1, 1),
+  ('C00005', 'SNACKS', 'Galletas, chips, chocolates y botanas', 'A', 1, 1),
+  ('C00006', 'PANADERIA', 'Panes y horneados de consumo diario', 'A', 1, 1),
+  ('C00007', 'CONGELADOS', 'Productos conservados a baja temperatura', 'A', 1, 1),
+  ('C00008', 'CARNES', 'Cortes y preparados de carne fresca o refrigerada', 'A', 1, 1)
 AS `incoming_categoria`
 ON DUPLICATE KEY UPDATE
   `nombre` = `incoming_categoria`.`nombre`,
   `descripcion` = `incoming_categoria`.`descripcion`,
+  `updated_by_user_id` = `incoming_categoria`.`updated_by_user_id`,
   `estado` = 'A';
 
 UPDATE `category_code_sequence` AS `sequence_row`
@@ -36,36 +37,37 @@ SET `sequence_row`.`nextValue` = GREATEST(`sequence_row`.`nextValue`, `incoming_
 -- ============================================================
 -- PRODUCTS
 -- ============================================================
-INSERT INTO `products` (`nombre`, `descripcion`, `lote`, `fechaCaducidad`, `precio`, `stock`, `estado`)
+INSERT INTO `products` (`nombre`, `descripcion`, `lote`, `fechaCaducidad`, `precio`, `stock`, `estado`, `created_by_user_id`, `updated_by_user_id`)
 VALUES
-  ('Coca Cola 2L', 'Bebida gaseosa sabor cola 2 litros', '2000000001', '2027-12-31', 12.50, 30, 'A'),
-  ('Agua Mineral 2L', 'Agua purificada sin gas 2 litros', '2000000002', '2027-08-15', 5.00, 45, 'A'),
-  ('Leche Entera 1L', 'Leche entera larga vida', '2000000003', '2027-10-20', 8.90, 25, 'A'),
-  ('Yogurt Natural 1L', 'Yogurt natural sin azucar', '2000000004', '2027-09-15', 14.00, 12, 'A'),
-  ('Arroz 5Kg', 'Arroz de grano largo bolsa de 5kg', '2000000005', '2028-05-30', 42.00, 18, 'A'),
-  ('Aceite Vegetal 1L', 'Aceite vegetal refinado', '2000000006', '2027-11-01', 18.00, 22, 'A'),
-  ('Detergente 900g', 'Detergente en polvo multiuso 900g', '2000000007', '2028-01-10', 16.50, 20, 'A'),
-  ('Lavandina 2L', 'Desinfectante para pisos y banos', '2000000008', '2028-03-21', 9.50, 15, 'A'),
-  ('Papas Fritas 120g', 'Snack salado crocante 120 gramos', '2000000009', '2027-02-11', 7.00, 40, 'A'),
-  ('Chocolate Barra 80g', 'Chocolate de leche en barra 80 gramos', '2000000010', '2027-10-20', 5.20, 50, 'A'),
-  ('Pan Molde Integral', 'Pan de molde integral rebanado', '2000000011', '2027-06-28', 11.00, 10, 'A'),
-  ('Croissant Mantequilla', 'Croissant horneado con mantequilla', '2000000012', '2027-06-26', 4.50, 22, 'A'),
-  ('Nuggets Pollo 500g', 'Nuggets de pollo congelados 500 gramos', '2000000013', '2027-08-30', 24.00, 13, 'A'),
-  ('Vegetales Mixtos 1Kg', 'Mezcla de vegetales congelados 1kg', '2000000014', '2027-11-19', 21.50, 11, 'A'),
-  ('Carne Molida 1Kg', 'Carne molida fresca 1kg', '2000000015', '2027-07-18', 48.00, 7, 'A'),
-  ('Pechuga Pollo 1Kg', 'Pechuga de pollo refrigerada 1kg', '2000000016', '2027-07-16', 36.50, 9, 'A')
+  ('Coca Cola 2L', 'Bebida gaseosa sabor cola 2 litros', '2000000001', '2027-12-31', 12.50, 30, 'A', 1, 1),
+  ('Agua Mineral 2L', 'Agua purificada sin gas 2 litros', '2000000002', '2027-08-15', 5.00, 45, 'A', 1, 1),
+  ('Leche Entera 1L', 'Leche entera larga vida', '2000000003', '2027-10-20', 8.90, 25, 'A', 1, 1),
+  ('Yogurt Natural 1L', 'Yogurt natural sin azucar', '2000000004', '2027-09-15', 14.00, 12, 'A', 1, 1),
+  ('Arroz 5Kg', 'Arroz de grano largo bolsa de 5kg', '2000000005', '2028-05-30', 42.00, 18, 'A', 1, 1),
+  ('Aceite Vegetal 1L', 'Aceite vegetal refinado', '2000000006', '2027-11-01', 18.00, 22, 'A', 1, 1),
+  ('Detergente 900g', 'Detergente en polvo multiuso 900g', '2000000007', '2028-01-10', 16.50, 20, 'A', 1, 1),
+  ('Lavandina 2L', 'Desinfectante para pisos y banos', '2000000008', '2028-03-21', 9.50, 15, 'A', 1, 1),
+  ('Papas Fritas 120g', 'Snack salado crocante 120 gramos', '2000000009', '2027-02-11', 7.00, 40, 'A', 1, 1),
+  ('Chocolate Barra 80g', 'Chocolate de leche en barra 80 gramos', '2000000010', '2027-10-20', 5.20, 50, 'A', 1, 1),
+  ('Pan Molde Integral', 'Pan de molde integral rebanado', '2000000011', '2027-06-28', 11.00, 10, 'A', 1, 1),
+  ('Croissant Mantequilla', 'Croissant horneado con mantequilla', '2000000012', '2027-06-26', 4.50, 22, 'A', 1, 1),
+  ('Nuggets Pollo 500g', 'Nuggets de pollo congelados 500 gramos', '2000000013', '2027-08-30', 24.00, 13, 'A', 1, 1),
+  ('Vegetales Mixtos 1Kg', 'Mezcla de vegetales congelados 1kg', '2000000014', '2027-11-19', 21.50, 11, 'A', 1, 1),
+  ('Carne Molida 1Kg', 'Carne molida fresca 1kg', '2000000015', '2027-07-18', 48.00, 7, 'A', 1, 1),
+  ('Pechuga Pollo 1Kg', 'Pechuga de pollo refrigerada 1kg', '2000000016', '2027-07-16', 36.50, 9, 'A', 1, 1)
 AS `incoming_product`
 ON DUPLICATE KEY UPDATE
   `descripcion` = `incoming_product`.`descripcion`,
   `precio` = `incoming_product`.`precio`,
   `stock` = `incoming_product`.`stock`,
+  `updated_by_user_id` = `incoming_product`.`updated_by_user_id`,
   `estado` = 'A';
 
 -- ============================================================
 -- RELACIONES PRODUCTO-CATEGORIA
 -- ============================================================
-INSERT IGNORE INTO `categoriaDeProducto` (`productId`, `categoriaId`)
-SELECT p.`id`, c.`id`
+INSERT IGNORE INTO `categoriaDeProducto` (`productId`, `categoriaId`, `created_by_user_id`, `updated_by_user_id`)
+SELECT p.`id`, c.`id`, 1, 1
 FROM (
   SELECT 'Coca Cola 2L' AS `nombre`, '2000000001' AS `lote`, '2027-12-31' AS `fechaCaducidad`, 'C00001' AS `codigo`
   UNION ALL SELECT 'Agua Mineral 2L', '2000000002', '2027-08-15', 'C00001'

@@ -7,7 +7,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
 {
     public partial class ProductRepository
     {
-        public async Task<long> CreateAsync(ProductWithCategoriesWriteModel productWithCategories, CancellationToken cancellationToken = default)
+        public async Task<long> CreateAsync(ProductWithCategoriesWriteModel productWithCategories, long actorUserId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(productWithCategories);
 
@@ -24,7 +24,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                     transaction,
                     cancellationToken);
 
-                const string insertProductQuery = "INSERT INTO products (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, @ActiveState); SELECT LAST_INSERT_ID();";
+                const string insertProductQuery = "INSERT INTO products (nombre, descripcion, stock, lote, fechaCaducidad, precio, estado, created_by_user_id, updated_by_user_id) VALUES (@Name, @Description, @Stock, @Batch, @ExpirationDate, @Price, @ActiveState, @ActorUserId, @ActorUserId); SELECT LAST_INSERT_ID();";
                 var insertProductCommand = new CommandDefinition(
                     insertProductQuery,
                     parameters: new
@@ -35,7 +35,8 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                         product.Batch,
                         ExpirationDate = ToDateTime(product.ExpirationDate),
                         product.Price,
-                        ActiveState
+                        ActiveState,
+                        ActorUserId = actorUserId
                     },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
@@ -47,6 +48,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                     var insertCategoriesCommand = BuildInsertProductCategoriesCommand(
                         createdProductId,
                         normalizedCategoryIds,
+                        actorUserId,
                         transaction,
                         cancellationToken);
 
@@ -94,7 +96,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
             }
         }
 
-        public async Task<int> UpdateAsync(ProductWithCategoriesWriteModel productWithCategories, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAsync(ProductWithCategoriesWriteModel productWithCategories, long actorUserId, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(productWithCategories);
 
@@ -118,7 +120,8 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                         stock = @Stock,
                         lote = @Batch,
                         fechaCaducidad = @ExpirationDate,
-                        precio = @Price
+                        precio = @Price,
+                        updated_by_user_id = @UpdatedByUserId
                     WHERE id = @Id AND estado = @ActiveState";
 
                 var updateProductCommand = new CommandDefinition(
@@ -132,6 +135,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                         product.Batch,
                         ExpirationDate = ToDateTime(product.ExpirationDate),
                         product.Price,
+                        UpdatedByUserId = actorUserId,
                         ActiveState
                     },
                     transaction: transaction,
@@ -167,6 +171,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                     var insertCategoriesCommand = BuildInsertProductCategoriesCommand(
                         product.Id,
                         normalizedCategoryIds,
+                        actorUserId,
                         transaction,
                         cancellationToken);
 
@@ -214,7 +219,7 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
             }
         }
 
-        public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default)
         {
             using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
             using var transaction = connection.BeginTransaction();
@@ -228,12 +233,13 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
                 var relatedCategoryIds = (await connection.QueryAsync<long>(relatedCategoryIdsCommand)).AsList();
 
                 const string query = @"UPDATE products
-                    SET estado = @InactiveState
+                    SET estado = @InactiveState,
+                        updated_by_user_id = @UpdatedByUserId
                     WHERE id = @Id AND estado = @ActiveState";
 
                 var command = new CommandDefinition(
                     query,
-                    parameters: new { Id = id, ActiveState, InactiveState },
+                    parameters: new { Id = id, ActiveState, InactiveState, UpdatedByUserId = actorUserId },
                     transaction: transaction,
                     cancellationToken: cancellationToken);
 

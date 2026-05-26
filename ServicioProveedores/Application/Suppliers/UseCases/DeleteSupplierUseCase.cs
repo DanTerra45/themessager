@@ -7,7 +7,7 @@ namespace ServicioProveedores.Application.Suppliers.UseCases
 {
     public class DeleteSupplierUseCase(ISupplierRepository repository) : IDeleteSupplierUseCase
     {
-        public async Task<Result<int>> ExecuteAsync(long id, CancellationToken cancellationToken = default)
+        public async Task<Result<int>> ExecuteAsync(long id, long actorUserId, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -16,7 +16,15 @@ namespace ServicioProveedores.Application.Suppliers.UseCases
                     return Result.Failure<int>(new Dictionary<string, List<string>> { { "Id", new List<string> { "El ID debe ser válido" } } });
                 }
 
-                var rowsAffected = await repository.DeleteAsync(id, cancellationToken);
+                if (actorUserId <= 0)
+                {
+                    return Result.Failure<int>(new Dictionary<string, List<string>>
+                    {
+                        { "Validation", ["No se pudo resolver el actor de auditoría."] }
+                    });
+                }
+
+                var rowsAffected = await repository.DeleteAsync(id, actorUserId, cancellationToken);
                 if (rowsAffected == 0)
                 {
                     return Result.Failure<int>(new Dictionary<string, List<string>>

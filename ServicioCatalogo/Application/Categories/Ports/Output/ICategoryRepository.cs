@@ -11,9 +11,9 @@ namespace ServicioCatalogo.Application.Categories.Ports.Output
         Task<IReadOnlyList<CategoryModel>> GetCategoriesFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorCategoryId, string searchTerm, CancellationToken cancellationToken = default);
         Task<bool> HasCategoriesByCursorAsync(string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default);
         Task<CategoryModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
-        Task<long> CreateAsync(Category category, CancellationToken cancellationToken = default);
-        Task<int> UpdateAsync(Category category, CancellationToken cancellationToken = default);
-        Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default);
+        Task<long> CreateAsync(Category category, long actorUserId, CancellationToken cancellationToken = default);
+        Task<int> UpdateAsync(Category category, long actorUserId, CancellationToken cancellationToken = default);
+        Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default);
     }
 }
 

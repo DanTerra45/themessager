@@ -5,7 +5,7 @@ namespace ServicioProveedores.Application.Suppliers.Ports.Input
 {
     public interface IRegisterSupplierUseCase
     {
-        Task<Result<long>> ExecuteAsync(CreateSupplierDto dto, CancellationToken cancellationToken = default);
+        Task<Result<long>> ExecuteAsync(CreateSupplierDto dto, long actorUserId, CancellationToken cancellationToken = default);
     }
 }
 

@@ -125,7 +125,7 @@ public class SupplierRepository : ISupplierRepository
         }
     }
 
-    public async Task<long> CreateAsync(CreateSupplierDto entity, CancellationToken cancellationToken = default)
+    public async Task<long> CreateAsync(CreateSupplierDto entity, long actorUserId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -149,7 +149,9 @@ public class SupplierRepository : ISupplierRepository
                 Telefono = NormalizeValue(entity.Telefono),
                 State = ActiveState,
                 CreatedAt = now,
-                UpdatedAt = now
+                UpdatedAt = now,
+                CreatedByUserId = actorUserId,
+                UpdatedByUserId = actorUserId
             };
 
             await _suppliers.InsertOneAsync(document, cancellationToken: cancellationToken);
@@ -169,7 +171,7 @@ public class SupplierRepository : ISupplierRepository
         }
     }
 
-    public async Task<int> UpdateAsync(UpdateSupplierDto entity, CancellationToken cancellationToken = default)
+    public async Task<int> UpdateAsync(UpdateSupplierDto entity, long actorUserId, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -203,6 +205,7 @@ public class SupplierRepository : ISupplierRepository
                 .Set(supplier => supplier.Contacto, NormalizeValue(entity.Contacto))
                 .Set(supplier => supplier.Rubro, NormalizeValue(entity.Rubro))
                 .Set(supplier => supplier.Telefono, NormalizeValue(entity.Telefono))
+                .Set(supplier => supplier.UpdatedByUserId, actorUserId)
                 .Set(supplier => supplier.UpdatedAt, DateTime.UtcNow);
 
             var result = await _suppliers.UpdateOneAsync(
@@ -226,12 +229,13 @@ public class SupplierRepository : ISupplierRepository
         }
     }
 
-    public async Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default)
     {
         try
         {
             var update = Builders<SupplierDocument>.Update
                 .Set(supplier => supplier.State, InactiveState)
+                .Set(supplier => supplier.UpdatedByUserId, actorUserId)
                 .Set(supplier => supplier.UpdatedAt, DateTime.UtcNow);
 
             var filter = Builders<SupplierDocument>.Filter.And(
@@ -477,6 +481,12 @@ public class SupplierRepository : ISupplierRepository
 
         [BsonElement("updated_at")]
         public DateTime UpdatedAt { get; set; }
+
+        [BsonElement("created_by_user_id")]
+        public long CreatedByUserId { get; set; }
+
+        [BsonElement("updated_by_user_id")]
+        public long UpdatedByUserId { get; set; }
     }
 
     private sealed class SequenceDocument

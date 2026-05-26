@@ -123,7 +123,7 @@ namespace ServicioEmpleados.Application.Employees.UseCases
 
             try
             {
-                await employeeRepository.CreateAsync(validationResult.Value, cancellationToken);
+                await employeeRepository.CreateAsync(validationResult.Value, actor.UserId, cancellationToken);
                 return Result.Success();
             }
             catch (BusinessValidationException validationException)
@@ -175,7 +175,7 @@ namespace ServicioEmpleados.Application.Employees.UseCases
 
             try
             {
-                var affectedRows = await employeeRepository.UpdateAsync(validationResult.Value, cancellationToken);
+                var affectedRows = await employeeRepository.UpdateAsync(validationResult.Value, actor.UserId, cancellationToken);
                 if (affectedRows == 0)
                 {
                     return Result.Failure(new Dictionary<string, List<string>>
@@ -224,7 +224,7 @@ namespace ServicioEmpleados.Application.Employees.UseCases
 
             try
             {
-                var affectedRows = await employeeRepository.DeleteAsync(employeeId, cancellationToken);
+                var affectedRows = await employeeRepository.DeleteAsync(employeeId, actor.UserId, cancellationToken);
                 if (affectedRows == 0)
                 {
                     return Result.Failure(new Dictionary<string, List<string>>

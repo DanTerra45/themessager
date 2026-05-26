@@ -12,8 +12,16 @@ namespace ServicioProveedores.Application.Suppliers.UseCases
         ISupplierRepository repository,
         IValidator<CreateSupplierDto, SupplierDto> validator) : IRegisterSupplierUseCase
     {
-        public async Task<Result<long>> ExecuteAsync(CreateSupplierDto dto, CancellationToken cancellationToken = default)
+        public async Task<Result<long>> ExecuteAsync(CreateSupplierDto dto, long actorUserId, CancellationToken cancellationToken = default)
         {
+            if (actorUserId <= 0)
+            {
+                return Result.Failure<long>(new Dictionary<string, List<string>>
+                {
+                    { "Validation", ["No se pudo resolver el actor de auditoría."] }
+                });
+            }
+
             var validationResult = validator.Validate(dto);
             if (validationResult.IsFailure)
             {
@@ -33,7 +41,7 @@ namespace ServicioProveedores.Application.Suppliers.UseCases
                     Telefono = supplier.Telefono
                 };
 
-                var id = await repository.CreateAsync(normalizedDto, cancellationToken);
+                var id = await repository.CreateAsync(normalizedDto, actorUserId, cancellationToken);
                 return Result.Success(id);
             }
             catch (BusinessValidationException validationException)

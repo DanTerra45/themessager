@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS empleados (
   cargo VARCHAR(20) NOT NULL,
   numerocontacto VARCHAR(40) NOT NULL,
   estado CHAR(1) NOT NULL DEFAULT 'A',
+  created_by_user_id BIGINT NOT NULL,
+  updated_by_user_id BIGINT NOT NULL,
   activounico SMALLINT GENERATED ALWAYS AS (CASE WHEN estado = 'A' THEN 1 ELSE NULL::SMALLINT END) STORED,
   fecharegistro TIMESTAMP NOT NULL DEFAULT NOW(),
   ultimaactualizacion TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -23,7 +25,9 @@ CREATE TABLE IF NOT EXISTS empleados (
   CONSTRAINT chk_empleados_contacto_formato CHECK (numerocontacto ~ '^[0-9]{8}$'),
   CONSTRAINT chk_empleados_cargo CHECK (cargo IN ('Cajero', 'Inventario')),
   CONSTRAINT chk_empleados_estado CHECK (estado IN ('A', 'I')),
-  CONSTRAINT chk_empleados_complemento_formato CHECK (complemento IS NULL OR complemento ~ '^[0-9][A-Z]$')
+  CONSTRAINT chk_empleados_complemento_formato CHECK (complemento IS NULL OR complemento ~ '^[0-9][A-Z]$'),
+  CONSTRAINT chk_empleados_created_by_valido CHECK (created_by_user_id > 0),
+  CONSTRAINT chk_empleados_updated_by_valido CHECK (updated_by_user_id > 0)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_empleados_activos_ci_complemento
