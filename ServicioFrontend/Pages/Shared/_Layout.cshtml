@@ -45,10 +45,10 @@
                             <section class="nav-auth-actions">
                                 @if (navigationMenu.Auth.IsAuthenticated)
                                 {
-                                    <span class="b-btn b-btn-secondary nav-auth-chip">
+                                    <a class="b-btn b-btn-secondary nav-auth-chip" href="@navigationMenu.Auth.ProfilePath" title="Perfil y contraseña" aria-label="Perfil y contraseña">
                                         <i class="bi bi-person-circle"></i>
                                         <span>@navigationMenu.Auth.Username</span>
-                                    </span>
+                                    </a>
                                     <form method="post" asp-page="@navigationMenu.Auth.LogoutPagePath" asp-page-handler="SignOut" class="d-inline-flex">
                                         <input type="hidden" name="returnUrl" value="@navigationMenu.Auth.ReturnUrl" />
                                         <button type="submit" class="b-btn b-btn-secondary nav-auth-icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión">

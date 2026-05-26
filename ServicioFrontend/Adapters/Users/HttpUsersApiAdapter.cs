@@ -121,17 +121,15 @@ public sealed class HttpUsersApiAdapter(
             cancellationToken);
     }
 
-    public Task<ApiResponseDto<bool>> ForcePasswordChangeAsync(
-        long userId,
-        ForcePasswordChangeRequestDto request,
-        ApiActorContextDto actor,
+    public Task<ApiResponseDto<bool>> ChangePasswordAsync(
+        ChangePasswordRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<object, bool>(
+        return SendAsync<ChangePasswordRequestDto, bool>(
             HttpMethod.Put,
-            "api/auth/reset-password",
-            new { },
-            actor,
+            "api/auth/change-password",
+            request,
+            actor: null,
             cancellationToken);
     }
 

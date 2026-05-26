@@ -113,6 +113,7 @@ public sealed class NavigationMenuService : INavigationMenuService
             {
                 IsAuthenticated = isAuthenticated,
                 Username = ResolveUsername(user),
+                ProfilePath = "/ChangePassword",
                 ReturnUrl = "/"
             }
         };

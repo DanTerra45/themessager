@@ -100,6 +100,7 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserStoryService>();
 builder.Services.AddScoped<RegisterUserUseCase>();
 builder.Services.AddScoped<LoginUseCase>();
+builder.Services.AddScoped<ChangePasswordUseCase>();
 builder.Services.AddScoped<PasswordResetTokenService>();
 builder.Services.AddScoped<RequestPasswordResetUseCase>();
 builder.Services.AddScoped<ResetPasswordUseCase>();

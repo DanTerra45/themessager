@@ -42,9 +42,7 @@ public interface IUsersApiAdapter
         CompletePasswordResetRequestDto request,
         CancellationToken cancellationToken = default);
 
-    Task<ApiResponseDto<bool>> ForcePasswordChangeAsync(
-        long userId,
-        ForcePasswordChangeRequestDto request,
-        ApiActorContextDto actor,
+    Task<ApiResponseDto<bool>> ChangePasswordAsync(
+        ChangePasswordRequestDto request,
         CancellationToken cancellationToken = default);
 }

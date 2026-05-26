@@ -33,6 +33,7 @@ public sealed class NavigationAuthViewModel
 {
     public bool IsAuthenticated { get; init; }
     public string Username { get; init; } = "Usuario";
+    public string ProfilePath { get; init; } = "/ChangePassword";
     public string LoginPath { get; init; } = "/Login";
     public string LogoutPagePath { get; init; } = "/Account/Login";
     public string ReturnUrl { get; init; } = "/";
