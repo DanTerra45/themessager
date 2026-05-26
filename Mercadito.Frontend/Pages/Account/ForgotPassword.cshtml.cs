@@ -33,6 +33,6 @@ public sealed class ForgotPasswordModel(IUsersApiAdapter usersApiAdapter) : Fron
 
     private string BuildResetUrlBase()
     {
-        return BuildAbsolutePathUrl("/ResetPassword").ToString();
+        return BuildAbsolutePathUrl("/reset-password").ToString();
     }
 }

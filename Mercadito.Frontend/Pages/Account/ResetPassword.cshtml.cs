@@ -15,15 +15,25 @@ public sealed class ResetPasswordModel(IUsersApiAdapter usersApiAdapter) : Front
     public string Username { get; private set; } = string.Empty;
     public bool IsTokenValid { get; private set; }
 
-    public async Task<IActionResult> OnGetAsync(string? token = null)
+    public async Task<IActionResult> OnGetAsync(string? token = null, string? username = null)
     {
         if (!string.IsNullOrWhiteSpace(token))
         {
             PasswordReset.Token = token.Trim();
         }
 
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            Username = username.Trim();
+        }
+
         IsTokenValid = !string.IsNullOrWhiteSpace(PasswordReset.Token);
-        Username = IsTokenValid ? "tu usuario" : string.Empty;
+
+        if (!IsTokenValid)
+        {
+            Username = string.Empty;
+        }
+
         return Page();
     }
 

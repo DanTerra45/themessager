@@ -160,7 +160,7 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
 
     private string BuildResetUrlBase()
     {
-        return BuildAbsolutePathUrl("/ResetPassword").ToString();
+        return BuildAbsolutePathUrl("/reset-password").ToString();
     }
 
     private string ResolveUsername(long userId)

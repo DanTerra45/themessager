@@ -17,11 +17,11 @@
             <input type="hidden" asp-for="ReturnUrl" />
 
             <section class="mb-3">
-                <label asp-for="Email" class="form-label fw-bold">
-                    Email
-                    <span asp-validation-for="Email" class="validation-icon-inline"></span>
+                <label asp-for="EmailOrUsername" class="form-label fw-bold">
+                    Email o Nombre de Usuario
+                    <span asp-validation-for="EmailOrUsername" class="validation-icon-inline"></span>
                 </label>
-                <input asp-for="Email" class="form-control" autocomplete="email" data-normalize="trim-lower" />
+                <input asp-for="EmailOrUsername" class="form-control" autocomplete="email" data-normalize="trim-lower" />
             </section>
 
             <section class="mb-3">

@@ -18,9 +18,9 @@ namespace Mercadito.Frontend.Pages.Account;
 public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageModel
 {
     [BindProperty]
-    [Required(ErrorMessage = "El email es obligatorio.")]
+    [Required(ErrorMessage = "El email o nombre de usuario es obligatorio.")]
     [EmailAddress(ErrorMessage = "El email no tiene un formato válido.")]
-    public string Email { get; set; } = string.Empty;
+    public string EmailOrUsername { get; set; } = string.Empty;
 
     [BindProperty]
     [Required(ErrorMessage = "La contraseña es obligatoria.")]
@@ -45,7 +45,7 @@ public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageM
         ReturnUrl = NormalizeReturnUrl(ReturnUrl);
 
         var result = await usersApiAdapter.LoginAsync(
-            new LoginRequestDto(Email, Password),
+            new LoginRequestDto(EmailOrUsername, Password),
             HttpContext.RequestAborted);
 
         if (!result.Success || result.Data == null)
