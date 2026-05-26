@@ -118,8 +118,6 @@
 
             var userIdInput = document.getElementById('TemporaryPassword_UserId');
             var usernameInput = document.getElementById('TemporaryPassword_Username');
-            var passwordInput = document.getElementById('TemporaryPassword_TemporaryPassword');
-            var confirmInput = document.getElementById('TemporaryPassword_ConfirmTemporaryPassword');
 
             if (userIdInput) {
                 userIdInput.value = trigger.getAttribute('data-user-id') || '';
@@ -128,18 +126,10 @@
             if (usernameInput) {
                 usernameInput.value = trigger.getAttribute('data-username') || '';
             }
-
-            if (passwordInput) {
-                passwordInput.value = '';
-            }
-
-            if (confirmInput) {
-                confirmInput.value = '';
-            }
         });
     }
 
-    function bindDeactivateModal() {
+    function bindDeactivateModal(preserveReason) {
         var deactivateModal = document.getElementById('deactivateUserModal');
         if (!deactivateModal) {
             return;
@@ -153,6 +143,7 @@
 
             var userIdInput = document.getElementById('DeactivateUserId');
             var usernameLabel = document.getElementById('deactivateUserName');
+            var reasonInput = document.getElementById('DeactivateReason');
 
             if (userIdInput) {
                 userIdInput.value = trigger.getAttribute('data-user-id') || '';
@@ -160,6 +151,10 @@
 
             if (usernameLabel) {
                 usernameLabel.textContent = trigger.getAttribute('data-username') || 'este usuario';
+            }
+
+            if (reasonInput && !preserveReason) {
+                reasonInput.value = '';
             }
         });
     }
@@ -173,14 +168,19 @@
             return;
         }
 
-        bindSendResetLinkModal();
-        bindTemporaryPasswordModal();
-        bindDeactivateModal();
-
         var configElement = document.getElementById('usersPageConfig');
         if (!configElement) {
+            bindSendResetLinkModal();
+            bindTemporaryPasswordModal();
+            bindDeactivateModal(false);
             return;
         }
+
+        var preserveDeactivateReason = configElement.dataset.preserveDeactivateReason === 'true';
+
+        bindSendResetLinkModal();
+        bindTemporaryPasswordModal();
+        bindDeactivateModal(preserveDeactivateReason);
 
         showModalIfNeeded(configElement.dataset.showCreateModal === 'true', 'nuevoUsuarioModal');
         showModalIfNeeded(configElement.dataset.showSendResetLinkModal === 'true', 'sendResetLinkModal');

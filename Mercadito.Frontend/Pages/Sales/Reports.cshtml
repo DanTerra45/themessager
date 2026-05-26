@@ -9,7 +9,7 @@
     var paymentMethodLabel = string.IsNullOrWhiteSpace(Model.PaymentMethodFilter) ? "Todos" : Model.PaymentMethodFilter;
     var allStatusOptionClass = string.IsNullOrWhiteSpace(Model.StatusFilter) ? "reports-select-option is-selected" : "reports-select-option";
     var allPaymentMethodOptionClass = string.IsNullOrWhiteSpace(Model.PaymentMethodFilter) ? "reports-select-option is-selected" : "reports-select-option";
-    var canCloseDailyCash = User.IsInRole("Admin") || User.IsInRole("Operador");
+    var canCloseDailyCash = User.IsInRole("Admin") || User.IsInRole("Operator");
 }
 
 @section Styles {

@@ -13,7 +13,11 @@
     var selectedRoleLabel = "Seleccione un rol";
     if (!string.IsNullOrWhiteSpace(Model.NewUser.Role))
     {
-        selectedRoleLabel = Model.NewUser.Role;
+        selectedRoleLabel = Model.NewUser.Role switch
+        {
+            "Operator" => "Operador",
+            _ => Model.NewUser.Role
+        };
     }
 }
 
@@ -97,7 +101,7 @@
                             </button>
                             <ul class="dropdown-menu w-100 p-0 shadow-sm category-dropdown-menu users-dropdown-menu" aria-labelledby="newUserRoleDropdown">
                                 <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Admin" data-label="Admin">Admin</button></li>
-                                <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Operador" data-label="Operador">Operador</button></li>
+                                <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Operator" data-label="Operador">Operador</button></li>
                                 <li><button type="button" class="dropdown-item users-select-item m-0" data-users-dropdown="role" data-value="Auditor" data-label="Auditor">Auditor</button></li>
                             </ul>
                         </section>

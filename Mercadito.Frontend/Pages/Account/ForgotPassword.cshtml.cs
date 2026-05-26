@@ -14,8 +14,6 @@ public sealed class ForgotPasswordModel(IUsersApiAdapter usersApiAdapter) : Fron
 
     public async Task<IActionResult> OnPostAsync()
     {
-        PasswordReset.ResetUrlBase = BuildResetUrlBase();
-
         var result = await usersApiAdapter.RequestPasswordResetAsync(PasswordReset, HttpContext.RequestAborted);
         if (!result.Success)
         {

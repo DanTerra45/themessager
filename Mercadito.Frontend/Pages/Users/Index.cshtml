@@ -43,9 +43,12 @@
                 {
                     var isCurrentUser = string.Equals(currentUsername, user.UserName, StringComparison.OrdinalIgnoreCase);
                     var isAdminUser = string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase);
-                    var canDeactivateUser = !isCurrentUser && !isAdminUser;
+                    var isActiveUser = user.IsActive || string.Equals(user.State, "Active", StringComparison.OrdinalIgnoreCase);
+                    var canDeactivateUser = isActiveUser && !isCurrentUser && !isAdminUser;
                     var canSendResetLink = !string.IsNullOrWhiteSpace(user.Email);
-                    var deactivateBlockedReason = isCurrentUser
+                    var deactivateBlockedReason = !isActiveUser
+                        ? "El usuario ya está dado de baja."
+                        : isCurrentUser
                         ? "No puedes dar de baja tu propio usuario."
                         : "No se puede dar de baja un usuario administrador.";
                     var sendResetLinkBlockedReason = "El usuario no tiene un correo asociado.";
@@ -169,6 +172,7 @@
          data-show-send-reset-link-modal="@Model.ShowSendResetLinkModal.ToString().ToLowerInvariant()"
          data-show-temporary-password-modal="@Model.ShowTemporaryPasswordModal.ToString().ToLowerInvariant()"
          data-show-deactivate-modal="@Model.ShowDeactivateModal.ToString().ToLowerInvariant()"
+         data-preserve-deactivate-reason="@Model.PreserveDeactivateReason.ToString().ToLowerInvariant()"
          hidden></section>
 
 @section Scripts {

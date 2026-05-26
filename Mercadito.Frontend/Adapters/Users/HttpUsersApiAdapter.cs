@@ -1,14 +1,24 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Mercadito.Frontend.Adapters.Common;
+using Mercadito.Frontend.Authentication;
 using Mercadito.Frontend.Dtos.Common;
 using Mercadito.Frontend.Dtos.Users;
+using Microsoft.AspNetCore.Http;
 
 namespace Mercadito.Frontend.Adapters.Users;
 
-public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : IUsersApiAdapter
+public sealed class HttpUsersApiAdapter : IUsersApiAdapter
 {
-    private readonly HttpClient _httpClient = httpClientFactory.CreateClient("UsersApi");
+    private readonly HttpClient _httpClient;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public HttpUsersApiAdapter(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor)
+    {
+        _httpClient = httpClientFactory.CreateClient("UsersApi");
+        _httpContextAccessor = httpContextAccessor;
+    }
 
     public Task<ApiResponseDto<IReadOnlyList<UserSummaryDto>>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -35,41 +45,40 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
 
     public Task<ApiResponseDto<bool>> SendResetLinkAsync(
         long userId,
-        SendPasswordResetLinkRequestDto request,
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<SendPasswordResetLinkRequestDto, bool>(
-            HttpMethod.Post,
-            $"api/users/{userId}/send-reset-link",
-            request,
+        return SendAsync<object, bool>(
+            HttpMethod.Put,
+            $"api/auth/send-reset-password/{userId}",
+            new { },
             actor,
             cancellationToken);
     }
 
     public Task<ApiResponseDto<bool>> AssignTemporaryPasswordAsync(
         long userId,
-        AssignTemporaryPasswordRequestDto request,
-        ApiActorContextDto actor,
-        CancellationToken cancellationToken = default)
-    {
-        return SendAsync<AssignTemporaryPasswordRequestDto, bool>(
-            HttpMethod.Post,
-            $"api/users/{userId}/temporary-password",
-            request,
-            actor,
-            cancellationToken);
-    }
-
-    public Task<ApiResponseDto<bool>> DeactivateUserAsync(
-        long userId,
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default)
     {
         return SendAsync<object, bool>(
-            HttpMethod.Post,
-            $"api/users/{userId}/deactivate",
+            HttpMethod.Patch,
+            $"api/users/assign/temporary-password/{userId}",
             new { },
+            actor,
+            cancellationToken);
+    }
+
+    public Task<ApiResponseDto<bool>> DisableUserAsync(
+        long userId,
+        DisableUserRequestDto request,
+        ApiActorContextDto actor,
+        CancellationToken cancellationToken = default)
+    {
+        return SendAsync<DisableUserRequestDto, bool>(
+            HttpMethod.Delete,
+            $"api/users/{userId}",
+            request,
             actor,
             cancellationToken);
     }
@@ -88,7 +97,13 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
         RequestPasswordResetRequestDto request,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(ApiResponseDto<bool>.Fail("El servicio de usuarios nuevo todavía no expone el flujo público de restablecimiento."));
+        Console.WriteLine($"Requesting password reset for: {request.EmailOrUsername}"); // Debug log
+        return SendAsync<RequestPasswordResetRequestDto, bool>(
+            HttpMethod.Put,
+            "api/users/forgot-password",
+            request,
+            actor: null,
+            cancellationToken);
     }
 
     public Task<ApiResponseDto<PasswordResetTokenDto>> ValidatePasswordResetTokenAsync(
@@ -165,14 +180,35 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
             };
 
             ActorHeaderWriter.Apply(message, actor);
+            ApplyAuthorizationHeader(message);
 
             using var response = await _httpClient.SendAsync(message, cancellationToken);
-            var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponseDto<TResponse>>(
+            if (response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponseDto<TResponse>>(
+                        cancellationToken: cancellationToken);
+
+                    if (apiResponse != null)
+                    {
+                        return apiResponse;
+                    }
+                }
+                catch (JsonException)
+                {
+                    return new ApiResponseDto<TResponse>(true, default, []);
+                }
+
+                return new ApiResponseDto<TResponse>(true, default, []);
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<ApiResponseDto<TResponse>>(
                 cancellationToken: cancellationToken);
 
-            if (apiResponse != null)
+            if (errorResponse != null)
             {
-                return apiResponse;
+                return errorResponse;
             }
 
             return ApiResponseDto<TResponse>.Fail("El servicio de usuarios no devolvió una respuesta válida.");
@@ -187,4 +223,14 @@ public sealed class HttpUsersApiAdapter(IHttpClientFactory httpClientFactory) : 
         }
     }
 
+    private void ApplyAuthorizationHeader(HttpRequestMessage message)
+    {
+        var accessToken = _httpContextAccessor.HttpContext?.User.FindFirst(FrontendUserClaimTypes.AccessToken)?.Value;
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return;
+        }
+
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+    }
 }

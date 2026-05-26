@@ -10,7 +10,7 @@ public sealed class NavigationMenuService : INavigationMenuService
 
         var isAuthenticated = user.Identity?.IsAuthenticated == true;
         var isAdmin = user.IsInRole("Admin");
-        var isOperator = user.IsInRole("Operador");
+        var isOperator = user.IsInRole("Operator");
         var isAuditor = user.IsInRole("Auditor");
 
         var items = new List<NavigationTopLevelItem>

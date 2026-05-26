@@ -16,18 +16,17 @@ public interface IUsersApiAdapter
 
     Task<ApiResponseDto<bool>> SendResetLinkAsync(
         long userId,
-        SendPasswordResetLinkRequestDto request,
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default);
 
     Task<ApiResponseDto<bool>> AssignTemporaryPasswordAsync(
         long userId,
-        AssignTemporaryPasswordRequestDto request,
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default);
 
-    Task<ApiResponseDto<bool>> DeactivateUserAsync(
+    Task<ApiResponseDto<bool>> DisableUserAsync(
         long userId,
+        DisableUserRequestDto request,
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default);
 

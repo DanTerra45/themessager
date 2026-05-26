@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Mercadito.Frontend.Adapters.Users;
 using Mercadito.Frontend.Dtos.Common;
 using Mercadito.Frontend.Dtos.Users;
@@ -20,12 +21,18 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
     [BindProperty]
     public long DeactivateUserId { get; set; }
 
+    [BindProperty]
+    [Required(ErrorMessage = "La razón de baja es obligatoria.")]
+    [StringLength(250, ErrorMessage = "La razón de baja no puede exceder 250 caracteres.")]
+    public string DeactivateReason { get; set; } = string.Empty;
+
     public IReadOnlyList<UserSummaryDto> ActiveUsers { get; private set; } = [];
     public IReadOnlyList<AvailableEmployeeDto> AvailableEmployees { get; private set; } = [];
     public bool ShowCreateModal { get; private set; }
     public bool ShowSendResetLinkModal { get; private set; }
     public bool ShowTemporaryPasswordModal { get; private set; }
     public bool ShowDeactivateModal { get; private set; }
+    public bool PreserveDeactivateReason { get; private set; }
     public string DeactivateUsername { get; private set; } = string.Empty;
 
     public async Task OnGetAsync()
@@ -60,7 +67,6 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
 
         var result = await usersApiAdapter.SendResetLinkAsync(
             SendResetLink.UserId,
-            SendResetLink,
             BuildActorContext(),
             HttpContext.RequestAborted);
 
@@ -80,15 +86,11 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
     {
         var result = await usersApiAdapter.AssignTemporaryPasswordAsync(
             TemporaryPassword.UserId,
-            TemporaryPassword,
             BuildActorContext(),
             HttpContext.RequestAborted);
 
         if (!result.Success)
         {
-            ApplyTemporaryPasswordErrors(result);
-            TemporaryPassword.TemporaryPassword = string.Empty;
-            TemporaryPassword.ConfirmTemporaryPassword = string.Empty;
             ShowTemporaryPasswordModal = true;
             await LoadPageDataAsync();
             return Page();
@@ -100,14 +102,19 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
 
     public async Task<IActionResult> OnPostDeactivateAsync()
     {
-        var result = await usersApiAdapter.DeactivateUserAsync(
+        var result = await usersApiAdapter.DisableUserAsync(
             DeactivateUserId,
+            new DisableUserRequestDto
+            {
+                Reason = DeactivateReason
+            },
             BuildActorContext(),
             HttpContext.RequestAborted);
 
         if (!result.Success)
         {
             TempData["ErrorMessage"] = FirstErrorOrDefault(result, "No se pudo dar de baja al usuario.");
+            PreserveDeactivateReason = true;
 
             if (NeedsDeactivateModal(TempData["ErrorMessage"]?.ToString()))
             {
@@ -149,33 +156,6 @@ public sealed class IndexModel(IUsersApiAdapter usersApiAdapter, ILogger<IndexMo
         logger.LogWarning("No se pudo cargar el listado de empleados disponibles: {Errors}", string.Join(" | ", employeesResult.Errors));
         TempData["ErrorMessage"] = "No se pudo cargar el listado de empleados disponibles.";
         AvailableEmployees = [];
-    }
-
-    private void ApplyTemporaryPasswordErrors(ApiResponseDto<bool> result)
-    {
-        if (result.ValidationErrors.Count == 0)
-        {
-            ApplyApiErrors(result, nameof(TemporaryPassword));
-            return;
-        }
-
-        foreach (var error in result.ValidationErrors)
-        { 
-            var key = error.Key switch
-            {
-                "Password" => $"{nameof(TemporaryPassword)}.{nameof(TemporaryPassword.TemporaryPassword)}",
-                "ConfirmPassword" => $"{nameof(TemporaryPassword)}.{nameof(TemporaryPassword.ConfirmTemporaryPassword)}",
-                _ => $"{nameof(TemporaryPassword)}.{error.Key}"
-            };
-
-            foreach (var message in error.Value)
-            {
-                if (!string.IsNullOrWhiteSpace(message))
-                {
-                    ModelState.AddModelError(key, message);
-                }
-            }
-        }
     }
 
     private string BuildResetUrlBase()

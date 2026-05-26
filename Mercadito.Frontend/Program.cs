@@ -38,11 +38,13 @@ builder.Services
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
-    .AddPolicy("OperatorOrAdmin", policy => policy.RequireRole("Admin", "Operador"))
+    .AddPolicy("OperatorOrAdmin", policy => policy.RequireRole("Admin", "Operator"))
     .AddPolicy("AuditorOrAdmin", policy => policy.RequireRole("Admin", "Auditor"))
-    .AddPolicy("SalesViewer", policy => policy.RequireRole("Admin", "Operador", "Auditor"));
+    .AddPolicy("SalesViewer", policy => policy.RequireRole("Admin", "Operator", "Auditor"));
 
 builder.Services.AddHttpClient("SalesApi", client =>
 {

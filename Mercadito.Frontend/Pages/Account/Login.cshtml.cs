@@ -68,6 +68,8 @@ public sealed class LoginModel(IUsersApiAdapter usersApiAdapter) : FrontendPageM
             claims.Add(new Claim(FrontendUserClaimTypes.MustChangePassword, "true"));
         }
 
+        claims.Add(new Claim(FrontendUserClaimTypes.AccessToken, user.AccessToken));
+
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),

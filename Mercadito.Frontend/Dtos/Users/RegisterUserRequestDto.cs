@@ -16,7 +16,7 @@ public sealed class RegisterUserRequestDto
     public long? EmployeeId { get; set; }
 
     [Required(ErrorMessage = "El rol es obligatorio.")]
-    [RegularExpression("^(Admin|Operador|Auditor)$", ErrorMessage = "El rol debe ser Admin, Operador o Auditor.")]
+    [RegularExpression("^(Admin|Operator|Operador|Auditor)$", ErrorMessage = "El rol debe ser Admin, Operator o Auditor.")]
     public string Role { get; set; } = string.Empty;
 
     public string SetupUrlBase { get; set; } = string.Empty;
