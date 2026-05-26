@@ -79,8 +79,7 @@ public sealed class HttpUsersApiAdapter(
         ApiActorContextDto actor,
         CancellationToken cancellationToken = default)
     {
-        return SendAsync<DeactivateUserRequestDto, bool>(
-            HttpMethod.Delete,
+        return SendDeleteAsync(
             $"api/users/{userId}",
             request,
             actor,
@@ -180,6 +179,42 @@ public sealed class HttpUsersApiAdapter(
         catch (Exception exception) when (exception is HttpRequestException or JsonException or NotSupportedException or OperationCanceledException)
         {
             return ApiResponseDto<TResponse>.Fail("No se pudo conectar con el servicio de usuarios.");
+        }
+    }
+
+    private async Task<ApiResponseDto<bool>> SendDeleteAsync<TRequest>(
+        string requestUri,
+        TRequest request,
+        ApiActorContextDto? actor,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Delete, requestUri)
+            {
+                Content = JsonContent.Create(request)
+            };
+
+            ActorHeaderWriter.Apply(message, actor);
+            ApplyAccessToken(message);
+
+            using var response = await _httpClient.SendAsync(message, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Compatibilidad: algunos backends de DELETE devuelven texto plano u otro envelope.
+                return new ApiResponseDto<bool>(true, true, []);
+            }
+
+            return await ParseApiResponseAsync<bool>(response, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or NotSupportedException or OperationCanceledException)
+        {
+            return ApiResponseDto<bool>.Fail("No se pudo conectar con el servicio de usuarios.");
         }
     }
 
