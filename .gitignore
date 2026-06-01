@@ -7,6 +7,7 @@
 .agents/
 .gemini/
 .claude/
+.kilo/
 
 # dotenv files
 .env

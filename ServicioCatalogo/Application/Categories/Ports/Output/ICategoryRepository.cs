@@ -1,0 +1,19 @@
+﻿using ServicioCatalogo.Application.Categories.Models;
+using ServicioCatalogo.Domain.Categories.Entities;
+
+namespace ServicioCatalogo.Application.Categories.Ports.Output
+{
+    public interface ICategoryRepository
+    {
+        Task<IReadOnlyList<CategoryModel>> GetAllCategoriesAsync(CancellationToken cancellationToken = default);
+        Task<string> GetNextCategoryCodeAsync(CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<CategoryModel>> GetCategoriesByCursorAsync(int pageSize, string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<CategoryModel>> GetCategoriesFromAnchorAsync(int pageSize, string sortBy, string sortDirection, long anchorCategoryId, string searchTerm, CancellationToken cancellationToken = default);
+        Task<bool> HasCategoriesByCursorAsync(string sortBy, string sortDirection, long cursorCategoryId, bool isNextPage, string searchTerm, CancellationToken cancellationToken = default);
+        Task<CategoryModel?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+        Task<long> CreateAsync(Category category, long actorUserId, CancellationToken cancellationToken = default);
+        Task<int> UpdateAsync(Category category, long actorUserId, CancellationToken cancellationToken = default);
+        Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default);
+    }
+}
+
