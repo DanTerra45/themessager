@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:alpine
+    container_name: servicio_ventas_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=my_secret_password
+      - POSTGRES_DB=sales_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Mapea el script SQL local para que se ejecute al iniciar
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Persistencia de datos local (opcional, descomentar si deseas guardar datos al apagar)
+      # - pgdata:/var/lib/postgresql/data
+
+# volumes:
+#   pgdata:

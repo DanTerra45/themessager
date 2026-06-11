@@ -1,12 +1,13 @@
+using Domain.Entities.Enums;
+
 namespace Domain.Entities{
   public record Sale(
      int Id,
      int CustomerId,
      int OperatorId,
-     Decimal TotalPrice,
-     Datetime? CreatedAt,
+     decimal TotalPrice,
+     DateTime CreatedAt,
      SaleState State
       ){
-      public Datetime CreatedAt => Datetime.now();
   }
 }

@@ -1,8 +1,25 @@
+using Application.Factory;
+using Application.Options;
+using Application.UseCases;
+using Domain.Database;
+using Domain.Database.Fields;
+using Domain.Entities;
+using Domain.Factories;
+using Infrastructure.Database;
+using Infrastructure.Repository;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+builder.Services.AddScoped<IDbConnectionFactory, NpgsqlConnectionFactory>();
+builder.Services.AddScoped<SaleRepository>();
+builder.Services.AddScoped<CustomerRepository>();
+builder.Services.AddScoped<ICrudRepository<SaleWithDetails, int, SaleFields, SaleOptions>, SaleRepository>();
+builder.Services.AddScoped<ICrudRepository<Customer, int, CustomerFields, CustomerOptions>, CustomerRepository>();
+builder.Services.AddScoped<IRepositoryFactory<SaleWithDetails, int, SaleFields, SaleOptions>, SaleFactory>();
+builder.Services.AddScoped<GetAllSalesUseCase>();
 
 var app = builder.Build();
 
@@ -12,30 +29,21 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+var httpsPortConfigured = !string.IsNullOrWhiteSpace(app.Configuration["ASPNETCORE_HTTPS_PORT"])
+    || !string.IsNullOrWhiteSpace(app.Configuration["HTTPS_PORT"]);
 
-var summaries = new[]
+if (httpsPortConfigured)
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    app.UseHttpsRedirection();
+}
 
-app.MapGet("/weatherforecast", () =>
+app.MapControllers();
+
+app.MapGet("/health", () => Results.Ok(new
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    service = "ServicioVentas",
+    status = "Healthy",
+    timestamp = DateTimeOffset.UtcNow
+}));
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
