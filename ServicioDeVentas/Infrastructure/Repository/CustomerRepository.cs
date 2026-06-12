@@ -17,6 +17,12 @@ namespace Infrastructure.Repository
         ) : base(db, "customer", logger)
         {
         }
-        
+        public async override Task<Result<Customer>> GetByIdAsync(int id, CustomerOptions? options)
+        {
+          var customerOptions= options ?? new CustomerOptions();
+          customerOptions.AddFilter(CustomerFields.Id,FilterOperator.Equals,id);
+          var result = await base.GetOneAsync(customerOptions);
+          return result;
+        }
     }
 }

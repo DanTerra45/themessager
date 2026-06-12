@@ -15,6 +15,7 @@ using ServicioCatalogo.Domain.Categories.Factories;
 using ServicioCatalogo.Domain.Products.Factories;
 using ServicioCatalogo.Infrastructure.Audit.Persistence;
 using ServicioCatalogo.Infrastructure.Categories.Persistence;
+using ServicioCatalogo.Infrastructure.Messaging;
 using ServicioCatalogo.Infrastructure.Products.Persistence;
 using ServicioCatalogo.Infrastructure.Shared.Persistence;
 
@@ -42,6 +43,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICreateProductValidator, CreateProductValidator>();
 builder.Services.AddScoped<IUpdateProductValidator, UpdateProductValidator>();
 builder.Services.AddScoped<IProductManagementUseCase, ProductManagementUseCase>();
+builder.Services.AddHostedService<StockSagaEventConsumer>();
 
 var app = builder.Build();
 

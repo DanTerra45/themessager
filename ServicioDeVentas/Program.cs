@@ -30,6 +30,7 @@ builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
 builder.Services.AddScoped<GetSaleByUseCase>();
 builder.Services.AddScoped<GetAllSalesUseCase>();
+builder.Services.AddScoped<GetSalesReportUseCase>();
 
 var app = builder.Build();
 

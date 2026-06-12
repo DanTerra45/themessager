@@ -198,6 +198,46 @@ public sealed class ProductsController(IProductManagementUseCase productManageme
         return Ok(ApiResponse<bool>.Ok(true));
     }
 
+    [HttpPost("{productId:long}/stock/reserve")]
+    public async Task<ActionResult<ApiResponse<bool>>> ReserveStockAsync(
+        long productId,
+        AdjustProductStockRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await productManagementUseCase.ReserveStockAsync(
+            productId,
+            request.Quantity,
+            BuildActor().UserId,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToFailureAction<bool>(result);
+        }
+
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
+    [HttpPost("{productId:long}/stock/recover")]
+    public async Task<ActionResult<ApiResponse<bool>>> RecoverStockAsync(
+        long productId,
+        AdjustProductStockRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await productManagementUseCase.RecoverStockAsync(
+            productId,
+            request.Quantity,
+            BuildActor().UserId,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToFailureAction<bool>(result);
+        }
+
+        return Ok(ApiResponse<bool>.Ok(true));
+    }
+
     private static IReadOnlyList<ProductResponse> MapProducts(IReadOnlyList<ProductWithCategoriesModel> products)
     {
         return products

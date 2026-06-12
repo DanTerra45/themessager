@@ -11,10 +11,16 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Mapea el script SQL local para que se ejecute al iniciar
-      - ./mercadito.ventas.schema.sql:/docker-entrypoint-initdb.d/mercadito.ventas.schema.sql
-      # Persistencia de datos local (opcional, descomentar si deseas guardar datos al apagar)
-      # - pgdata:/var/lib/postgresql/data
+      - ../schema/mercadito.ventas.schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
 
 # volumes:
 #   pgdata:

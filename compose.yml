@@ -1,4 +1,15 @@
 services:
+  postgres-ventas:
+    image: postgres:alpine
+    container_name: servicio_ventas_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=my_secret_password
+      - POSTGRES_DB=sales_db
+    ports:
+      - "5312:5432"
+    volumes:
+      - ./schema/mercadito.ventas.schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
   mysql-catalogo:
     image: mysql:8.4
     command:
@@ -13,6 +24,8 @@ services:
       - "3306:3306"
     volumes:
       - mysql_catalogo_data:/var/lib/mysql
+      - ./schema/mercadito_mysql_catalogo_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_mysql_catalogo_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s
@@ -32,6 +45,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_users_data:/var/lib/postgresql/data
+      - ./schema/mercadito_postgres_usuarios_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_postgres_usuarios_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_users"]
       interval: 10s
@@ -51,6 +66,8 @@ services:
       - "5412:5432"
     volumes:
       - postgres_empleados_data:/var/lib/postgresql/data
+      - ./schema/mercadito_postgres_empleados_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_postgres_empleados_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_employees"]
       interval: 10s
@@ -70,7 +87,18 @@ services:
       - "27017:27017"
     volumes:
       - mongo_proveedores_data:/data/db
-      - ./docker/mongo/initdb:/docker-entrypoint-initdb.d:ro
+      - ./schema/mercadito_mongo_proveedores_sample.js:/docker-entrypoint-initdb.d/01-sample.js:ro
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      TZ: America/La_Paz
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     restart: unless-stopped
 
   mailpit:

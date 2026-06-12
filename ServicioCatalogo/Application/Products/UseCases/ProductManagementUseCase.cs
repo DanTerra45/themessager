@@ -332,6 +332,65 @@ namespace ServicioCatalogo.Application.Products.UseCases
             }
         }
 
+        public async Task<Result> ReserveStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default)
+        {
+            return await ChangeStockAsync(productId, quantity, actorUserId, decreaseStock: true, cancellationToken);
+        }
+
+        public async Task<Result> RecoverStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default)
+        {
+            return await ChangeStockAsync(productId, quantity, actorUserId, decreaseStock: false, cancellationToken);
+        }
+
+        private async Task<Result> ChangeStockAsync(long productId, int quantity, long actorUserId, bool decreaseStock, CancellationToken cancellationToken)
+        {
+            try
+            {
+                if (productId <= 0)
+                {
+                    return Result.Failure(new Dictionary<string, List<string>>
+                    {
+                        { "ProductId", ["El producto es inválido."] }
+                    });
+                }
+
+                if (quantity <= 0)
+                {
+                    return Result.Failure(new Dictionary<string, List<string>>
+                    {
+                        { "Quantity", ["La cantidad debe ser mayor a cero."] }
+                    });
+                }
+
+                var affectedRows = decreaseStock
+                    ? await productRepository.DecreaseStockAsync(productId, quantity, actorUserId, cancellationToken)
+                    : await productRepository.IncreaseStockAsync(productId, quantity, actorUserId, cancellationToken);
+
+                if (affectedRows > 0)
+                {
+                    return Result.Success();
+                }
+
+                return Result.Failure(new Dictionary<string, List<string>>
+                {
+                    {
+                        "NotFound",
+                        [decreaseStock
+                            ? "No se pudo reservar stock porque el producto no existe, está inactivo o no tiene stock suficiente."
+                            : "No se pudo recuperar stock porque el producto no existe o está inactivo."]
+                    }
+                });
+            }
+            catch (DataStoreUnavailableException dataStoreException)
+            {
+                return Result.Failure(dataStoreException.Message);
+            }
+            catch (Exception)
+            {
+                return UnexpectedFailure();
+            }
+        }
+
         private static Result UnexpectedFailure()
         {
             return Result.Failure("Se produjo un error inesperado al procesar la solicitud.");
