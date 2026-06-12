@@ -2,10 +2,7 @@ using Domain.Database;
 
 namespace Domain.Factories;
 
-public interface IRepositoryFactory<TEntity, TId, TFields, TOptions>
-    where TEntity : class
-    where TFields : Enum
-    where TOptions : IQueryOptions<TFields>
+public interface IRepositoryFactory
 {
-    ICrudRepository<TEntity, TId, TFields, TOptions> Create();
+    public TRepository Create<TRepository>() where TRepository : class, IBaseRepository;
 }

@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     volumes:
       # Mapea el script SQL local para que se ejecute al iniciar
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mercadito.ventas.schema.sql:/docker-entrypoint-initdb.d/mercadito.ventas.schema.sql
       # Persistencia de datos local (opcional, descomentar si deseas guardar datos al apagar)
       # - pgdata:/var/lib/postgresql/data
 

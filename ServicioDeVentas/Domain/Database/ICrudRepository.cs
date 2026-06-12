@@ -2,7 +2,7 @@ using Domain.Common;
 
 namespace Domain.Database
 {
-    public interface ICrudRepository<TEntity, TId, TFields, TOptions>
+    public interface ICrudRepository<TEntity, TId, TFields, TOptions> : IBaseRepository
         where TEntity : class
         where TFields : Enum
         where TOptions : IQueryOptions<TFields>

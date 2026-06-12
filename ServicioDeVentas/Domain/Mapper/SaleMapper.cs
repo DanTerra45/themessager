@@ -35,7 +35,7 @@ namespace Domain.Mapper
                 if (reader["DetailId"] != DBNull.Value)
                 {
                     var detail = new SaleDetails(
-                        Id: Convert.ToInt32(reader["DetailId"]),
+                        DetailId: Convert.ToInt32(reader["DetailId"]),
                         SaleId: Convert.ToInt32(reader["SaleId"]),
                         ProductId: Convert.ToInt32(reader["ProductId"]),
                         Quantity: Convert.ToInt32(reader["Quantity"]),

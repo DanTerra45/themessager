@@ -1,24 +1,34 @@
 using Application.Factory;
 using Application.Options;
+using Application.Service;
 using Application.UseCases;
 using Domain.Database;
 using Domain.Database.Fields;
 using Domain.Entities;
 using Domain.Factories;
+using Domain.Events;
+using Domain.Repository;
 using Infrastructure.Database;
+using Infrastructure.Messaging;
 using Infrastructure.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddOpenApi();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 builder.Services.AddScoped<IDbConnectionFactory, NpgsqlConnectionFactory>();
-builder.Services.AddScoped<SaleRepository>();
-builder.Services.AddScoped<CustomerRepository>();
-builder.Services.AddScoped<ICrudRepository<SaleWithDetails, int, SaleFields, SaleOptions>, SaleRepository>();
-builder.Services.AddScoped<ICrudRepository<Customer, int, CustomerFields, CustomerOptions>, CustomerRepository>();
-builder.Services.AddScoped<IRepositoryFactory<SaleWithDetails, int, SaleFields, SaleOptions>, SaleFactory>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IRepositoryFactory, RepositoryFactory>();
+builder.Services.AddScoped<SaleService>();
+builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+
+builder.Services.AddScoped<GetSaleByUseCase>();
 builder.Services.AddScoped<GetAllSalesUseCase>();
 
 var app = builder.Build();

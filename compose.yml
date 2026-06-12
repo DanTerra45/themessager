@@ -1,0 +1,90 @@
+services:
+  mysql-catalogo:
+    image: mysql:8.4
+    command:
+      - --log-bin-trust-function-creators=1
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: mercadito
+      MYSQL_DATABASE: mercadito_db_catalog
+      TZ: America/La_Paz
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_catalogo_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres-users:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mercadito_db_users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_users"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres-empleados:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mercadito_db_employees
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
+    ports:
+      - "5412:5432"
+    volumes:
+      - postgres_empleados_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_employees"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  mongo-proveedores:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mercadito
+      MONGO_INITDB_DATABASE: mercadito_db_suppliers
+      TZ: America/La_Paz
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_proveedores_data:/data/db
+      - ./docker/mongo/initdb:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit
+    environment:
+      MP_MAX_MESSAGES: 5000
+      TZ: America/La_Paz
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+volumes:
+  mysql_catalogo_data:
+  postgres_users_data:
+  postgres_empleados_data:
+  mongo_proveedores_data:

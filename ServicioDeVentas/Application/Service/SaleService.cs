@@ -4,15 +4,17 @@ using Domain.Database.Fields;
 using Domain.Dto.Response;
 using Domain.Entities;
 using Domain.Factories;
+using Domain.Repository;
 using Domain.Service;
 using Infrastructure.Repository;
-using Infrastructure.Service;
 
 namespace Application.Service{
-  public class SaleService : BaseService<SaleRepository, SaleWithDetails, int, SaleFields, SaleOptions>
+  public class SaleService
   {
-    public SaleService(IRepositoryFactory<SaleWithDetails, int, SaleFields, SaleOptions> repositoryFactory) : base((SaleRepository)repositoryFactory.Create())
+    private readonly ISaleRepository _repository;
+    public SaleService(IRepositoryFactory factory)
     {
+      _repository = factory.Create<ISaleRepository>();
     }
     public async Task<Result<SaleWithDetails>> GetOne(SaleOptions options)
     {

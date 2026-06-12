@@ -5,18 +5,20 @@ using Domain.Database.Fields;
 using Domain.Dto.Response;
 using Domain.Entities;
 using Domain.Mapper;
+using Domain.Repository;
+using Domain.Factories;
 
 namespace Application.UseCases
 {
     public class GetAllSalesUseCase
     {
-        private readonly ICrudRepository<SaleWithDetails,int,SaleFields,SaleOptions> _saleRepository;
-        private readonly ICrudRepository<Customer,int,CustomerFields,CustomerOptions> _customerRepository;
+        private readonly ISaleRepository _saleRepository;
+        private readonly ICustomerRepository _customerRepository;
 
-        public GetAllSalesUseCase(ICrudRepository<SaleWithDetails,int,SaleFields,SaleOptions> saleRepository, ICrudRepository<Customer,int,CustomerFields,CustomerOptions> customerRepository)
+        public GetAllSalesUseCase(IRepositoryFactory factory)
         {
-            this._saleRepository = saleRepository;
-            this._customerRepository = customerRepository;
+            _saleRepository = factory.Create<ISaleRepository>();
+            _customerRepository = factory.Create<ICustomerRepository>();
         }
         public async Task<Result<IReadOnlyList<SaleResponseDto>>> ExecuteAsync(SaleOptions? options)
         {

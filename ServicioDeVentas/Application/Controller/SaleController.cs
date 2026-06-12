@@ -1,5 +1,6 @@
 using Application.Options;
 using Application.UseCases;
+using Domain.Database;
 using Domain.Database.Fields;
 using Domain.Dto.Response;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -12,10 +13,12 @@ namespace Application.Controller
     public class SaleController : ControllerBase
     {
         private readonly GetAllSalesUseCase _getAllSalesUseCase;
+        private readonly GetSaleByUseCase _getSaleByUseCase;
 
-        public SaleController(GetAllSalesUseCase getAllSalesUseCase)
+        public SaleController(GetAllSalesUseCase getAllSalesUseCase, GetSaleByUseCase getSaleByUseCase)
         {
             _getAllSalesUseCase = getAllSalesUseCase;
+            _getSaleByUseCase = getSaleByUseCase;
         }
 
         [HttpGet("")]
@@ -34,6 +37,16 @@ namespace Application.Controller
             };
 
             var result = await _getAllSalesUseCase.ExecuteAsync(options);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Errors.FirstOrDefault()?.Message);
+        }
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetSale(
+            [FromRoute] int id)
+        {
+            var options = new SaleOptions();
+            options.AddFilter(SaleFields.Id, FilterOperator.Equals, id);
+
+            var result = await _getSaleByUseCase.ExecuteAsync(options);
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Errors.FirstOrDefault()?.Message);
         }
     }

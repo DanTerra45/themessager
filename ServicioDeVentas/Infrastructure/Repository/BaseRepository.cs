@@ -129,12 +129,12 @@ namespace Infrastructure.Repository
             }
         }
 
-        public Task<Result<TEntity>> GetByIdAsync(TId id, TOptions? options)
+        public virtual async Task<Result<TEntity>> GetByIdAsync(TId id, TOptions? options)
         {
             throw new NotImplementedException();
         }
 
-        public async Task<Result<TEntity>> GetOneAsync(TOptions? options)
+        public virtual async Task<Result<TEntity>> GetOneAsync(TOptions? options)
         {
             var (sql, parameters) = new QueryBuilder<TOptions, TFields>(_tableName, new TSchema())
                 .Select(options ?? new TOptions())
