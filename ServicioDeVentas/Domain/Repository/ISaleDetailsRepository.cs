@@ -5,8 +5,8 @@ using Domain.Entities;
 
 namespace Domain.Repository
 {
-  public interface ISaleRepository : ICrudRepository<SaleWithDetails, int, SaleFields, SaleOptions>
+  public interface ISaleDetailRepository : ICrudRepository<SaleDetails, int, SaleDetailFields, SaleDetailOptions>
   {
-
   }
 }
+
