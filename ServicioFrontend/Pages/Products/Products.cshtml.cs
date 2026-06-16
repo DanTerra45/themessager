@@ -459,7 +459,7 @@ public sealed class ProductsModel(
 
         if (!product.Price.HasValue || product.Price.Value < 0.01m)
         {
-            product.Price = 0.01m;
+            product.Price = 0.10m;
         }
     }
 
@@ -472,7 +472,7 @@ public sealed class ProductsModel(
             Stock = 0,
             Batch = string.Empty,
             ExpirationDate = DateOnly.FromDateTime(DateTime.Today.AddMonths(3)),
-            Price = 0.01m
+            Price = 0.10m
         };
     }
 

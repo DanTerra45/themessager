@@ -2639,6 +2639,26 @@ body.sale-create-modal-open {
   margin-bottom: 1rem;
 }
 
+.sale-detail-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sale-detail-panel .sale-draft-table-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sale-detail-panel .sale-draft-table-scroll {
+  flex: 0 0 auto;
+  height: 20rem;
+  min-height: 20rem;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
 .sale-product-list-shell {
   border: 2px solid var(--mrc-ink);
   background-color: var(--mrc-surface);
@@ -2735,6 +2755,12 @@ body.sale-create-modal-open {
   .sale-data-client-actions .b-btn,
   .sale-modal-footer .b-btn {
     justify-content: center;
+  }
+
+  .sale-detail-panel .sale-draft-table-scroll {
+    min-height: 0;
+    height: auto;
+    max-height: 260px;
   }
 }
 

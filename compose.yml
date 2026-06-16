@@ -1,3 +1,5 @@
+name: mercadito-infra
+
 services:
   postgres-ventas:
     image: postgres:16-alpine
@@ -22,6 +24,7 @@ services:
     restart: unless-stopped
   mysql-catalogo:
     image: mysql:8.4
+    container_name: servicio_catalogo_db
     command:
       - --log-bin-trust-function-creators=1
       - --character-set-server=utf8mb4
@@ -46,6 +49,7 @@ services:
 
   postgres-users:
     image: postgres:16-alpine
+    container_name: servicio_usuarios_db
     environment:
       POSTGRES_DB: mercadito_db_users
       POSTGRES_USER: postgres
@@ -67,6 +71,7 @@ services:
 
   postgres-empleados:
     image: postgres:16-alpine
+    container_name: servicio_empleados_db
     environment:
       POSTGRES_DB: mercadito_db_employees
       POSTGRES_USER: postgres
@@ -88,6 +93,7 @@ services:
 
   postgres-reportes:
     image: postgres:16-alpine
+    container_name: servicio_reportes_db
     environment:
       POSTGRES_DB: mercadito_db_reportes
       POSTGRES_USER: postgres
@@ -109,6 +115,7 @@ services:
 
   mongo-proveedores:
     image: mongo:7.0
+    container_name: servicio_proveedores_db
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: mercadito
@@ -123,6 +130,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
+    container_name: mercadito_rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -134,6 +142,7 @@ services:
 
   mailpit:
     image: axllent/mailpit
+    container_name: mercadito_mailpit
     environment:
       MP_MAX_MESSAGES: 5000
       TZ: America/La_Paz
