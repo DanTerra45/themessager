@@ -8,7 +8,9 @@ using Domain.Database;
 using Domain.Database.Fields;
 using Domain.Entities;
 using Domain.Factories;
+using Domain.Events;
 using Infrastructure.Database;
+using Infrastructure.Messaging;
 using Infrastructure.Repository;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -28,6 +30,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddScoped<JwtService>();
+builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
 var postgresConnection = builder.Configuration.GetConnectionString("PostgresConnection");
 if (string.IsNullOrWhiteSpace(postgresConnection))

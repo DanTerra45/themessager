@@ -28,7 +28,7 @@ public sealed class ProductFormDto
     public DateOnly ExpirationDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddMonths(3));
 
     [MinimumDecimal(0.01, ErrorMessage = "El Precio debe ser un número decimal positivo")]
-    public decimal? Price { get; set; } = 0.01m;
+    public decimal? Price { get; set; } = 0.10m;
 
     [MinLength(1, ErrorMessage = "Debe seleccionar al menos una categoría")]
     public List<long> CategoryIds { get; set; } = [];

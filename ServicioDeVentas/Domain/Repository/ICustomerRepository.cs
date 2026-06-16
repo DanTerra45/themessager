@@ -1,0 +1,11 @@
+using Application.Options;
+using Domain.Database;
+using Domain.Database.Fields;
+using Domain.Entities;
+
+namespace Domain.Repository
+{
+    public interface ICustomerRepository : ICrudRepository<Customer, int, CustomerFields, CustomerOptions>
+    {
+    }
+}

@@ -9,7 +9,7 @@ public sealed class NavigationMenuService : INavigationMenuService
     public NavigationMenuService(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        _salesEnabled = configuration.GetValue<bool>("Features:SalesEnabled");
+        _salesEnabled = configuration.GetValue("Features:SalesEnabled", true);
     }
 
     public NavigationMenuViewModel Build(ClaimsPrincipal user)

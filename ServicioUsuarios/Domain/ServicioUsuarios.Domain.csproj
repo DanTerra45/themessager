@@ -15,7 +15,7 @@
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="bin\**\*.cs;obj\**\*.cs" />
     <Compile Include="..\Application\Options\**\*.cs" Exclude="..\Application\bin\**\*.cs;..\Application\obj\**\*.cs" />
-    <Compile Include="..\Application\utils\PasswordUtils.cs" />
+    <Compile Include="..\Application\Utils\PasswordUtils.cs" />
     <Compile Include="..\Infrastructure\Options\BaseQueryOptions.cs" Exclude="..\Infrastructure\bin\**\*.cs;..\Infrastructure\obj\**\*.cs" />
   </ItemGroup>
 

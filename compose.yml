@@ -1,0 +1,160 @@
+name: mercadito-infra
+
+services:
+  postgres-ventas:
+    image: postgres:16-alpine
+    container_name: servicio_ventas_db
+    environment:
+      POSTGRES_DB: mercadito_db_sales
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
+    ports:
+      - "5452:5432"
+    volumes:
+      - postgres_ventas_data:/var/lib/postgresql/data
+      - ./schema/mercadito_postgres_ventas_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_postgres_ventas_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_sales"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+  mysql-catalogo:
+    image: mysql:8.4
+    container_name: servicio_catalogo_db
+    command:
+      - --log-bin-trust-function-creators=1
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: mercadito
+      MYSQL_DATABASE: mercadito_db_catalog
+      TZ: America/La_Paz
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_catalogo_data:/var/lib/mysql
+      - ./schema/mercadito_mysql_catalogo_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_mysql_catalogo_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres-users:
+    image: postgres:16-alpine
+    container_name: servicio_usuarios_db
+    environment:
+      POSTGRES_DB: mercadito_db_users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+      - ./schema/mercadito_postgres_usuarios_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_postgres_usuarios_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_users"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres-empleados:
+    image: postgres:16-alpine
+    container_name: servicio_empleados_db
+    environment:
+      POSTGRES_DB: mercadito_db_employees
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
+    ports:
+      - "5412:5432"
+    volumes:
+      - postgres_empleados_data:/var/lib/postgresql/data
+      - ./schema/mercadito_postgres_empleados_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_postgres_empleados_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_employees"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  postgres-reportes:
+    image: postgres:16-alpine
+    container_name: servicio_reportes_db
+    environment:
+      POSTGRES_DB: mercadito_db_reportes
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
+    ports:
+      - "5472:5432"
+    volumes:
+      - postgres_reportes_data:/var/lib/postgresql/data
+      - ./schema/mercadito_postgres_reportes_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./schema/mercadito_postgres_reportes_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_reportes"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  mongo-proveedores:
+    image: mongo:7.0
+    container_name: servicio_proveedores_db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mercadito
+      MONGO_INITDB_DATABASE: mercadito_db_suppliers
+      TZ: America/La_Paz
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_proveedores_data:/data/db
+      - ./schema/mercadito_mongo_proveedores_sample.js:/docker-entrypoint-initdb.d/01-sample.js:ro
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: mercadito_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      TZ: America/La_Paz
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: mercadito_mailpit
+    environment:
+      MP_MAX_MESSAGES: 5000
+      TZ: America/La_Paz
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+volumes:
+  mysql_catalogo_data:
+  postgres_users_data:
+  postgres_empleados_data:
+  postgres_ventas_data:
+  postgres_reportes_data:
+  mongo_proveedores_data:

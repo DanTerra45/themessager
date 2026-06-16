@@ -15,6 +15,8 @@ namespace ServicioCatalogo.Application.Products.Ports.Input
         Task<Result> UpdateAsync(UpdateProductDto updateProduct, AuditActor actor, CancellationToken cancellationToken = default);
         Task<Result<UpdateProductDto>> GetForEditAsync(long productId, CancellationToken cancellationToken = default);
         Task<Result> DeleteAsync(long productId, AuditActor actor, CancellationToken cancellationToken = default);
+        Task<Result> ReserveStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default);
+        Task<Result> RecoverStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default);
     }
 }
 

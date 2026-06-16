@@ -12,6 +12,8 @@ namespace ServicioCatalogo.Application.Products.Ports.Output
         Task<long> CreateAsync(ProductWithCategoriesWriteModel productWithCategories, long actorUserId, CancellationToken cancellationToken = default);
         Task<int> UpdateAsync(ProductWithCategoriesWriteModel productWithCategories, long actorUserId, CancellationToken cancellationToken = default);
         Task<int> DeleteAsync(long id, long actorUserId, CancellationToken cancellationToken = default);
+        Task<int> DecreaseStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default);
+        Task<int> IncreaseStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default);
     }
 }
 

@@ -1,0 +1,12 @@
+using Application.Options;
+using Domain.Database;
+using Domain.Database.Fields;
+using Domain.Entities;
+
+namespace Domain.Repository
+{
+  public interface ISaleDetailRepository : ICrudRepository<SaleDetails, int, SaleDetailFields, SaleDetailOptions>
+  {
+  }
+}
+

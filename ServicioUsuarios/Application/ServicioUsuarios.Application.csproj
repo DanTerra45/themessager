@@ -29,9 +29,9 @@
 
   <ItemGroup>
     <Compile Remove="Options\**\*.cs" />
-    <Compile Remove="utils\PasswordUtils.cs" />
+    <Compile Remove="Utils\PasswordUtils.cs" />
     <None Include="Options\**\*" />
-    <None Include="utils\PasswordUtils.cs" />
+    <None Include="Utils\PasswordUtils.cs" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 -- Mercadito Catalog Service (MySQL 8+)
 -- Sample data only for catalog microservice
--- Usage: mysql -h 127.0.0.1 -P 3306 -u root -p mercadito_db < schema/mercadito_mysql_catalogo_sample.sql
+-- Usage: mysql -h 127.0.0.1 -P 3306 -u root -p mercadito_db_catalog < schema/mercadito_mysql_catalogo_sample.sql
 
 SET NAMES utf8mb4;
 

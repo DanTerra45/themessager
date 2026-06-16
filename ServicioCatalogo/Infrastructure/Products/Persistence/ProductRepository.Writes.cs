@@ -276,6 +276,99 @@ namespace ServicioCatalogo.Infrastructure.Products.Persistence
             }
         }
 
+        public async Task<int> DecreaseStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                const string query = @"UPDATE products
+                    SET stock = stock - @Quantity,
+                        updated_by_user_id = @UpdatedByUserId
+                    WHERE id = @ProductId
+                      AND estado = @ActiveState
+                      AND stock >= @Quantity";
+
+                var command = new CommandDefinition(
+                    query,
+                    parameters: new
+                    {
+                        ProductId = productId,
+                        Quantity = quantity,
+                        UpdatedByUserId = actorUserId,
+                        ActiveState
+                    },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
+
+                var affectedRows = await connection.ExecuteAsync(command);
+                transaction.Commit();
+                return affectedRows;
+            }
+            catch (MySqlException exception)
+            {
+                transaction.Rollback();
+                throw CreateDataStoreUnavailableException("ajustar el stock del producto", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                transaction.Rollback();
+                throw CreateDataStoreUnavailableException("ajustar el stock del producto", exception);
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        public async Task<int> IncreaseStockAsync(long productId, int quantity, long actorUserId, CancellationToken cancellationToken = default)
+        {
+            using var connection = await _dbConnection.CreateConnectionAsync(cancellationToken);
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                const string query = @"UPDATE products
+                    SET stock = stock + @Quantity,
+                        updated_by_user_id = @UpdatedByUserId
+                    WHERE id = @ProductId
+                      AND estado = @ActiveState";
+
+                var command = new CommandDefinition(
+                    query,
+                    parameters: new
+                    {
+                        ProductId = productId,
+                        Quantity = quantity,
+                        UpdatedByUserId = actorUserId,
+                        ActiveState
+                    },
+                    transaction: transaction,
+                    cancellationToken: cancellationToken);
+
+                var affectedRows = await connection.ExecuteAsync(command);
+                transaction.Commit();
+                return affectedRows;
+            }
+            catch (MySqlException exception)
+            {
+                transaction.Rollback();
+                throw CreateDataStoreUnavailableException("recuperar el stock del producto", exception);
+            }
+            catch (InvalidOperationException exception) when (exception.InnerException is MySqlException)
+            {
+                transaction.Rollback();
+                throw CreateDataStoreUnavailableException("recuperar el stock del producto", exception);
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
     }
 }
 

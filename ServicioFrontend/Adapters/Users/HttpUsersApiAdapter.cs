@@ -1,6 +1,4 @@
 using System.Net.Http.Json;
-using System.Net.Http.Headers;
-using System.Security.Claims;
 using System.Text.Json;
 using ServicioFrontend.Adapters.Common;
 using ServicioFrontend.Authentication;
@@ -218,17 +216,8 @@ public sealed class HttpUsersApiAdapter(
         }
     }
 
-    private void ApplyAccessToken(HttpRequestMessage message)
-    {
-        var token = _httpContextAccessor.HttpContext?.User.FindFirstValue(FrontendUserClaimTypes.AccessToken);
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return;
-        }
-
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        message.Headers.TryAddWithoutValidation("Cookie", $"access_token={token}");
-    }
+    private void ApplyAccessToken(HttpRequestMessage message) =>
+        AccessTokenHeaderWriter.Apply(message, _httpContextAccessor);
 
     private static async Task<ApiResponseDto<T>> ParseApiResponseAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {

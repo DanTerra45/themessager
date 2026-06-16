@@ -34,6 +34,26 @@
         return String(value || '').trim().replace(/\s+/g, ' ');
     }
 
+    function createDebouncedAction(action, delayMs) {
+        var timeoutId = 0;
+
+        function debounced() {
+            var args = arguments;
+            window.clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(function () {
+                timeoutId = 0;
+                action.apply(null, args);
+            }, delayMs);
+        }
+
+        debounced.cancel = function () {
+            window.clearTimeout(timeoutId);
+            timeoutId = 0;
+        };
+
+        return debounced;
+    }
+
     function escapeHtml(value) {
         return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
@@ -287,8 +307,13 @@
             selectedCustomer: defaultCustomer,
             newCustomer: null,
             lines: [],
-            submitAttempted: false
+            submitAttempted: false,
+            productSearchRequestId: 0
         };
+
+        var scheduleProductSearch = createDebouncedAction(function () {
+            runProductSearch();
+        }, 250);
 
         function showToastError(messages) {
             showToastMessages(messages, true);
@@ -358,6 +383,20 @@
                 meta: customer.ciNit,
                 isDraft: false
             };
+        }
+
+        function hasExistingCustomerSelection() {
+            if (state.newCustomer) {
+                return false;
+            }
+
+            if (state.selectedCustomer) {
+                return true;
+            }
+
+            return state.customers.some(function (customer) {
+                return customer.id === state.selectedCustomerId;
+            });
         }
 
         function renderSelectedCustomer() {
@@ -604,7 +643,7 @@
                 errors.push('El método de pago es obligatorio.');
             }
 
-            if (!state.newCustomer && state.selectedCustomerId <= 0) {
+            if (!state.newCustomer && !hasExistingCustomerSelection()) {
                 errors.push('Debes seleccionar un cliente o registrar uno nuevo.');
             }
 
@@ -623,7 +662,9 @@
 
         function buildRegisterRequest() {
             return {
-                customerId: state.newCustomer ? null : state.selectedCustomerId,
+                customerId: state.newCustomer
+                    ? null
+                    : (state.selectedCustomer ? state.selectedCustomer.id : state.selectedCustomerId),
                 newCustomer: state.newCustomer,
                 channel: normalizeText(elements.channelInput.value),
                 paymentMethod: normalizeText(elements.paymentMethodInput.value),
@@ -648,7 +689,7 @@
             }
 
             state.customers = (payload.data || []).map(normalizeCustomer);
-            if (!state.newCustomer && state.selectedCustomerId <= 0) {
+            if (!state.newCustomer && !hasExistingCustomerSelection()) {
                 var nextCustomer = getFirstCustomer(state.customers);
                 state.selectedCustomerId = nextCustomer ? nextCustomer.id : 0;
                 state.selectedCustomer = nextCustomer;
@@ -658,10 +699,15 @@
         }
 
         async function runProductSearch() {
+            var requestId = ++state.productSearchRequestId;
             var response = await fetch(createRequestUrl(root.dataset.productsUrl, elements.productSearchInput.value), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             var payload = await readApiResponse(response);
+            if (requestId !== state.productSearchRequestId) {
+                return;
+            }
+
             if (!payload.success) {
                 showToastError(payload.errors || ['No se pudo buscar productos.']);
                 return;
@@ -842,19 +888,21 @@
             clearToastState();
         });
 
-        elements.productSearchButton.addEventListener('click', runProductSearch);
+        elements.productSearchButton.addEventListener('click', function () {
+            scheduleProductSearch.cancel();
+            runProductSearch();
+        });
         elements.productSearchInput.addEventListener('keydown', function (event) {
             if (event.key !== 'Enter') {
                 return;
             }
 
             event.preventDefault();
+            scheduleProductSearch.cancel();
             runProductSearch();
         });
         elements.productSearchInput.addEventListener('input', function () {
-            if (normalizeText(elements.productSearchInput.value).length === 0) {
-                runProductSearch();
-            }
+            scheduleProductSearch();
         });
 
         elements.linesTableBody.addEventListener('click', function (event) {

@@ -10,7 +10,7 @@ using ServicioFrontend.Pages.Shared.Navigation;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
-var salesEnabled = builder.Configuration.GetValue<bool>("Features:SalesEnabled");
+var salesEnabled = builder.Configuration.GetValue("Features:SalesEnabled", true);
 
 builder.Services
     .AddRazorPages(options =>
@@ -60,7 +60,11 @@ if (salesEnabled)
 {
     builder.Services.AddHttpClient("SalesApi", client =>
     {
-        client.BaseAddress = new Uri(builder.Configuration["Services:SalesApi"] ?? "http://localhost:5101");
+        client.BaseAddress = new Uri(builder.Configuration["Services:SalesApi"] ?? "http://localhost:5161");
+    });
+    builder.Services.AddHttpClient("ReportsApi", client =>
+    {
+        client.BaseAddress = new Uri(builder.Configuration["Services:ReportsApi"] ?? "http://localhost:5311");
     });
 }
 builder.Services.AddHttpClient("CatalogApi", client =>
@@ -77,7 +81,7 @@ builder.Services.AddHttpClient("SuppliersApi", client =>
 });
 builder.Services.AddHttpClient("UsersApi", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["Services:UsersApi"] ?? "http://localhost:5102");
+    client.BaseAddress = new Uri(builder.Configuration["Services:UsersApi"] ?? "http://localhost:5078");
 });
 if (salesEnabled)
 {
