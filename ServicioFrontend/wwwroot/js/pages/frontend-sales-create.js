@@ -360,6 +360,20 @@
             };
         }
 
+        function hasExistingCustomerSelection() {
+            if (state.newCustomer) {
+                return false;
+            }
+
+            if (state.selectedCustomer) {
+                return true;
+            }
+
+            return state.customers.some(function (customer) {
+                return customer.id === state.selectedCustomerId;
+            });
+        }
+
         function renderSelectedCustomer() {
             var selectedCustomer = getSelectedCustomer();
             elements.selectedCustomerCard.classList.remove('is-draft', 'is-warning');
@@ -604,7 +618,7 @@
                 errors.push('El método de pago es obligatorio.');
             }
 
-            if (!state.newCustomer && state.selectedCustomerId <= 0) {
+            if (!state.newCustomer && !hasExistingCustomerSelection()) {
                 errors.push('Debes seleccionar un cliente o registrar uno nuevo.');
             }
 
@@ -623,7 +637,9 @@
 
         function buildRegisterRequest() {
             return {
-                customerId: state.newCustomer ? null : state.selectedCustomerId,
+                customerId: state.newCustomer
+                    ? null
+                    : (state.selectedCustomer ? state.selectedCustomer.id : state.selectedCustomerId),
                 newCustomer: state.newCustomer,
                 channel: normalizeText(elements.channelInput.value),
                 paymentMethod: normalizeText(elements.paymentMethodInput.value),
@@ -648,7 +664,7 @@
             }
 
             state.customers = (payload.data || []).map(normalizeCustomer);
-            if (!state.newCustomer && state.selectedCustomerId <= 0) {
+            if (!state.newCustomer && !hasExistingCustomerSelection()) {
                 var nextCustomer = getFirstCustomer(state.customers);
                 state.selectedCustomerId = nextCustomer ? nextCustomer.id : 0;
                 state.selectedCustomer = nextCustomer;

@@ -15,6 +15,7 @@ public sealed class RabbitMqEventPublisher : IEventPublisher, IDisposable
     private readonly IConnection _connection;
     private readonly IModel _channel;
     private readonly string _exchange;
+    private readonly SemaphoreSlim _publishLock = new(1, 1);
 
     public RabbitMqEventPublisher(IConfiguration cfg)
     {
@@ -36,7 +37,7 @@ public sealed class RabbitMqEventPublisher : IEventPublisher, IDisposable
         _channel.ExchangeDeclare(_exchange, ExchangeType.Topic, durable: true);
     }
 
-    public Task PublishAsync(string routingKey, object @event, string? correlationId = null)
+    public async Task PublishAsync(string routingKey, object @event, string? correlationId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(routingKey);
         ArgumentNullException.ThrowIfNull(@event);
@@ -52,12 +53,20 @@ public sealed class RabbitMqEventPublisher : IEventPublisher, IDisposable
             props.CorrelationId = correlationId;
         }
 
-        _channel.BasicPublish(_exchange, routingKey, props, payload);
-        return Task.CompletedTask;
+        await _publishLock.WaitAsync();
+        try
+        {
+            _channel.BasicPublish(_exchange, routingKey, props, payload);
+        }
+        finally
+        {
+            _publishLock.Release();
+        }
     }
 
     public void Dispose()
     {
+        _publishLock.Dispose();
         _channel?.Close();
         _connection?.Close();
     }

@@ -9,6 +9,8 @@ using Dapper;
 using Domain.Database.Fields;
 using Application.Options;
 using Domain.Entities;
+using Domain.Entities.Enums;
+using Domain.Events;
 using Infrastructure.Database;
 
 namespace Application.UseCases
@@ -20,14 +22,16 @@ namespace Application.UseCases
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<RegisterUserUseCase> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IEventPublisher _eventPublisher;
 
-        public RegisterUserUseCase(UserService userService, EmailService emailService, IUnitOfWork unitOfWork, ILogger<RegisterUserUseCase> logger, IConfiguration configuration)
+        public RegisterUserUseCase(UserService userService, EmailService emailService, IUnitOfWork unitOfWork, ILogger<RegisterUserUseCase> logger, IConfiguration configuration, IEventPublisher eventPublisher)
         {
             _userService = userService;
             _emailService = emailService;
             _unitOfWork = unitOfWork;
             _logger = logger;
             _configuration = configuration;
+            _eventPublisher = eventPublisher;
         }
 
         public async Task<Result<int>> Execute(CreateUserDto createUserDto,int creatorId)
@@ -66,6 +70,25 @@ namespace Application.UseCases
                 }
 
                 await _unitOfWork.CommitAsync();
+
+                try
+                {
+                    await _eventPublisher.PublishAsync(
+                        "users.created",
+                        new UserCreatedEvent(
+                            newId,
+                            creatorId,
+                            createUserDto.Username,
+                            createUserDto.Email,
+                            NormalizeRole(createUserDto.Role),
+                            DateTime.UtcNow),
+                        newId.ToString());
+                }
+                catch (Exception publishEx)
+                {
+                    _logger.LogError(publishEx, "El usuario {UserId} se creó, pero no se pudo publicar el evento users.created.", newId);
+                }
+
                 return Result<int>.Success(newId);
             }
             catch (Exception ex)
@@ -74,6 +97,21 @@ namespace Application.UseCases
                 try { await _unitOfWork.RollbackAsync(); } catch { }
                 return Result<int>.Failure(new AppError(ex.GetType().Name, ex.Message, ErrorType.Internal));
             }
+        }
+
+        private static string NormalizeRole(string? role)
+        {
+            if (string.IsNullOrWhiteSpace(role))
+            {
+                return UserRole.Operator.ToString();
+            }
+
+            return role.Trim().ToLowerInvariant() switch
+            {
+                "admin" => UserRole.Admin.ToString(),
+                "auditor" => UserRole.Auditor.ToString(),
+                _ => UserRole.Operator.ToString()
+            };
         }
     }
 }

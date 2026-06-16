@@ -116,7 +116,7 @@ public sealed class CreateModel(ISalesApiAdapter salesApiAdapter, ILogger<Create
             .ToList();
 
         return new RegisterSaleRequestDto(
-            request.CustomerId.GetValueOrDefault() > 0 ? request.CustomerId : null,
+            request.CustomerId,
             newCustomer,
             NormalizeRequired(request.Channel),
             NormalizeRequired(request.PaymentMethod),
@@ -136,9 +136,13 @@ public sealed class CreateModel(ISalesApiAdapter salesApiAdapter, ILogger<Create
         AddRequiredTextError(errors, request.PaymentMethod, "El método de pago es obligatorio.");
         AddLengthError(errors, request.PaymentMethod, 30, "El método de pago no puede exceder 30 caracteres.");
 
-        if (request.CustomerId.GetValueOrDefault() <= 0)
+        if (!request.CustomerId.HasValue)
         {
             ValidateNewCustomer(request.NewCustomer, errors);
+        }
+        else if (request.CustomerId.Value < 0)
+        {
+            errors.Add("El cliente seleccionado no es válido.");
         }
 
         ValidateLines(request.Lines, errors);

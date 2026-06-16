@@ -10,6 +10,7 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using Infrastructure.Database;
 using Domain.Entities.Enums;
+using Domain.Events;
 
 namespace Application.UseCases
 {
@@ -19,13 +20,15 @@ namespace Application.UseCases
         private readonly UserService _userService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<DisableUserUseCase> _logger;
+        private readonly IEventPublisher _eventPublisher;
 
-        public DisableUserUseCase(UserStoryService userStoryService, UserService userService, IUnitOfWork unitOfWork, ILogger<DisableUserUseCase> logger)
+        public DisableUserUseCase(UserStoryService userStoryService, UserService userService, IUnitOfWork unitOfWork, ILogger<DisableUserUseCase> logger, IEventPublisher eventPublisher)
         {
             _userStoryService = userStoryService;
             _userService = userService;
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _eventPublisher = eventPublisher;
         }
         private async Task<Result<bool>> CheckUserRoleAsync(int userId)
         {
@@ -88,6 +91,25 @@ namespace Application.UseCases
                 var newId = await _unitOfWork.Connection.QuerySingleAsync<int>(insertReturning, insertParams, _unitOfWork.Transaction);
 
                 await _unitOfWork.CommitAsync();
+
+                try
+                {
+                    await _eventPublisher.PublishAsync(
+                        "users.disabled",
+                        new UserDisabledEvent(
+                            request.UserId,
+                            int.TryParse(request.OperatorId, out var operatorId) ? operatorId : 0,
+                            (request.PreviousState ?? UserState.Active).ToString(),
+                            (request.NewState ?? UserState.Inactive).ToString(),
+                            request.DisableReason,
+                            DateTime.UtcNow),
+                        request.UserId.ToString());
+                }
+                catch (Exception publishEx)
+                {
+                    _logger.LogError(publishEx, "El usuario {UserId} se deshabilitó, pero no se pudo publicar el evento users.disabled.", request.UserId);
+                }
+
                 return Result<int>.Success(newId);
             }
             catch (Exception ex)

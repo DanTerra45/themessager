@@ -5,6 +5,7 @@ using Domain.Common;
 using Domain.Database;
 using Domain.Database.Fields;
 using Domain.Dto.Auth;
+using Domain.Events;
 
 namespace Application.UseCases;
 
@@ -12,11 +13,13 @@ public sealed class ChangePasswordUseCase
 {
     private readonly UserService _userService;
     private readonly ILogger<ChangePasswordUseCase> _logger;
+    private readonly IEventPublisher _eventPublisher;
 
-    public ChangePasswordUseCase(UserService userService, ILogger<ChangePasswordUseCase> logger)
+    public ChangePasswordUseCase(UserService userService, ILogger<ChangePasswordUseCase> logger, IEventPublisher eventPublisher)
     {
         _userService = userService;
         _logger = logger;
+        _eventPublisher = eventPublisher;
     }
 
     public async Task<Result<bool>> Execute(int userId, ChangePasswordRequest request)
@@ -82,6 +85,19 @@ public sealed class ChangePasswordUseCase
         }
 
         _logger.LogInformation("Password changed for user {UserId}.", userId);
+
+        try
+        {
+            await _eventPublisher.PublishAsync(
+                "users.password.changed",
+                new UserPasswordChangedEvent(userId, DateTime.UtcNow),
+                userId.ToString());
+        }
+        catch (Exception publishEx)
+        {
+            _logger.LogError(publishEx, "La contraseña del usuario {UserId} se actualizó, pero no se pudo publicar el evento users.password.changed.", userId);
+        }
+
         return Result<bool>.Success(true);
     }
 }

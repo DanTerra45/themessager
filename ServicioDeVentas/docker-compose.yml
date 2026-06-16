@@ -2,16 +2,25 @@ version: '3.8'
 
 services:
   postgres-db:
-    image: postgres:alpine
+    image: postgres:16-alpine
     container_name: servicio_ventas_db
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=my_secret_password
-      - POSTGRES_DB=sales_db
+      POSTGRES_DB: mercadito_db_sales
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mercadito
+      TZ: America/La_Paz
     ports:
-      - "5432:5432"
+      - "5452:5432"
     volumes:
-      - ../schema/mercadito.ventas.schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - pgdata:/var/lib/postgresql/data
+      - ../schema/mercadito_postgres_ventas_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../schema/mercadito_postgres_ventas_sample.sql:/docker-entrypoint-initdb.d/02-sample.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mercadito_db_sales"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -22,5 +31,5 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-# volumes:
-#   pgdata:
+volumes:
+  pgdata:
